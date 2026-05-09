@@ -24,6 +24,7 @@ import { SequentialResearchService } from '../../application/research/Sequential
 import { PersistenceResearchService } from '../../application/research/PersistenceResearchService';
 import { ResearchReportingService } from '../../application/research/ResearchReportingService';
 import { InstitutionalBacktestService } from '../../application/backtesting/InstitutionalBacktestService';
+import { AdvancedWalkForwardService } from '../../application/backtesting/AdvancedWalkForwardService';
 import { config } from '../../config';
 
 interface AnalyzePayload {
@@ -56,6 +57,7 @@ export class Server {
   private readonly persistenceResearchService = new PersistenceResearchService();
   private readonly researchReportingService = new ResearchReportingService(config.appVersion);
   private readonly institutionalBacktestService = new InstitutionalBacktestService();
+  private readonly advancedWalkForwardService = new AdvancedWalkForwardService();
   private httpServer?: ReturnType<Express['listen']>;
 
   constructor(
@@ -147,7 +149,10 @@ export class Server {
           'institutional-backtesting',
           'baseline-comparison',
           'stress-scenario-analysis',
-          'drawdown-surface-analysis'
+          'drawdown-surface-analysis',
+          'advanced-walk-forward-validation',
+          'out-of-sample-consistency-analysis',
+          'overfit-risk-scoring'
         ],
         gates: {
           minSampleSize: 120,
@@ -231,6 +236,15 @@ export class Server {
       const dataset = req.body?.dataset ?? req.body?.records ?? req.body?.history ?? req.body;
       const report = this.institutionalBacktestService.evaluate(dataset);
       this.metrics.increment(`backtest.institutional.${report.status.toLowerCase()}`);
+      res.status(report.status === 'REJECTED' ? 422 : 200).json(report);
+    });
+
+
+
+    this.app.post('/api/backtest/walk-forward/advanced/evaluate', (req, res) => {
+      const dataset = req.body?.dataset ?? req.body?.records ?? req.body?.history ?? req.body;
+      const report = this.advancedWalkForwardService.evaluate(dataset);
+      this.metrics.increment(`backtest.walk_forward_advanced.${report.status.toLowerCase()}`);
       res.status(report.status === 'REJECTED' ? 422 : 200).json(report);
     });
 
