@@ -1,7 +1,7 @@
 {
   "name": "rl-sys-core",
-  "version": "0.7.0",
-  "description": "RL.sys Core - institutional roulette analysis engine with Monte Carlo risk gates",
+  "version": "0.8.0",
+  "description": "RL.sys Core - enterprise-grade institutional roulette analysis engine with Bayesian edge validation and regime detection",
   "main": "dist/main.js",
   "scripts": {
     "start": "node dist/main.js",

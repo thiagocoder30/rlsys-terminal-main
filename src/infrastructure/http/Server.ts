@@ -10,6 +10,8 @@ import { RiskPolicy } from '../../domain/services/RiskPolicy';
 import { ConfidenceScorer } from '../../domain/services/ConfidenceScorer';
 import { MonteCarloEngine } from '../../domain/services/MonteCarloEngine';
 import { DecisionAuditLogger } from '../audit/DecisionAuditLogger';
+import { BayesianEdgeValidator } from '../../domain/services/BayesianEdgeValidator';
+import { RegimeDetector } from '../../domain/services/RegimeDetector';
 
 interface AnalyzePayload {
   history?: unknown;
@@ -28,6 +30,8 @@ export class Server {
   private readonly confidenceScorer = new ConfidenceScorer();
   private readonly monteCarloEngine = new MonteCarloEngine();
   private readonly auditLogger = new DecisionAuditLogger('./data/decision-audit.jsonl');
+  private readonly bayesianEdgeValidator = new BayesianEdgeValidator();
+  private readonly regimeDetector = new RegimeDetector();
   private httpServer?: ReturnType<Express['listen']>;
 
   constructor(
@@ -65,7 +69,32 @@ export class Server {
     const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
 
     this.app.get('/health', (_req, res) => {
-      res.json({ status: 'ok', service: 'rl-sys-core', timestamp: new Date().toISOString() });
+      res.json({ status: 'ok', service: 'rl-sys-core', version: '0.8.0', timestamp: new Date().toISOString() });
+    });
+
+    this.app.get('/api/strategy/health', (_req, res) => {
+      res.json({
+        status: 'ok',
+        service: 'rl-sys-core',
+        version: '0.8.0',
+        capabilities: [
+          'walk-forward-backtest',
+          'monte-carlo-risk',
+          'confidence-scoring',
+          'bayesian-edge-validation',
+          'regime-detection',
+          'decision-audit'
+        ],
+        gates: {
+          minSampleSize: 120,
+          minWalkForwardTrades: 30,
+          maxMonteCarloRuin: 0.05,
+          minConfidenceScore: 0.55,
+          bayesianPolicy: 'block unless posterior edge is supported',
+          regimePolicy: 'block unstable statistical regimes'
+        },
+        timestamp: new Date().toISOString()
+      });
     });
 
     this.app.post('/api/strategy/analyze', async (req, res) => this.analyzeHistory(req, res));
@@ -124,14 +153,16 @@ export class Server {
       : undefined;
     const monteCarlo = backtest ? this.monteCarloEngine.runFromBacktest(backtest) : undefined;
     const confidence = this.confidenceScorer.score(analysis, backtest);
-    const riskDecision = this.riskPolicy.evaluate(analysis, backtest, confidence, monteCarlo);
+    const bayesianEdge = this.bayesianEdgeValidator.validate(analysis, backtest);
+    const regime = this.regimeDetector.detect(validation.values);
+    const riskDecision = this.riskPolicy.evaluate(analysis, backtest, confidence, monteCarlo, bayesianEdge, regime);
 
     if (this.signalRepository) {
       await this.signalRepository.saveSignal({
         type: 'STRATEGY_ANALYSIS',
         value: JSON.stringify(validation.values.slice(-20)),
         timestamp: Date.now(),
-        analysis: JSON.stringify({ analysis, backtest, confidence, monteCarlo, riskDecision })
+        analysis: JSON.stringify({ analysis, backtest, confidence, monteCarlo, bayesianEdge, regime, riskDecision })
       });
     }
 
@@ -143,7 +174,11 @@ export class Server {
       confidenceScore: confidence.finalScore,
       riskLevel: analysis.risk.level,
       stakeFraction: riskDecision.allowed ? analysis.suggestedFraction : 0,
-      riskOfRuin: monteCarlo?.probabilityOfRuin
+      riskOfRuin: monteCarlo?.probabilityOfRuin,
+      bayesianVerdict: bayesianEdge.verdict,
+      probabilityEdgePositive: bayesianEdge.probabilityEdgePositive,
+      regimeLabel: regime.label,
+      regimeStabilityScore: regime.stabilityScore
     });
 
     const effectiveFraction = riskDecision.allowed ? analysis.suggestedFraction : 0;
@@ -162,6 +197,8 @@ export class Server {
       backtest,
       confidence,
       monteCarlo,
+      bayesianEdge,
+      regime,
       institutionalRisk: riskDecision,
       rawVision
     });

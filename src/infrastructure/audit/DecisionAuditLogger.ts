@@ -10,6 +10,10 @@ export interface DecisionAuditRecord {
   riskLevel?: string;
   stakeFraction?: number;
   riskOfRuin?: number;
+  bayesianVerdict?: string;
+  probabilityEdgePositive?: number;
+  regimeLabel?: string;
+  regimeStabilityScore?: number;
 }
 
 export class DecisionAuditLogger {
