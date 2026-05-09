@@ -1,7 +1,7 @@
 {
   "name": "rl-sys-core",
-  "version": "0.6.0",
-  "description": "RL.sys Core - institutional roulette analysis engine with risk gates",
+  "version": "0.7.0",
+  "description": "RL.sys Core - institutional roulette analysis engine with Monte Carlo risk gates",
   "main": "dist/main.js",
   "scripts": {
     "start": "node dist/main.js",

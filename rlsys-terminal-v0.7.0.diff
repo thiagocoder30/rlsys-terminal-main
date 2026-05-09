@@ -1,0 +1,1950 @@
+diff --git a/RELATORIO_TECNICO_OTIMIZACAO_V07.md b/RELATORIO_TECNICO_OTIMIZACAO_V07.md
+new file mode 100644
+index 0000000..3cfb11c
+--- /dev/null
++++ b/RELATORIO_TECNICO_OTIMIZACAO_V07.md
+@@ -0,0 +1,67 @@
++# RELATÓRIO TÉCNICO — OTIMIZAÇÃO v0.7.0
++
++## Objetivo
++Elevar a camada quantitativa e de governança do RL.SYS CORE adicionando validação probabilística, score de confiança e rastreabilidade institucional de decisões.
++
++## Implementações
++
++### 1. MonteCarloEngine
++Adicionado `src/domain/services/MonteCarloEngine.ts`.
++
++Funções principais:
++- simulação de cenários a partir do resultado walk-forward;
++- estimativa de probabilidade de ruína;
++- distribuição de equity final;
++- drawdown esperado;
++- P95 de drawdown.
++
++### 2. ConfidenceScorer
++Adicionado `src/domain/services/ConfidenceScorer.ts`.
++
++O score combina:
++- entropia normalizada;
++- força dos sinais;
++- tamanho de amostra;
++- robustez do backtest walk-forward.
++
++Resultado:
++- `finalScore` de 0 a 1;
++- grade institucional A/B/C/D/F;
++- motivos de penalização.
++
++### 3. RiskPolicy v0.7
++A política de risco agora bloqueia sinais com:
++- confidence score abaixo de 0.55;
++- risco de ruína Monte Carlo acima de 5%;
++- P95 de drawdown acima de 35%;
++- backtest insuficiente;
++- ROI/expectativa não positivos.
++
++### 4. Auditoria de decisões
++Adicionado `src/infrastructure/audit/DecisionAuditLogger.ts`.
++
++Cada análise gera registro JSONL em:
++
++```txt
++./data/decision-audit.jsonl
++```
++
++Campos auditados:
++- timestamp;
++- status;
++- motivo;
++- sample size;
++- confidence score;
++- risk level;
++- stake fraction;
++- risk of ruin.
++
++### 5. API enriquecida
++A resposta da API agora inclui:
++- `confidence`;
++- `monteCarlo`;
++- `institutionalRisk` enriquecido;
++- auditoria persistida.
++
++## Nota institucional
++A v0.7.0 não tenta “garantir lucro”. Ela aumenta o rigor de bloqueio e reduz chance de recomendações frágeis. O sistema continua experimental até que haja histórico amplo, limpo, auditável e testado fora da amostra.
+diff --git a/package-lock.json b/package-lock.json
+index 3622cbd..fadbb96 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -1,12 +1,12 @@
+ {
+   "name": "rl-sys-core",
+-  "version": "0.6.0",
++  "version": "0.7.0",
+   "lockfileVersion": 3,
+   "requires": true,
+   "packages": {
+     "": {
+       "name": "rl-sys-core",
+-      "version": "0.6.0",
++      "version": "0.7.0",
+       "license": "MIT",
+       "dependencies": {
+         "@google/generative-ai": "^0.24.1",
+diff --git a/package.json b/package.json
+index 53efaec..dffbd23 100644
+--- a/package.json
++++ b/package.json
+@@ -1,7 +1,7 @@
+ {
+   "name": "rl-sys-core",
+-  "version": "0.6.0",
+-  "description": "RL.sys Core - institutional roulette analysis engine with risk gates",
++  "version": "0.7.0",
++  "description": "RL.sys Core - institutional roulette analysis engine with Monte Carlo risk gates",
+   "main": "dist/main.js",
+   "scripts": {
+     "start": "node dist/main.js",
+diff --git a/rlsys-terminal-v0.6.0.diff b/rlsys-terminal-v0.6.0.diff
+deleted file mode 100644
+index ede900a..0000000
+--- a/rlsys-terminal-v0.6.0.diff
++++ /dev/null
+@@ -1,1406 +0,0 @@
+-diff --git a/.gitignore b/.gitignore
+-index 0c2a727..b75151d 100644
+---- a/.gitignore
+-+++ b/.gitignore
+-@@ -3,7 +3,7 @@ dist/
+- .env
+- *.log
+- .DS_Store
+--# Protegendo a API KEY
+--src/config/config.ts
+--.env
+--src/config.ts
+-+data/*.db
+-+data/*.sqlite
+-+data/*.jsonl
+-+coverage/
+-diff --git a/README_REFACTOR.md b/README_REFACTOR.md
+-index 0ee47d6..00c2aaf 100644
+---- a/README_REFACTOR.md
+-+++ b/README_REFACTOR.md
+-@@ -28,3 +28,18 @@ curl -X POST http://localhost:3000/api/strategy/analyze \
+- ```
+- 
+- Para decisão real, envie pelo menos 120 giros válidos.
+-+
+-+## v0.6.0 — Camada institucional de risco
+-+
+-+Esta versão adiciona backtest walk-forward, política institucional de risco e persistência JSONL compatível com Termux/Arch/Android.
+-+
+-+Comandos recomendados:
+-+
+-+```bash
+-+npm install
+-+npm run check
+-+npm run build
+-+npm start
+-+```
+-+
+-+A API só libera `capital.unitStake` maior que zero quando o sinal passa pela política mínima de risco.
+-diff --git a/RELATORIO_TECNICO_OTIMIZACAO_V06.md b/RELATORIO_TECNICO_OTIMIZACAO_V06.md
+-new file mode 100644
+-index 0000000..ed17158
+---- /dev/null
+-+++ b/RELATORIO_TECNICO_OTIMIZACAO_V06.md
+-@@ -0,0 +1,91 @@
+-+# Relatório Técnico — Otimização Institucional v0.6.0
+-+
+-+## Objetivo
+-+Elevar o projeto de uma base funcional para uma arquitetura mais robusta, testável e segura para tomada de decisão quantitativa.
+-+
+-+## Alterações implementadas
+-+
+-+### 1. Remoção de dependência nativa problemática no Termux
+-+- Removidos `sqlite` e `sqlite3` do `package.json`.
+-+- Criada persistência `JsonlSignalRepository` em `src/infrastructure/database/JsonlSignalRepository.ts`.
+-+- Motivo: `sqlite3` exige compilação nativa e costuma falhar em Android/Termux/Arch sem headers e toolchain completos.
+-+- Novo padrão: append-only JSONL em `data/signals.jsonl`.
+-+
+-+### 2. Backtest walk-forward
+-+- Criado `src/domain/services/BacktestEngine.ts`.
+-+- O motor simula decisões fora da amostra usando janelas progressivas.
+-+- Métricas geradas:
+-+  - trades
+-+  - wins/losses
+-+  - hit rate
+-+  - ROI
+-+  - max drawdown
+-+  - expectancy por trade
+-+  - equity final
+-+
+-+### 3. Política institucional de risco
+-+- Criado `src/domain/services/RiskPolicy.ts`.
+-+- Agora uma sugestão estatística não vira stake automaticamente.
+-+- A política bloqueia sinais quando:
+-+  - não há backtest suficiente;
+-+  - há menos de 30 trades walk-forward;
+-+  - ROI ou expectancy não são positivos;
+-+  - drawdown passa de 20%.
+-+
+-+### 4. Integração do backtest na API
+-+- `Server.ts` agora executa backtest quando há amostra suficiente.
+-+- A resposta passa a incluir:
+-+  - `backtest`
+-+  - `institutionalRisk`
+-+  - `capital.effectiveFraction`
+-+- Se a política reprovar, `unitStake` vira zero mesmo que o motor encontre um sinal inicial.
+-+
+-+### 5. Testes automatizados
+-+- Criada pasta `tests/`.
+-+- Adicionado script:
+-+  - `npm test`
+-+  - `npm run check`
+-+- Cobertura inicial:
+-+  - validação de números da roleta;
+-+  - bloqueio por amostra insuficiente;
+-+  - formato de análise institucional;
+-+  - estabilidade do backtest walk-forward;
+-+  - bloqueio de risco sem evidência suficiente.
+-+
+-+## Validação executada
+-+
+-+Comando executado:
+-+
+-+```bash
+-+npm run check
+-+```
+-+
+-+Resultado:
+-+
+-+```text
+-+build: OK
+-+tests: 5 passed, 0 failed
+-+```
+-+
+-+## Mudança de filosofia operacional
+-+Antes, o sistema podia sugerir stake com base em indícios estatísticos frágeis. Agora, a API separa:
+-+
+-+1. sinal estatístico bruto;
+-+2. validação por backtest;
+-+3. decisão institucional de risco;
+-+4. stake efetivamente autorizada.
+-+
+-+Isso reduz overfitting, falso positivo e entrada operacional sem evidência mínima.
+-+
+-+## Próximas otimizações recomendadas
+-+1. Adicionar simulação Monte Carlo.
+-+2. Adicionar teste de significância para qui-quadrado.
+-+3. Criar regime detection por janela móvel.
+-+4. Criar painel de métricas com histórico de decisões.
+-+5. Adicionar Dockerfile opcional.
+-+6. Adicionar GitHub Actions para `npm run check`.
+-+7. Separar payloads de API com DTOs tipados.
+-+8. Persistir backtests e decisões em logs estruturados.
+-+
+-+## Observação crítica
+-+Este projeto continua sendo um sistema de análise estatística experimental. Roleta possui vantagem matemática da casa. O sistema agora está mais seguro porque bloqueia decisões quando não há evidência walk-forward suficiente, mas isso não significa garantia de lucro.
+-diff --git a/package-lock.json b/package-lock.json
+-index 3e1cd04..3622cbd 100644
+---- a/package-lock.json
+-+++ b/package-lock.json
+-@@ -1,12 +1,12 @@
+- {
+-   "name": "rl-sys-core",
+--  "version": "0.5.0",
+-+  "version": "0.6.0",
+-   "lockfileVersion": 3,
+-   "requires": true,
+-   "packages": {
+-     "": {
+-       "name": "rl-sys-core",
+--      "version": "0.5.0",
+-+      "version": "0.6.0",
+-       "license": "MIT",
+-       "dependencies": {
+-         "@google/generative-ai": "^0.24.1",
+-@@ -14,8 +14,6 @@
+-         "dotenv": "^17.4.2",
+-         "express": "^4.19.2",
+-         "multer": "^2.1.1",
+--        "sqlite": "^5.1.1",
+--        "sqlite3": "^6.0.1",
+-         "uuid": "^14.0.0"
+-       },
+-       "devDependencies": {
+-@@ -34,18 +32,6 @@
+-         "node": ">=18.0.0"
+-       }
+-     },
+--    "node_modules/@isaacs/fs-minipass": {
+--      "version": "4.0.1",
+--      "resolved": "https://registry.npmjs.org/@isaacs/fs-minipass/-/fs-minipass-4.0.1.tgz",
+--      "integrity": "sha512-wgm9Ehl2jpeqP3zw/7mo3kRHFp5MEDhqAdwy1fTGkHAwnkGOVsgpvQhL8B5n1qlb01jV3n/bI0ZfZp5lWA1k4w==",
+--      "license": "ISC",
+--      "dependencies": {
+--        "minipass": "^7.0.4"
+--      },
+--      "engines": {
+--        "node": ">=18.0.0"
+--      }
+--    },
+-     "node_modules/@types/body-parser": {
+-       "version": "1.19.6",
+-       "resolved": "https://registry.npmjs.org/@types/body-parser/-/body-parser-1.19.6.tgz",
+-@@ -168,16 +154,6 @@
+-       "dev": true,
+-       "license": "MIT"
+-     },
+--    "node_modules/abbrev": {
+--      "version": "4.0.0",
+--      "resolved": "https://registry.npmjs.org/abbrev/-/abbrev-4.0.0.tgz",
+--      "integrity": "sha512-a1wflyaL0tHtJSmLSOVybYhy22vRih4eduhhrkcjgrWGnRfrZtovJ2FRjxuTtkkj47O/baf0R86QU5OuYpz8fA==",
+--      "license": "ISC",
+--      "optional": true,
+--      "engines": {
+--        "node": "^20.17.0 || >=22.9.0"
+--      }
+--    },
+-     "node_modules/accepts": {
+-       "version": "1.3.8",
+-       "resolved": "https://registry.npmjs.org/accepts/-/accepts-1.3.8.tgz",
+-@@ -203,46 +179,6 @@
+-       "integrity": "sha512-PCVAQswWemu6UdxsDFFX/+gVeYqKAod3D3UVm91jHwynguOwAvYPhx8nNlM++NqRcK6CxxpUafjmhIdKiHibqg==",
+-       "license": "MIT"
+-     },
+--    "node_modules/base64-js": {
+--      "version": "1.5.1",
+--      "resolved": "https://registry.npmjs.org/base64-js/-/base64-js-1.5.1.tgz",
+--      "integrity": "sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==",
+--      "funding": [
+--        {
+--          "type": "github",
+--          "url": "https://github.com/sponsors/feross"
+--        },
+--        {
+--          "type": "patreon",
+--          "url": "https://www.patreon.com/feross"
+--        },
+--        {
+--          "type": "consulting",
+--          "url": "https://feross.org/support"
+--        }
+--      ],
+--      "license": "MIT"
+--    },
+--    "node_modules/bindings": {
+--      "version": "1.5.0",
+--      "resolved": "https://registry.npmjs.org/bindings/-/bindings-1.5.0.tgz",
+--      "integrity": "sha512-p2q/t/mhvuOj/UeLlV6566GD/guowlr0hHxClI0W9m7MWYkL1F0hLo+0Aexs9HSPCtR1SXQ0TD3MMKrXZajbiQ==",
+--      "license": "MIT",
+--      "dependencies": {
+--        "file-uri-to-path": "1.0.0"
+--      }
+--    },
+--    "node_modules/bl": {
+--      "version": "4.1.0",
+--      "resolved": "https://registry.npmjs.org/bl/-/bl-4.1.0.tgz",
+--      "integrity": "sha512-1W07cM9gS6DcLperZfFSj+bWLtaPGSOHWhPiGzXmvVJbRLdG82sH/Kn8EtW1VqWVA54AKf2h5k5BbnIbwF3h6w==",
+--      "license": "MIT",
+--      "dependencies": {
+--        "buffer": "^5.5.0",
+--        "inherits": "^2.0.4",
+--        "readable-stream": "^3.4.0"
+--      }
+--    },
+-     "node_modules/body-parser": {
+-       "version": "1.20.5",
+-       "resolved": "https://registry.npmjs.org/body-parser/-/body-parser-1.20.5.tgz",
+-@@ -282,30 +218,6 @@
+-         "url": "https://github.com/sponsors/ljharb"
+-       }
+-     },
+--    "node_modules/buffer": {
+--      "version": "5.7.1",
+--      "resolved": "https://registry.npmjs.org/buffer/-/buffer-5.7.1.tgz",
+--      "integrity": "sha512-EHcyIPBQ4BSGlvjB16k5KgAJ27CIsHY/2JBmCRReo48y9rQ3MaUzWX3KVlBa4U7MyX02HdVj0K7C3WaB3ju7FQ==",
+--      "funding": [
+--        {
+--          "type": "github",
+--          "url": "https://github.com/sponsors/feross"
+--        },
+--        {
+--          "type": "patreon",
+--          "url": "https://www.patreon.com/feross"
+--        },
+--        {
+--          "type": "consulting",
+--          "url": "https://feross.org/support"
+--        }
+--      ],
+--      "license": "MIT",
+--      "dependencies": {
+--        "base64-js": "^1.3.1",
+--        "ieee754": "^1.1.13"
+--      }
+--    },
+-     "node_modules/buffer-from": {
+-       "version": "1.1.2",
+-       "resolved": "https://registry.npmjs.org/buffer-from/-/buffer-from-1.1.2.tgz",
+-@@ -361,15 +273,6 @@
+-         "url": "https://github.com/sponsors/ljharb"
+-       }
+-     },
+--    "node_modules/chownr": {
+--      "version": "3.0.0",
+--      "resolved": "https://registry.npmjs.org/chownr/-/chownr-3.0.0.tgz",
+--      "integrity": "sha512-+IxzY9BZOQd/XuYPRmrvEVjF/nqj5kgT4kEq7VofrDoM1MxoRjEWkrCC3EtLi59TVawxTAn+orJwFQcrqEN1+g==",
+--      "license": "BlueOak-1.0.0",
+--      "engines": {
+--        "node": ">=18"
+--      }
+--    },
+-     "node_modules/concat-stream": {
+-       "version": "2.0.0",
+-       "resolved": "https://registry.npmjs.org/concat-stream/-/concat-stream-2.0.0.tgz",
+-@@ -430,30 +333,6 @@
+-         "ms": "2.0.0"
+-       }
+-     },
+--    "node_modules/decompress-response": {
+--      "version": "6.0.0",
+--      "resolved": "https://registry.npmjs.org/decompress-response/-/decompress-response-6.0.0.tgz",
+--      "integrity": "sha512-aW35yZM6Bb/4oJlZncMH2LCoZtJXTRxES17vE3hoRiowU2kWHaJKFkSBDnDR+cm9J+9QhXmREyIfv0pji9ejCQ==",
+--      "license": "MIT",
+--      "dependencies": {
+--        "mimic-response": "^3.1.0"
+--      },
+--      "engines": {
+--        "node": ">=10"
+--      },
+--      "funding": {
+--        "url": "https://github.com/sponsors/sindresorhus"
+--      }
+--    },
+--    "node_modules/deep-extend": {
+--      "version": "0.6.0",
+--      "resolved": "https://registry.npmjs.org/deep-extend/-/deep-extend-0.6.0.tgz",
+--      "integrity": "sha512-LOHxIOaPYdHlJRtCQfDIVZtfw/ufM8+rVj649RIHzcm/vGwQRXFt6OPqIFWsm2XEMrNIEtWR64sY1LEKD2vAOA==",
+--      "license": "MIT",
+--      "engines": {
+--        "node": ">=4.0.0"
+--      }
+--    },
+-     "node_modules/depd": {
+-       "version": "2.0.0",
+-       "resolved": "https://registry.npmjs.org/depd/-/depd-2.0.0.tgz",
+-@@ -473,15 +352,6 @@
+-         "npm": "1.2.8000 || >= 1.4.16"
+-       }
+-     },
+--    "node_modules/detect-libc": {
+--      "version": "2.1.2",
+--      "resolved": "https://registry.npmjs.org/detect-libc/-/detect-libc-2.1.2.tgz",
+--      "integrity": "sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==",
+--      "license": "Apache-2.0",
+--      "engines": {
+--        "node": ">=8"
+--      }
+--    },
+-     "node_modules/dotenv": {
+-       "version": "17.4.2",
+-       "resolved": "https://registry.npmjs.org/dotenv/-/dotenv-17.4.2.tgz",
+-@@ -523,25 +393,6 @@
+-         "node": ">= 0.8"
+-       }
+-     },
+--    "node_modules/end-of-stream": {
+--      "version": "1.4.5",
+--      "resolved": "https://registry.npmjs.org/end-of-stream/-/end-of-stream-1.4.5.tgz",
+--      "integrity": "sha512-ooEGc6HP26xXq/N+GCGOT0JKCLDGrq2bQUZrQ7gyrJiZANJ/8YDTxTpQBXGMn+WbIQXNVpyWymm7KYVICQnyOg==",
+--      "license": "MIT",
+--      "dependencies": {
+--        "once": "^1.4.0"
+--      }
+--    },
+--    "node_modules/env-paths": {
+--      "version": "2.2.1",
+--      "resolved": "https://registry.npmjs.org/env-paths/-/env-paths-2.2.1.tgz",
+--      "integrity": "sha512-+h1lkLKhZMTYjog1VEpJNG7NZJWcuc2DDk/qsqSTRRCOXiLjeQ1d1/udrUGhqMxUgAlwKNZ0cf2uqan5GLuS2A==",
+--      "license": "MIT",
+--      "optional": true,
+--      "engines": {
+--        "node": ">=6"
+--      }
+--    },
+-     "node_modules/es-define-property": {
+-       "version": "1.0.1",
+-       "resolved": "https://registry.npmjs.org/es-define-property/-/es-define-property-1.0.1.tgz",
+-@@ -587,22 +438,6 @@
+-         "node": ">= 0.6"
+-       }
+-     },
+--    "node_modules/expand-template": {
+--      "version": "2.0.3",
+--      "resolved": "https://registry.npmjs.org/expand-template/-/expand-template-2.0.3.tgz",
+--      "integrity": "sha512-XYfuKMvj4O35f/pOXLObndIRvyQ+/+6AhODh+OKWj9S9498pHHn/IMszH+gt0fBCRWMNfk1ZSp5x3AifmnI2vg==",
+--      "license": "(MIT OR WTFPL)",
+--      "engines": {
+--        "node": ">=6"
+--      }
+--    },
+--    "node_modules/exponential-backoff": {
+--      "version": "3.1.3",
+--      "resolved": "https://registry.npmjs.org/exponential-backoff/-/exponential-backoff-3.1.3.tgz",
+--      "integrity": "sha512-ZgEeZXj30q+I0EN+CbSSpIyPaJ5HVQD18Z1m+u1FXbAeT94mr1zw50q4q6jiiC447Nl/YTcIYSAftiGqetwXCA==",
+--      "license": "Apache-2.0",
+--      "optional": true
+--    },
+-     "node_modules/express": {
+-       "version": "4.22.1",
+-       "resolved": "https://registry.npmjs.org/express/-/express-4.22.1.tgz",
+-@@ -649,30 +484,6 @@
+-         "url": "https://opencollective.com/express"
+-       }
+-     },
+--    "node_modules/fdir": {
+--      "version": "6.5.0",
+--      "resolved": "https://registry.npmjs.org/fdir/-/fdir-6.5.0.tgz",
+--      "integrity": "sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==",
+--      "license": "MIT",
+--      "optional": true,
+--      "engines": {
+--        "node": ">=12.0.0"
+--      },
+--      "peerDependencies": {
+--        "picomatch": "^3 || ^4"
+--      },
+--      "peerDependenciesMeta": {
+--        "picomatch": {
+--          "optional": true
+--        }
+--      }
+--    },
+--    "node_modules/file-uri-to-path": {
+--      "version": "1.0.0",
+--      "resolved": "https://registry.npmjs.org/file-uri-to-path/-/file-uri-to-path-1.0.0.tgz",
+--      "integrity": "sha512-0Zt+s3L7Vf1biwWZ29aARiVYLx7iMGnEUl9x33fbB/j3jR81u/O2LbqK+Bm1CDSNDKVtJ/YjwY7TUd5SkeLQLw==",
+--      "license": "MIT"
+--    },
+-     "node_modules/finalhandler": {
+-       "version": "1.3.2",
+-       "resolved": "https://registry.npmjs.org/finalhandler/-/finalhandler-1.3.2.tgz",
+-@@ -709,12 +520,6 @@
+-         "node": ">= 0.6"
+-       }
+-     },
+--    "node_modules/fs-constants": {
+--      "version": "1.0.0",
+--      "resolved": "https://registry.npmjs.org/fs-constants/-/fs-constants-1.0.0.tgz",
+--      "integrity": "sha512-y6OAwoSIf7FyjMIv94u+b5rdheZEjzR63GTyZJm5qh4Bi+2YgwLCcI/fPFZkL5PSixOt6ZNKm+w+Hfp/Bciwow==",
+--      "license": "MIT"
+--    },
+-     "node_modules/function-bind": {
+-       "version": "1.1.2",
+-       "resolved": "https://registry.npmjs.org/function-bind/-/function-bind-1.1.2.tgz",
+-@@ -761,12 +566,6 @@
+-         "node": ">= 0.4"
+-       }
+-     },
+--    "node_modules/github-from-package": {
+--      "version": "0.0.0",
+--      "resolved": "https://registry.npmjs.org/github-from-package/-/github-from-package-0.0.0.tgz",
+--      "integrity": "sha512-SyHy3T1v2NUXn29OsWdxmK6RwHD+vkj3v8en8AOBZ1wBQ/hCAQ5bAQTD02kW4W9tUp/3Qh6J8r9EvntiyCmOOw==",
+--      "license": "MIT"
+--    },
+-     "node_modules/gopd": {
+-       "version": "1.2.0",
+-       "resolved": "https://registry.npmjs.org/gopd/-/gopd-1.2.0.tgz",
+-@@ -779,13 +578,6 @@
+-         "url": "https://github.com/sponsors/ljharb"
+-       }
+-     },
+--    "node_modules/graceful-fs": {
+--      "version": "4.2.11",
+--      "resolved": "https://registry.npmjs.org/graceful-fs/-/graceful-fs-4.2.11.tgz",
+--      "integrity": "sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==",
+--      "license": "ISC",
+--      "optional": true
+--    },
+-     "node_modules/has-symbols": {
+-       "version": "1.1.0",
+-       "resolved": "https://registry.npmjs.org/has-symbols/-/has-symbols-1.1.0.tgz",
+-@@ -842,38 +634,12 @@
+-         "node": ">=0.10.0"
+-       }
+-     },
+--    "node_modules/ieee754": {
+--      "version": "1.2.1",
+--      "resolved": "https://registry.npmjs.org/ieee754/-/ieee754-1.2.1.tgz",
+--      "integrity": "sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA==",
+--      "funding": [
+--        {
+--          "type": "github",
+--          "url": "https://github.com/sponsors/feross"
+--        },
+--        {
+--          "type": "patreon",
+--          "url": "https://www.patreon.com/feross"
+--        },
+--        {
+--          "type": "consulting",
+--          "url": "https://feross.org/support"
+--        }
+--      ],
+--      "license": "BSD-3-Clause"
+--    },
+-     "node_modules/inherits": {
+-       "version": "2.0.4",
+-       "resolved": "https://registry.npmjs.org/inherits/-/inherits-2.0.4.tgz",
+-       "integrity": "sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==",
+-       "license": "ISC"
+-     },
+--    "node_modules/ini": {
+--      "version": "1.3.8",
+--      "resolved": "https://registry.npmjs.org/ini/-/ini-1.3.8.tgz",
+--      "integrity": "sha512-JV/yugV2uzW5iMRSiZAyDtQd+nxtUnjeLt0acNdw98kKLrvuRVyB80tsREOE7yvGVgalhZ6RNXCmEHkUKBKxew==",
+--      "license": "ISC"
+--    },
+-     "node_modules/ipaddr.js": {
+-       "version": "1.9.1",
+-       "resolved": "https://registry.npmjs.org/ipaddr.js/-/ipaddr.js-1.9.1.tgz",
+-@@ -883,16 +649,6 @@
+-         "node": ">= 0.10"
+-       }
+-     },
+--    "node_modules/isexe": {
+--      "version": "4.0.0",
+--      "resolved": "https://registry.npmjs.org/isexe/-/isexe-4.0.0.tgz",
+--      "integrity": "sha512-FFUtZMpoZ8RqHS3XeXEmHWLA4thH+ZxCv2lOiPIn1Xc7CxrqhWzNSDzD+/chS/zbYezmiwWLdQC09JdQKmthOw==",
+--      "license": "BlueOak-1.0.0",
+--      "optional": true,
+--      "engines": {
+--        "node": ">=20"
+--      }
+--    },
+-     "node_modules/math-intrinsics": {
+-       "version": "1.1.0",
+-       "resolved": "https://registry.npmjs.org/math-intrinsics/-/math-intrinsics-1.1.0.tgz",
+-@@ -962,54 +718,6 @@
+-         "node": ">= 0.6"
+-       }
+-     },
+--    "node_modules/mimic-response": {
+--      "version": "3.1.0",
+--      "resolved": "https://registry.npmjs.org/mimic-response/-/mimic-response-3.1.0.tgz",
+--      "integrity": "sha512-z0yWI+4FDrrweS8Zmt4Ej5HdJmky15+L2e6Wgn3+iK5fWzb6T3fhNFq2+MeTRb064c6Wr4N/wv0DzQTjNzHNGQ==",
+--      "license": "MIT",
+--      "engines": {
+--        "node": ">=10"
+--      },
+--      "funding": {
+--        "url": "https://github.com/sponsors/sindresorhus"
+--      }
+--    },
+--    "node_modules/minimist": {
+--      "version": "1.2.8",
+--      "resolved": "https://registry.npmjs.org/minimist/-/minimist-1.2.8.tgz",
+--      "integrity": "sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==",
+--      "license": "MIT",
+--      "funding": {
+--        "url": "https://github.com/sponsors/ljharb"
+--      }
+--    },
+--    "node_modules/minipass": {
+--      "version": "7.1.3",
+--      "resolved": "https://registry.npmjs.org/minipass/-/minipass-7.1.3.tgz",
+--      "integrity": "sha512-tEBHqDnIoM/1rXME1zgka9g6Q2lcoCkxHLuc7ODJ5BxbP5d4c2Z5cGgtXAku59200Cx7diuHTOYfSBD8n6mm8A==",
+--      "license": "BlueOak-1.0.0",
+--      "engines": {
+--        "node": ">=16 || 14 >=14.17"
+--      }
+--    },
+--    "node_modules/minizlib": {
+--      "version": "3.1.0",
+--      "resolved": "https://registry.npmjs.org/minizlib/-/minizlib-3.1.0.tgz",
+--      "integrity": "sha512-KZxYo1BUkWD2TVFLr0MQoM8vUUigWD3LlD83a/75BqC+4qE0Hb1Vo5v1FgcfaNXvfXzr+5EhQ6ing/CaBijTlw==",
+--      "license": "MIT",
+--      "dependencies": {
+--        "minipass": "^7.1.2"
+--      },
+--      "engines": {
+--        "node": ">= 18"
+--      }
+--    },
+--    "node_modules/mkdirp-classic": {
+--      "version": "0.5.3",
+--      "resolved": "https://registry.npmjs.org/mkdirp-classic/-/mkdirp-classic-0.5.3.tgz",
+--      "integrity": "sha512-gKLcREMhtuZRwRAfqP3RFW+TK4JqApVBtOIftVgjuABpAtpxhPGaDcfvbhNvD0B8iD1oUr/txX35NjcaY6Ns/A==",
+--      "license": "MIT"
+--    },
+-     "node_modules/ms": {
+-       "version": "2.0.0",
+-       "resolved": "https://registry.npmjs.org/ms/-/ms-2.0.0.tgz",
+-@@ -1035,12 +743,6 @@
+-         "url": "https://opencollective.com/express"
+-       }
+-     },
+--    "node_modules/napi-build-utils": {
+--      "version": "2.0.0",
+--      "resolved": "https://registry.npmjs.org/napi-build-utils/-/napi-build-utils-2.0.0.tgz",
+--      "integrity": "sha512-GEbrYkbfF7MoNaoh2iGG84Mnf/WZfB0GdGEsM8wz7Expx/LlWf5U8t9nvJKXSp3qr5IsEbK04cBGhol/KwOsWA==",
+--      "license": "MIT"
+--    },
+-     "node_modules/negotiator": {
+-       "version": "0.6.3",
+-       "resolved": "https://registry.npmjs.org/negotiator/-/negotiator-0.6.3.tgz",
+-@@ -1050,68 +752,6 @@
+-         "node": ">= 0.6"
+-       }
+-     },
+--    "node_modules/node-abi": {
+--      "version": "3.92.0",
+--      "resolved": "https://registry.npmjs.org/node-abi/-/node-abi-3.92.0.tgz",
+--      "integrity": "sha512-KdHvFWZjEKDf0cakgFjebl371GPsISX2oZHcuyKqM7DtogIsHrqKeLTo8wBHxaXRAQlY2PsPlZmfo+9ZCxEREQ==",
+--      "license": "MIT",
+--      "dependencies": {
+--        "semver": "^7.3.5"
+--      },
+--      "engines": {
+--        "node": ">=10"
+--      }
+--    },
+--    "node_modules/node-addon-api": {
+--      "version": "8.7.0",
+--      "resolved": "https://registry.npmjs.org/node-addon-api/-/node-addon-api-8.7.0.tgz",
+--      "integrity": "sha512-9MdFxmkKaOYVTV+XVRG8ArDwwQ77XIgIPyKASB1k3JPq3M8fGQQQE3YpMOrKm6g//Ktx8ivZr8xo1Qmtqub+GA==",
+--      "license": "MIT",
+--      "engines": {
+--        "node": "^18 || ^20 || >= 21"
+--      }
+--    },
+--    "node_modules/node-gyp": {
+--      "version": "12.3.0",
+--      "resolved": "https://registry.npmjs.org/node-gyp/-/node-gyp-12.3.0.tgz",
+--      "integrity": "sha512-QNcUWM+HgJplcPzBvFBZ9VXacyGZ4+VTOb80PwWR+TlVzoHbRKULNEzpRsnaoxG3Wzr7Qh7BYxGDU3CbKib2Yg==",
+--      "license": "MIT",
+--      "optional": true,
+--      "dependencies": {
+--        "env-paths": "^2.2.0",
+--        "exponential-backoff": "^3.1.1",
+--        "graceful-fs": "^4.2.6",
+--        "nopt": "^9.0.0",
+--        "proc-log": "^6.0.0",
+--        "semver": "^7.3.5",
+--        "tar": "^7.5.4",
+--        "tinyglobby": "^0.2.12",
+--        "undici": "^6.25.0",
+--        "which": "^6.0.0"
+--      },
+--      "bin": {
+--        "node-gyp": "bin/node-gyp.js"
+--      },
+--      "engines": {
+--        "node": "^20.17.0 || >=22.9.0"
+--      }
+--    },
+--    "node_modules/nopt": {
+--      "version": "9.0.0",
+--      "resolved": "https://registry.npmjs.org/nopt/-/nopt-9.0.0.tgz",
+--      "integrity": "sha512-Zhq3a+yFKrYwSBluL4H9XP3m3y5uvQkB/09CwDruCiRmR/UJYnn9W4R48ry0uGC70aeTPKLynBtscP9efFFcPw==",
+--      "license": "ISC",
+--      "optional": true,
+--      "dependencies": {
+--        "abbrev": "^4.0.0"
+--      },
+--      "bin": {
+--        "nopt": "bin/nopt.js"
+--      },
+--      "engines": {
+--        "node": "^20.17.0 || >=22.9.0"
+--      }
+--    },
+-     "node_modules/object-inspect": {
+-       "version": "1.13.4",
+-       "resolved": "https://registry.npmjs.org/object-inspect/-/object-inspect-1.13.4.tgz",
+-@@ -1136,15 +776,6 @@
+-         "node": ">= 0.8"
+-       }
+-     },
+--    "node_modules/once": {
+--      "version": "1.4.0",
+--      "resolved": "https://registry.npmjs.org/once/-/once-1.4.0.tgz",
+--      "integrity": "sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==",
+--      "license": "ISC",
+--      "dependencies": {
+--        "wrappy": "1"
+--      }
+--    },
+-     "node_modules/parseurl": {
+-       "version": "1.3.3",
+-       "resolved": "https://registry.npmjs.org/parseurl/-/parseurl-1.3.3.tgz",
+-@@ -1160,56 +791,6 @@
+-       "integrity": "sha512-A/AGNMFN3c8bOlvV9RreMdrv7jsmF9XIfDeCd87+I8RNg6s78BhJxMu69NEMHBSJFxKidViTEdruRwEk/WIKqA==",
+-       "license": "MIT"
+-     },
+--    "node_modules/picomatch": {
+--      "version": "4.0.4",
+--      "resolved": "https://registry.npmjs.org/picomatch/-/picomatch-4.0.4.tgz",
+--      "integrity": "sha512-QP88BAKvMam/3NxH6vj2o21R6MjxZUAd6nlwAS/pnGvN9IVLocLHxGYIzFhg6fUQ+5th6P4dv4eW9jX3DSIj7A==",
+--      "license": "MIT",
+--      "optional": true,
+--      "engines": {
+--        "node": ">=12"
+--      },
+--      "funding": {
+--        "url": "https://github.com/sponsors/jonschlinkert"
+--      }
+--    },
+--    "node_modules/prebuild-install": {
+--      "version": "7.1.3",
+--      "resolved": "https://registry.npmjs.org/prebuild-install/-/prebuild-install-7.1.3.tgz",
+--      "integrity": "sha512-8Mf2cbV7x1cXPUILADGI3wuhfqWvtiLA1iclTDbFRZkgRQS0NqsPZphna9V+HyTEadheuPmjaJMsbzKQFOzLug==",
+--      "deprecated": "No longer maintained. Please contact the author of the relevant native addon; alternatives are available.",
+--      "license": "MIT",
+--      "dependencies": {
+--        "detect-libc": "^2.0.0",
+--        "expand-template": "^2.0.3",
+--        "github-from-package": "0.0.0",
+--        "minimist": "^1.2.3",
+--        "mkdirp-classic": "^0.5.3",
+--        "napi-build-utils": "^2.0.0",
+--        "node-abi": "^3.3.0",
+--        "pump": "^3.0.0",
+--        "rc": "^1.2.7",
+--        "simple-get": "^4.0.0",
+--        "tar-fs": "^2.0.0",
+--        "tunnel-agent": "^0.6.0"
+--      },
+--      "bin": {
+--        "prebuild-install": "bin.js"
+--      },
+--      "engines": {
+--        "node": ">=10"
+--      }
+--    },
+--    "node_modules/proc-log": {
+--      "version": "6.1.0",
+--      "resolved": "https://registry.npmjs.org/proc-log/-/proc-log-6.1.0.tgz",
+--      "integrity": "sha512-iG+GYldRf2BQ0UDUAd6JQ/RwzaQy6mXmsk/IzlYyal4A4SNFw54MeH4/tLkF4I5WoWG9SQwuqWzS99jaFQHBuQ==",
+--      "license": "ISC",
+--      "optional": true,
+--      "engines": {
+--        "node": "^20.17.0 || >=22.9.0"
+--      }
+--    },
+-     "node_modules/proxy-addr": {
+-       "version": "2.0.7",
+-       "resolved": "https://registry.npmjs.org/proxy-addr/-/proxy-addr-2.0.7.tgz",
+-@@ -1223,16 +804,6 @@
+-         "node": ">= 0.10"
+-       }
+-     },
+--    "node_modules/pump": {
+--      "version": "3.0.4",
+--      "resolved": "https://registry.npmjs.org/pump/-/pump-3.0.4.tgz",
+--      "integrity": "sha512-VS7sjc6KR7e1ukRFhQSY5LM2uBWAUPiOPa/A3mkKmiMwSmRFUITt0xuj+/lesgnCv+dPIEYlkzrcyXgquIHMcA==",
+--      "license": "MIT",
+--      "dependencies": {
+--        "end-of-stream": "^1.1.0",
+--        "once": "^1.3.1"
+--      }
+--    },
+-     "node_modules/qs": {
+-       "version": "6.14.2",
+-       "resolved": "https://registry.npmjs.org/qs/-/qs-6.14.2.tgz",
+-@@ -1272,21 +843,6 @@
+-         "node": ">= 0.8"
+-       }
+-     },
+--    "node_modules/rc": {
+--      "version": "1.2.8",
+--      "resolved": "https://registry.npmjs.org/rc/-/rc-1.2.8.tgz",
+--      "integrity": "sha512-y3bGgqKj3QBdxLbLkomlohkvsA8gdAiUQlSBJnBhfn+BPxg4bc62d8TcBW15wavDfgexCgccckhcZvywyQYPOw==",
+--      "license": "(BSD-2-Clause OR MIT OR Apache-2.0)",
+--      "dependencies": {
+--        "deep-extend": "^0.6.0",
+--        "ini": "~1.3.0",
+--        "minimist": "^1.2.0",
+--        "strip-json-comments": "~2.0.1"
+--      },
+--      "bin": {
+--        "rc": "cli.js"
+--      }
+--    },
+-     "node_modules/readable-stream": {
+-       "version": "3.6.2",
+-       "resolved": "https://registry.npmjs.org/readable-stream/-/readable-stream-3.6.2.tgz",
+-@@ -1327,18 +883,6 @@
+-       "integrity": "sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==",
+-       "license": "MIT"
+-     },
+--    "node_modules/semver": {
+--      "version": "7.7.4",
+--      "resolved": "https://registry.npmjs.org/semver/-/semver-7.7.4.tgz",
+--      "integrity": "sha512-vFKC2IEtQnVhpT78h1Yp8wzwrf8CM+MzKMHGJZfBtzhZNycRFnXsHk6E5TxIkkMsgNS7mdX3AGB7x2QM2di4lA==",
+--      "license": "ISC",
+--      "bin": {
+--        "semver": "bin/semver.js"
+--      },
+--      "engines": {
+--        "node": ">=10"
+--      }
+--    },
+-     "node_modules/send": {
+-       "version": "0.19.2",
+-       "resolved": "https://registry.npmjs.org/send/-/send-0.19.2.tgz",
+-@@ -1462,84 +1006,6 @@
+-         "url": "https://github.com/sponsors/ljharb"
+-       }
+-     },
+--    "node_modules/simple-concat": {
+--      "version": "1.0.1",
+--      "resolved": "https://registry.npmjs.org/simple-concat/-/simple-concat-1.0.1.tgz",
+--      "integrity": "sha512-cSFtAPtRhljv69IK0hTVZQ+OfE9nePi/rtJmw5UjHeVyVroEqJXP1sFztKUy1qU+xvz3u/sfYJLa947b7nAN2Q==",
+--      "funding": [
+--        {
+--          "type": "github",
+--          "url": "https://github.com/sponsors/feross"
+--        },
+--        {
+--          "type": "patreon",
+--          "url": "https://www.patreon.com/feross"
+--        },
+--        {
+--          "type": "consulting",
+--          "url": "https://feross.org/support"
+--        }
+--      ],
+--      "license": "MIT"
+--    },
+--    "node_modules/simple-get": {
+--      "version": "4.0.1",
+--      "resolved": "https://registry.npmjs.org/simple-get/-/simple-get-4.0.1.tgz",
+--      "integrity": "sha512-brv7p5WgH0jmQJr1ZDDfKDOSeWWg+OVypG99A/5vYGPqJ6pxiaHLy8nxtFjBA7oMa01ebA9gfh1uMCFqOuXxvA==",
+--      "funding": [
+--        {
+--          "type": "github",
+--          "url": "https://github.com/sponsors/feross"
+--        },
+--        {
+--          "type": "patreon",
+--          "url": "https://www.patreon.com/feross"
+--        },
+--        {
+--          "type": "consulting",
+--          "url": "https://feross.org/support"
+--        }
+--      ],
+--      "license": "MIT",
+--      "dependencies": {
+--        "decompress-response": "^6.0.0",
+--        "once": "^1.3.1",
+--        "simple-concat": "^1.0.0"
+--      }
+--    },
+--    "node_modules/sqlite": {
+--      "version": "5.1.1",
+--      "resolved": "https://registry.npmjs.org/sqlite/-/sqlite-5.1.1.tgz",
+--      "integrity": "sha512-oBkezXa2hnkfuJwUo44Hl9hS3er+YFtueifoajrgidvqsJRQFpc5fKoAkAor1O5ZnLoa28GBScfHXs8j0K358Q==",
+--      "license": "MIT"
+--    },
+--    "node_modules/sqlite3": {
+--      "version": "6.0.1",
+--      "resolved": "https://registry.npmjs.org/sqlite3/-/sqlite3-6.0.1.tgz",
+--      "integrity": "sha512-X0czUUMG2tmSqJpEQa3tCuZSHKIx8PwM53vLZzKp/o6Rpy25fiVfjdbnZ988M8+O3ZWR1ih0K255VumCb3MAnQ==",
+--      "hasInstallScript": true,
+--      "license": "BSD-3-Clause",
+--      "dependencies": {
+--        "bindings": "^1.5.0",
+--        "node-addon-api": "^8.0.0",
+--        "prebuild-install": "^7.1.3",
+--        "tar": "^7.5.10"
+--      },
+--      "engines": {
+--        "node": ">=20.17.0"
+--      },
+--      "optionalDependencies": {
+--        "node-gyp": "12.x"
+--      },
+--      "peerDependencies": {
+--        "node-gyp": "12.x"
+--      },
+--      "peerDependenciesMeta": {
+--        "node-gyp": {
+--          "optional": true
+--        }
+--      }
+--    },
+-     "node_modules/statuses": {
+-       "version": "2.0.2",
+-       "resolved": "https://registry.npmjs.org/statuses/-/statuses-2.0.2.tgz",
+-@@ -1566,82 +1032,6 @@
+-         "safe-buffer": "~5.2.0"
+-       }
+-     },
+--    "node_modules/strip-json-comments": {
+--      "version": "2.0.1",
+--      "resolved": "https://registry.npmjs.org/strip-json-comments/-/strip-json-comments-2.0.1.tgz",
+--      "integrity": "sha512-4gB8na07fecVVkOI6Rs4e7T6NOTki5EmL7TUduTs6bu3EdnSycntVJ4re8kgZA+wx9IueI2Y11bfbgwtzuE0KQ==",
+--      "license": "MIT",
+--      "engines": {
+--        "node": ">=0.10.0"
+--      }
+--    },
+--    "node_modules/tar": {
+--      "version": "7.5.15",
+--      "resolved": "https://registry.npmjs.org/tar/-/tar-7.5.15.tgz",
+--      "integrity": "sha512-dzGK0boVlC4W5QFuQN1EFSl3bIDYsk7Tj40U6eIBnK2k/8ml7TZ5agbI5j5+qnoVcAA+rNtBml8SEiLxZpNqRQ==",
+--      "license": "BlueOak-1.0.0",
+--      "dependencies": {
+--        "@isaacs/fs-minipass": "^4.0.0",
+--        "chownr": "^3.0.0",
+--        "minipass": "^7.1.2",
+--        "minizlib": "^3.1.0",
+--        "yallist": "^5.0.0"
+--      },
+--      "engines": {
+--        "node": ">=18"
+--      }
+--    },
+--    "node_modules/tar-fs": {
+--      "version": "2.1.4",
+--      "resolved": "https://registry.npmjs.org/tar-fs/-/tar-fs-2.1.4.tgz",
+--      "integrity": "sha512-mDAjwmZdh7LTT6pNleZ05Yt65HC3E+NiQzl672vQG38jIrehtJk/J3mNwIg+vShQPcLF/LV7CMnDW6vjj6sfYQ==",
+--      "license": "MIT",
+--      "dependencies": {
+--        "chownr": "^1.1.1",
+--        "mkdirp-classic": "^0.5.2",
+--        "pump": "^3.0.0",
+--        "tar-stream": "^2.1.4"
+--      }
+--    },
+--    "node_modules/tar-fs/node_modules/chownr": {
+--      "version": "1.1.4",
+--      "resolved": "https://registry.npmjs.org/chownr/-/chownr-1.1.4.tgz",
+--      "integrity": "sha512-jJ0bqzaylmJtVnNgzTeSOs8DPavpbYgEr/b0YL8/2GO3xJEhInFmhKMUnEJQjZumK7KXGFhUy89PrsJWlakBVg==",
+--      "license": "ISC"
+--    },
+--    "node_modules/tar-stream": {
+--      "version": "2.2.0",
+--      "resolved": "https://registry.npmjs.org/tar-stream/-/tar-stream-2.2.0.tgz",
+--      "integrity": "sha512-ujeqbceABgwMZxEJnk2HDY2DlnUZ+9oEcb1KzTVfYHio0UE6dG71n60d8D2I4qNvleWrrXpmjpt7vZeF1LnMZQ==",
+--      "license": "MIT",
+--      "dependencies": {
+--        "bl": "^4.0.3",
+--        "end-of-stream": "^1.4.1",
+--        "fs-constants": "^1.0.0",
+--        "inherits": "^2.0.3",
+--        "readable-stream": "^3.1.1"
+--      },
+--      "engines": {
+--        "node": ">=6"
+--      }
+--    },
+--    "node_modules/tinyglobby": {
+--      "version": "0.2.16",
+--      "resolved": "https://registry.npmjs.org/tinyglobby/-/tinyglobby-0.2.16.tgz",
+--      "integrity": "sha512-pn99VhoACYR8nFHhxqix+uvsbXineAasWm5ojXoN8xEwK5Kd3/TrhNn1wByuD52UxWRLy8pu+kRMniEi6Eq9Zg==",
+--      "license": "MIT",
+--      "optional": true,
+--      "dependencies": {
+--        "fdir": "^6.5.0",
+--        "picomatch": "^4.0.4"
+--      },
+--      "engines": {
+--        "node": ">=12.0.0"
+--      },
+--      "funding": {
+--        "url": "https://github.com/sponsors/SuperchupuDev"
+--      }
+--    },
+-     "node_modules/toidentifier": {
+-       "version": "1.0.1",
+-       "resolved": "https://registry.npmjs.org/toidentifier/-/toidentifier-1.0.1.tgz",
+-@@ -1651,18 +1041,6 @@
+-         "node": ">=0.6"
+-       }
+-     },
+--    "node_modules/tunnel-agent": {
+--      "version": "0.6.0",
+--      "resolved": "https://registry.npmjs.org/tunnel-agent/-/tunnel-agent-0.6.0.tgz",
+--      "integrity": "sha512-McnNiV1l8RYeY8tBgEpuodCC1mLUdbSN+CYBL7kJsJNInOP8UjDDEwdk6Mw60vdLLrr5NHKZhMAOSrR2NZuQ+w==",
+--      "license": "Apache-2.0",
+--      "dependencies": {
+--        "safe-buffer": "^5.0.1"
+--      },
+--      "engines": {
+--        "node": "*"
+--      }
+--    },
+-     "node_modules/type-is": {
+-       "version": "1.6.18",
+-       "resolved": "https://registry.npmjs.org/type-is/-/type-is-1.6.18.tgz",
+-@@ -1696,16 +1074,6 @@
+-         "node": ">=14.17"
+-       }
+-     },
+--    "node_modules/undici": {
+--      "version": "6.25.0",
+--      "resolved": "https://registry.npmjs.org/undici/-/undici-6.25.0.tgz",
+--      "integrity": "sha512-ZgpWDC5gmNiuY9CnLVXEH8rl50xhRCuLNA97fAUnKi8RRuV4E6KG31pDTsLVUKnohJE0I3XDrTeEydAXRw47xg==",
+--      "license": "MIT",
+--      "optional": true,
+--      "engines": {
+--        "node": ">=18.17"
+--      }
+--    },
+-     "node_modules/undici-types": {
+-       "version": "6.21.0",
+-       "resolved": "https://registry.npmjs.org/undici-types/-/undici-types-6.21.0.tgz",
+-@@ -1757,37 +1125,6 @@
+-       "engines": {
+-         "node": ">= 0.8"
+-       }
+--    },
+--    "node_modules/which": {
+--      "version": "6.0.1",
+--      "resolved": "https://registry.npmjs.org/which/-/which-6.0.1.tgz",
+--      "integrity": "sha512-oGLe46MIrCRqX7ytPUf66EAYvdeMIZYn3WaocqqKZAxrBpkqHfL/qvTyJ/bTk5+AqHCjXmrv3CEWgy368zhRUg==",
+--      "license": "ISC",
+--      "optional": true,
+--      "dependencies": {
+--        "isexe": "^4.0.0"
+--      },
+--      "bin": {
+--        "node-which": "bin/which.js"
+--      },
+--      "engines": {
+--        "node": "^20.17.0 || >=22.9.0"
+--      }
+--    },
+--    "node_modules/wrappy": {
+--      "version": "1.0.2",
+--      "resolved": "https://registry.npmjs.org/wrappy/-/wrappy-1.0.2.tgz",
+--      "integrity": "sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==",
+--      "license": "ISC"
+--    },
+--    "node_modules/yallist": {
+--      "version": "5.0.0",
+--      "resolved": "https://registry.npmjs.org/yallist/-/yallist-5.0.0.tgz",
+--      "integrity": "sha512-YgvUTfwqyc7UXVMrB+SImsVYSmTS8X/tSrtdNZMImM+n7+QTriRXyXim0mBrTXNeqzVF0KWGgHPeiyViFFrNDw==",
+--      "license": "BlueOak-1.0.0",
+--      "engines": {
+--        "node": ">=18"
+--      }
+-     }
+-   }
+- }
+-diff --git a/package.json b/package.json
+-index 834deae..53efaec 100644
+---- a/package.json
+-+++ b/package.json
+-@@ -1,12 +1,14 @@
+- {
+-   "name": "rl-sys-core",
+--  "version": "0.5.0",
+--  "description": "RL.sys Core - High-performance system architecture",
+-+  "version": "0.6.0",
+-+  "description": "RL.sys Core - institutional roulette analysis engine with risk gates",
+-   "main": "dist/main.js",
+-   "scripts": {
+-     "start": "node dist/main.js",
+-     "build": "tsc",
+--    "dev": "tsc -w & node --watch dist/main.js"
+-+    "dev": "tsc -w & node --watch dist/main.js",
+-+    "test": "node --test tests/*.test.js",
+-+    "check": "npm run build && npm test"
+-   },
+-   "keywords": [
+-     "rl-sys",
+-@@ -29,8 +31,6 @@
+-     "dotenv": "^17.4.2",
+-     "express": "^4.19.2",
+-     "multer": "^2.1.1",
+--    "sqlite": "^5.1.1",
+--    "sqlite3": "^6.0.1",
+-     "uuid": "^14.0.0"
+-   }
+- }
+-diff --git a/src/config.ts b/src/config.ts
+-index fa6d316..8306e3a 100644
+---- a/src/config.ts
+-+++ b/src/config.ts
+-@@ -9,5 +9,5 @@ export const config = {
+-     serverHost: process.env.HOST || '0.0.0.0',
+-     historyBufferSize: parseInt(process.env.HISTORY_BUFFER_SIZE || '100', 10),
+-     geminiApiKey: process.env.GEMINI_API_KEY || '',
+--    sqliteDbPath: process.env.SQLITE_DB_PATH || './data/rl_sys_core.db',
+-+    signalLogPath: process.env.SIGNAL_LOG_PATH || './data/signals.jsonl',
+- };
+-diff --git a/src/domain/services/BacktestEngine.ts b/src/domain/services/BacktestEngine.ts
+-new file mode 100644
+-index 0000000..1fc21a5
+---- /dev/null
+-+++ b/src/domain/services/BacktestEngine.ts
+-@@ -0,0 +1,91 @@
+-+import { RouletteSectorName, RouletteStats } from './RouletteStats';
+-+import { StrategyEngine, StrategyEngineOptions } from './StrategyEngine';
+-+
+-+export interface BacktestTrade {
+-+  index: number;
+-+  target: RouletteSectorName;
+-+  stakeFraction: number;
+-+  won: boolean;
+-+  payout: number;
+-+  equity: number;
+-+}
+-+
+-+export interface BacktestSummary {
+-+  trades: number;
+-+  wins: number;
+-+  losses: number;
+-+  hitRate: number;
+-+  roi: number;
+-+  maxDrawdown: number;
+-+  expectancyPerTrade: number;
+-+  finalEquity: number;
+-+}
+-+
+-+export interface BacktestResult {
+-+  summary: BacktestSummary;
+-+  trades: BacktestTrade[];
+-+}
+-+
+-+export class BacktestEngine {
+-+  private readonly stats = new RouletteStats();
+-+
+-+  constructor(
+-+    private readonly engineOptions: Partial<StrategyEngineOptions> = {},
+-+    private readonly initialEquity = 1
+-+  ) {}
+-+
+-+  public runWalkForward(history: number[]): BacktestResult {
+-+    const minSampleSize = this.engineOptions.minSampleSize ?? 120;
+-+    const engine = new StrategyEngine(this.engineOptions);
+-+    const trades: BacktestTrade[] = [];
+-+    let equity = this.initialEquity;
+-+    let peak = equity;
+-+    let maxDrawdown = 0;
+-+
+-+    for (let i = minSampleSize; i < history.length - 1; i++) {
+-+      const trainingWindow = history.slice(0, i);
+-+      const decision = engine.analyze(trainingWindow);
+-+      if (!decision || decision.status !== 'ALLOWED' || decision.signals.length === 0) continue;
+-+
+-+      const primarySignal = decision.signals[0];
+-+      const nextNumber = history[i + 1];
+-+      const nextSector = this.stats.sectorOf(nextNumber);
+-+      const won = nextSector === primarySignal.target;
+-+      const stakeFraction = decision.suggestedFraction;
+-+      const sectorSize = primarySignal.target === 'unknown' ? 0 : RouletteStats.SECTORS[primarySignal.target]?.length ?? 0;
+-+      const fairPayoutProxy = sectorSize > 0 ? RouletteStats.EUROPEAN_WHEEL_SIZE / sectorSize - 1 : 0;
+-+      const pnl = won ? stakeFraction * fairPayoutProxy : -stakeFraction;
+-+      equity *= 1 + pnl;
+-+      peak = Math.max(peak, equity);
+-+      maxDrawdown = Math.max(maxDrawdown, (peak - equity) / peak);
+-+
+-+      trades.push({
+-+        index: i + 1,
+-+        target: primarySignal.target,
+-+        stakeFraction,
+-+        won,
+-+        payout: pnl,
+-+        equity
+-+      });
+-+    }
+-+
+-+    const wins = trades.filter(trade => trade.won).length;
+-+    const losses = trades.length - wins;
+-+    const roi = equity / this.initialEquity - 1;
+-+    const expectancyPerTrade = trades.length === 0 ? 0 : trades.reduce((sum, trade) => sum + trade.payout, 0) / trades.length;
+-+
+-+    return {
+-+      summary: {
+-+        trades: trades.length,
+-+        wins,
+-+        losses,
+-+        hitRate: trades.length === 0 ? 0 : wins / trades.length,
+-+        roi,
+-+        maxDrawdown,
+-+        expectancyPerTrade,
+-+        finalEquity: equity
+-+      },
+-+      trades
+-+    };
+-+  }
+-+}
+-diff --git a/src/domain/services/RiskPolicy.ts b/src/domain/services/RiskPolicy.ts
+-new file mode 100644
+-index 0000000..160daef
+---- /dev/null
+-+++ b/src/domain/services/RiskPolicy.ts
+-@@ -0,0 +1,35 @@
+-+import { BacktestSummary } from './BacktestEngine';
+-+import { StrategyAnalysis } from './StrategyEngine';
+-+
+-+export interface InstitutionalRiskDecision {
+-+  allowed: boolean;
+-+  reason: string;
+-+  warnings: string[];
+-+}
+-+
+-+export class RiskPolicy {
+-+  public evaluate(analysis: StrategyAnalysis, backtest?: BacktestSummary): InstitutionalRiskDecision {
+-+    const warnings = [...analysis.risk.warnings];
+-+
+-+    if (analysis.status !== 'ALLOWED') {
+-+      return { allowed: false, reason: analysis.reason, warnings };
+-+    }
+-+
+-+    if (!backtest || backtest.trades < 30) {
+-+      warnings.push('Backtest insuficiente: mínimo institucional de 30 trades walk-forward.');
+-+      return { allowed: false, reason: 'Sinal bloqueado até haver backtest walk-forward suficiente.', warnings };
+-+    }
+-+
+-+    if (backtest.expectancyPerTrade <= 0 || backtest.roi <= 0) {
+-+      warnings.push('Expectativa ou ROI walk-forward não positivos.');
+-+      return { allowed: false, reason: 'Sinal bloqueado por ausência de vantagem histórica fora da amostra.', warnings };
+-+    }
+-+
+-+    if (backtest.maxDrawdown > 0.2) {
+-+      warnings.push('Drawdown walk-forward acima de 20%.');
+-+      return { allowed: false, reason: 'Sinal bloqueado por risco de drawdown elevado.', warnings };
+-+    }
+-+
+-+    return { allowed: true, reason: 'Sinal aprovado pela política mínima de risco.', warnings };
+-+  }
+-+}
+-diff --git a/src/infrastructure/database/JsonlSignalRepository.ts b/src/infrastructure/database/JsonlSignalRepository.ts
+-new file mode 100644
+-index 0000000..099b1c4
+---- /dev/null
+-+++ b/src/infrastructure/database/JsonlSignalRepository.ts
+-@@ -0,0 +1,39 @@
+-+import { promises as fs } from 'fs';
+-+import path from 'path';
+-+import { ISignalRepository, SignalData } from '../../domain/math/ISignalRepository';
+-+
+-+/**
+-+ * Persistência append-only em JSONL.
+-+ * Evita dependências nativas como sqlite3, tornando o projeto mais confiável em Termux/Arch/Android.
+-+ */
+-+export class JsonlSignalRepository implements ISignalRepository {
+-+  constructor(private readonly filePath: string) {}
+-+
+-+  public async init(): Promise<void> {
+-+    await fs.mkdir(path.dirname(this.filePath), { recursive: true });
+-+    try {
+-+      await fs.access(this.filePath);
+-+    } catch {
+-+      await fs.writeFile(this.filePath, '', 'utf8');
+-+    }
+-+  }
+-+
+-+  public async saveSignal(signal: SignalData): Promise<void> {
+-+    const record = JSON.stringify({ ...signal, persistedAt: new Date().toISOString() });
+-+    await fs.appendFile(this.filePath, `${record}\n`, 'utf8');
+-+  }
+-+
+-+  public async getHistory(limit: number): Promise<SignalData[]> {
+-+    const content = await fs.readFile(this.filePath, 'utf8');
+-+    return content
+-+      .split('\n')
+-+      .filter(Boolean)
+-+      .slice(-Math.max(0, limit))
+-+      .map(line => JSON.parse(line) as SignalData)
+-+      .reverse();
+-+  }
+-+
+-+  public async close(): Promise<void> {
+-+    // JSONL append-only não mantém conexão aberta.
+-+  }
+-+}
+-diff --git a/src/infrastructure/database/SQLiteSignalRepository.ts b/src/infrastructure/database/SQLiteSignalRepository.ts
+-deleted file mode 100644
+-index a08460f..0000000
+---- a/src/infrastructure/database/SQLiteSignalRepository.ts
+-+++ /dev/null
+-@@ -1,24 +0,0 @@
+--import * as sqlite from 'sqlite';
+--import sqlite3 from 'sqlite3';
+--import { ISignalRepository, SignalData } from '../../domain/math/ISignalRepository';
+--
+--export class SQLiteSignalRepository implements ISignalRepository {
+--    private db: any = null;
+--    constructor(private dbPath: string) {}
+--
+--    async init() {
+--        this.db = await sqlite.open({ filename: this.dbPath, driver: sqlite3.Database });
+--        await this.db.exec('CREATE TABLE IF NOT EXISTS signals (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, value TEXT, timestamp INTEGER, analysis TEXT)');
+--    }
+--
+--    async saveSignal(signal: SignalData): Promise<void> {
+--        await this.db.run('INSERT INTO signals (type, value, timestamp, analysis) VALUES (?, ?, ?, ?)',
+--            signal.type, signal.value, signal.timestamp, signal.analysis);
+--    }
+--
+--    async getHistory(limit: number): Promise<any[]> {
+--        return await this.db.all('SELECT * FROM signals ORDER BY timestamp DESC LIMIT ?', limit);
+--    }
+--
+--    async close() { if (this.db) await this.db.close(); }
+--}
+-diff --git a/src/infrastructure/http/Server.ts b/src/infrastructure/http/Server.ts
+-index d54ceaf..ac6a83b 100644
+---- a/src/infrastructure/http/Server.ts
+-+++ b/src/infrastructure/http/Server.ts
+-@@ -5,6 +5,8 @@ import { GeminiAdapter } from '../adapters/GeminiAdapter';
+- import { StrategyEngine } from '../../domain/services/StrategyEngine';
+- import { RouletteStats } from '../../domain/services/RouletteStats';
+- import { ISignalRepository } from '../../domain/math/ISignalRepository';
+-+import { BacktestEngine } from '../../domain/services/BacktestEngine';
+-+import { RiskPolicy } from '../../domain/services/RiskPolicy';
+- 
+- interface AnalyzePayload {
+-   history?: unknown;
+-@@ -18,6 +20,8 @@ export class Server {
+-   private readonly app: Express;
+-   private readonly engine: StrategyEngine;
+-   private readonly validator = RouletteStats;
+-+  private readonly backtestEngine = new BacktestEngine();
+-+  private readonly riskPolicy = new RiskPolicy();
+-   private httpServer?: ReturnType<Express['listen']>;
+- 
+-   constructor(
+-@@ -109,6 +113,11 @@ export class Server {
+-       return res.status(400).json({ status: 'DENIED', reason: 'Amostra insuficiente. Mínimo institucional: 120 giros válidos.' });
+-     }
+- 
+-+    const backtest = validation.values.length >= 180
+-+      ? this.backtestEngine.runWalkForward(validation.values).summary
+-+      : undefined;
+-+    const riskDecision = this.riskPolicy.evaluate(analysis, backtest);
+-+
+-     if (this.signalRepository) {
+-       await this.signalRepository.saveSignal({
+-         type: 'STRATEGY_ANALYSIS',
+-@@ -118,15 +127,21 @@ export class Server {
+-       });
+-     }
+- 
+--    const unitStake = bankroll > 0 ? bankroll * analysis.suggestedFraction : 0;
+-+    const effectiveFraction = riskDecision.allowed ? analysis.suggestedFraction : 0;
+-+    const unitStake = bankroll > 0 ? bankroll * effectiveFraction : 0;
+-     return res.json({
+-       ...analysis,
+-+      status: riskDecision.allowed ? analysis.status : 'LOCKED',
+-+      reason: riskDecision.reason,
+-       capital: {
+-         bankroll,
+-         unitStake: Number(unitStake.toFixed(2)),
+-+        effectiveFraction,
+-         maxDrawdown: bankroll > 0 ? Number((bankroll * 0.15).toFixed(2)) : 0,
+-         targetProfit: bankroll > 0 ? Number((bankroll * 0.2).toFixed(2)) : 0
+-       },
+-+      backtest,
+-+      institutionalRisk: riskDecision,
+-       rawVision
+-     });
+-   }
+-diff --git a/src/main.ts b/src/main.ts
+-index e3a5804..ea47e27 100644
+---- a/src/main.ts
+-+++ b/src/main.ts
+-@@ -1,10 +1,10 @@
+- import { Server } from './infrastructure/http/Server';
+- import { GeminiAdapter } from './infrastructure/adapters/GeminiAdapter';
+--import { SQLiteSignalRepository } from './infrastructure/database/SQLiteSignalRepository';
+-+import { JsonlSignalRepository } from './infrastructure/database/JsonlSignalRepository';
+- import { config } from './config';
+- 
+- async function bootstrap(): Promise<void> {
+--  const signalRepository = new SQLiteSignalRepository(config.sqliteDbPath);
+-+  const signalRepository = new JsonlSignalRepository(config.signalLogPath);
+-   await signalRepository.init();
+- 
+-   const geminiAdapter = new GeminiAdapter(config.geminiApiKey);
+-diff --git a/tests/strategy-engine.test.js b/tests/strategy-engine.test.js
+-new file mode 100644
+-index 0000000..7049426
+---- /dev/null
+-+++ b/tests/strategy-engine.test.js
+-@@ -0,0 +1,44 @@
+-+const test = require('node:test');
+-+const assert = require('node:assert/strict');
+-+const { RouletteStats } = require('../dist/domain/services/RouletteStats');
+-+const { StrategyEngine } = require('../dist/domain/services/StrategyEngine');
+-+const { BacktestEngine } = require('../dist/domain/services/BacktestEngine');
+-+const { RiskPolicy } = require('../dist/domain/services/RiskPolicy');
+-+
+-+test('RouletteStats rejects invalid roulette numbers', () => {
+-+  const result = RouletteStats.validate([0, 1, 36, 37, -1, 'x']);
+-+  assert.equal(result.ok, false);
+-+  assert.equal(result.values.length, 3);
+-+  assert.ok(result.errors.length >= 3);
+-+});
+-+
+-+test('StrategyEngine locks insufficient samples', () => {
+-+  const engine = new StrategyEngine();
+-+  assert.equal(engine.analyze([1, 2, 3]), null);
+-+});
+-+
+-+test('StrategyEngine returns institutional analysis shape for valid sample', () => {
+-+  const history = Array.from({ length: 140 }, (_, index) => index % 37);
+-+  const engine = new StrategyEngine({ minSectorAbsZScore: 99 });
+-+  const analysis = engine.analyze(history);
+-+  assert.ok(analysis);
+-+  assert.equal(analysis.status, 'LOCKED');
+-+  assert.equal(Array.isArray(analysis.signals), true);
+-+  assert.equal(typeof analysis.metrics.normalizedEntropy, 'number');
+-+});
+-+
+-+test('BacktestEngine produces a stable walk-forward summary', () => {
+-+  const history = Array.from({ length: 260 }, (_, index) => index % 37);
+-+  const backtest = new BacktestEngine({ minSectorAbsZScore: 1.5 }).runWalkForward(history);
+-+  assert.equal(typeof backtest.summary.trades, 'number');
+-+  assert.equal(typeof backtest.summary.maxDrawdown, 'number');
+-+  assert.equal(Array.isArray(backtest.trades), true);
+-+});
+-+
+-+test('RiskPolicy blocks strategy without enough walk-forward evidence', () => {
+-+  const history = Array.from({ length: 140 }, (_, index) => index % 37);
+-+  const analysis = new StrategyEngine({ minSectorAbsZScore: 1.5 }).analyze(history);
+-+  assert.ok(analysis);
+-+  const decision = new RiskPolicy().evaluate(analysis);
+-+  assert.equal(decision.allowed, false);
+-+});
+diff --git a/src/domain/services/ConfidenceScorer.ts b/src/domain/services/ConfidenceScorer.ts
+new file mode 100644
+index 0000000..d126094
+--- /dev/null
++++ b/src/domain/services/ConfidenceScorer.ts
+@@ -0,0 +1,68 @@
++import { BacktestSummary } from './BacktestEngine';
++import { StrategyAnalysis } from './StrategyEngine';
++
++export interface ConfidenceBreakdown {
++  entropyScore: number;
++  signalScore: number;
++  sampleScore: number;
++  backtestScore: number;
++  finalScore: number;
++  grade: 'A' | 'B' | 'C' | 'D' | 'F';
++  reasons: string[];
++}
++
++export class ConfidenceScorer {
++  public score(analysis: StrategyAnalysis, backtest?: BacktestSummary): ConfidenceBreakdown {
++    const reasons: string[] = [];
++    const entropyScore = this.clamp((0.995 - analysis.metrics.normalizedEntropy) / 0.045);
++    const signalScore = this.clamp(Math.max(0, ...analysis.signals.map(signal => signal.confidence)));
++    const sampleScore = this.clamp((analysis.metrics.sampleSize - 120) / 880);
++    const backtestScore = backtest ? this.backtestScore(backtest, reasons) : 0;
++
++    if (entropyScore < 0.35) reasons.push('Entropia próxima do aleatório; baixa confiança no padrão detectado.');
++    if (signalScore < 0.55) reasons.push('Sinais estatísticos fracos ou inconsistentes.');
++    if (sampleScore < 0.25) reasons.push('Amostra ainda pequena para uma decisão institucional.');
++    if (!backtest) reasons.push('Sem backtest walk-forward suficiente para confirmar robustez fora da amostra.');
++
++    const finalScore = this.clamp(
++      entropyScore * 0.25 +
++      signalScore * 0.25 +
++      sampleScore * 0.20 +
++      backtestScore * 0.30
++    );
++
++    return {
++      entropyScore,
++      signalScore,
++      sampleScore,
++      backtestScore,
++      finalScore,
++      grade: this.grade(finalScore),
++      reasons
++    };
++  }
++
++  private backtestScore(backtest: BacktestSummary, reasons: string[]): number {
++    const tradeScore = this.clamp(backtest.trades / 120);
++    const expectancyScore = this.clamp(backtest.expectancyPerTrade / 0.0025);
++    const roiScore = this.clamp(backtest.roi / 0.10);
++    const drawdownScore = this.clamp(1 - backtest.maxDrawdown / 0.25);
++    if (backtest.trades < 30) reasons.push('Menos de 30 trades walk-forward.');
++    if (backtest.expectancyPerTrade <= 0) reasons.push('Expectativa walk-forward não positiva.');
++    if (backtest.maxDrawdown > 0.2) reasons.push('Drawdown walk-forward acima do limite institucional.');
++    return this.clamp(tradeScore * 0.25 + expectancyScore * 0.35 + roiScore * 0.20 + drawdownScore * 0.20);
++  }
++
++  private grade(score: number): ConfidenceBreakdown['grade'] {
++    if (score >= 0.85) return 'A';
++    if (score >= 0.70) return 'B';
++    if (score >= 0.55) return 'C';
++    if (score >= 0.40) return 'D';
++    return 'F';
++  }
++
++  private clamp(value: number): number {
++    if (!Number.isFinite(value)) return 0;
++    return Math.min(1, Math.max(0, value));
++  }
++}
+diff --git a/src/domain/services/MonteCarloEngine.ts b/src/domain/services/MonteCarloEngine.ts
+new file mode 100644
+index 0000000..733ec6a
+--- /dev/null
++++ b/src/domain/services/MonteCarloEngine.ts
+@@ -0,0 +1,111 @@
++import { BacktestSummary } from './BacktestEngine';
++
++export interface MonteCarloOptions {
++  simulations: number;
++  horizonTrades: number;
++  ruinThreshold: number;
++  seed?: number;
++}
++
++export interface MonteCarloSummary {
++  simulations: number;
++  horizonTrades: number;
++  ruinThreshold: number;
++  probabilityOfRuin: number;
++  medianFinalEquity: number;
++  p05FinalEquity: number;
++  p95FinalEquity: number;
++  expectedMaxDrawdown: number;
++  p95MaxDrawdown: number;
++}
++
++const DEFAULT_OPTIONS: MonteCarloOptions = {
++  simulations: 2000,
++  horizonTrades: 250,
++  ruinThreshold: 0.7,
++  seed: 1337
++};
++
++export class MonteCarloEngine {
++  public runFromBacktest(backtest: BacktestSummary, options: Partial<MonteCarloOptions> = {}): MonteCarloSummary {
++    const config = { ...DEFAULT_OPTIONS, ...options };
++    if (backtest.trades === 0) {
++      return this.empty(config);
++    }
++
++    const winRate = this.clamp(backtest.hitRate);
++    const averageWin = winRate > 0
++      ? Math.max(0, backtest.expectancyPerTrade + (1 - winRate) * Math.abs(backtest.expectancyPerTrade || 0.001)) / winRate
++      : 0;
++    const averageLoss = Math.max(0.001, Math.abs(Math.min(0, backtest.expectancyPerTrade)) || 0.005);
++    const rng = this.seededRandom(config.seed ?? 1337);
++    const finals: number[] = [];
++    const drawdowns: number[] = [];
++    let ruined = 0;
++
++    for (let simulation = 0; simulation < config.simulations; simulation++) {
++      let equity = 1;
++      let peak = 1;
++      let maxDrawdown = 0;
++
++      for (let trade = 0; trade < config.horizonTrades; trade++) {
++        const pnl = rng() < winRate ? averageWin : -averageLoss;
++        equity *= Math.max(0.01, 1 + pnl);
++        peak = Math.max(peak, equity);
++        maxDrawdown = Math.max(maxDrawdown, (peak - equity) / peak);
++      }
++
++      if (equity <= config.ruinThreshold) ruined++;
++      finals.push(equity);
++      drawdowns.push(maxDrawdown);
++    }
++
++    finals.sort((a, b) => a - b);
++    drawdowns.sort((a, b) => a - b);
++
++    return {
++      simulations: config.simulations,
++      horizonTrades: config.horizonTrades,
++      ruinThreshold: config.ruinThreshold,
++      probabilityOfRuin: ruined / config.simulations,
++      medianFinalEquity: this.percentile(finals, 0.5),
++      p05FinalEquity: this.percentile(finals, 0.05),
++      p95FinalEquity: this.percentile(finals, 0.95),
++      expectedMaxDrawdown: drawdowns.reduce((sum, value) => sum + value, 0) / drawdowns.length,
++      p95MaxDrawdown: this.percentile(drawdowns, 0.95)
++    };
++  }
++
++  private empty(config: MonteCarloOptions): MonteCarloSummary {
++    return {
++      simulations: config.simulations,
++      horizonTrades: config.horizonTrades,
++      ruinThreshold: config.ruinThreshold,
++      probabilityOfRuin: 1,
++      medianFinalEquity: 1,
++      p05FinalEquity: 1,
++      p95FinalEquity: 1,
++      expectedMaxDrawdown: 0,
++      p95MaxDrawdown: 0
++    };
++  }
++
++  private percentile(values: number[], p: number): number {
++    if (values.length === 0) return 0;
++    const index = Math.min(values.length - 1, Math.max(0, Math.floor(p * (values.length - 1))));
++    return values[index];
++  }
++
++  private seededRandom(seed: number): () => number {
++    let state = seed >>> 0;
++    return () => {
++      state = (1664525 * state + 1013904223) >>> 0;
++      return state / 0x100000000;
++    };
++  }
++
++  private clamp(value: number): number {
++    if (!Number.isFinite(value)) return 0;
++    return Math.min(1, Math.max(0, value));
++  }
++}
+diff --git a/src/domain/services/RiskPolicy.ts b/src/domain/services/RiskPolicy.ts
+index 160daef..9f4de51 100644
+--- a/src/domain/services/RiskPolicy.ts
++++ b/src/domain/services/RiskPolicy.ts
+@@ -1,35 +1,59 @@
+ import { BacktestSummary } from './BacktestEngine';
++import { ConfidenceBreakdown } from './ConfidenceScorer';
++import { MonteCarloSummary } from './MonteCarloEngine';
+ import { StrategyAnalysis } from './StrategyEngine';
+ 
+ export interface InstitutionalRiskDecision {
+   allowed: boolean;
+   reason: string;
+   warnings: string[];
++  confidence?: ConfidenceBreakdown;
++  monteCarlo?: MonteCarloSummary;
+ }
+ 
+ export class RiskPolicy {
+-  public evaluate(analysis: StrategyAnalysis, backtest?: BacktestSummary): InstitutionalRiskDecision {
+-    const warnings = [...analysis.risk.warnings];
++  public evaluate(
++    analysis: StrategyAnalysis,
++    backtest?: BacktestSummary,
++    confidence?: ConfidenceBreakdown,
++    monteCarlo?: MonteCarloSummary
++  ): InstitutionalRiskDecision {
++    const warnings = [...analysis.risk.warnings, ...(confidence?.reasons ?? [])];
+ 
+     if (analysis.status !== 'ALLOWED') {
+-      return { allowed: false, reason: analysis.reason, warnings };
++      return { allowed: false, reason: analysis.reason, warnings, confidence, monteCarlo };
+     }
+ 
+     if (!backtest || backtest.trades < 30) {
+       warnings.push('Backtest insuficiente: mínimo institucional de 30 trades walk-forward.');
+-      return { allowed: false, reason: 'Sinal bloqueado até haver backtest walk-forward suficiente.', warnings };
++      return { allowed: false, reason: 'Sinal bloqueado até haver backtest walk-forward suficiente.', warnings, confidence, monteCarlo };
+     }
+ 
+     if (backtest.expectancyPerTrade <= 0 || backtest.roi <= 0) {
+       warnings.push('Expectativa ou ROI walk-forward não positivos.');
+-      return { allowed: false, reason: 'Sinal bloqueado por ausência de vantagem histórica fora da amostra.', warnings };
++      return { allowed: false, reason: 'Sinal bloqueado por ausência de vantagem histórica fora da amostra.', warnings, confidence, monteCarlo };
+     }
+ 
+     if (backtest.maxDrawdown > 0.2) {
+       warnings.push('Drawdown walk-forward acima de 20%.');
+-      return { allowed: false, reason: 'Sinal bloqueado por risco de drawdown elevado.', warnings };
++      return { allowed: false, reason: 'Sinal bloqueado por risco de drawdown elevado.', warnings, confidence, monteCarlo };
+     }
+ 
+-    return { allowed: true, reason: 'Sinal aprovado pela política mínima de risco.', warnings };
++    if (confidence && confidence.finalScore < 0.55) {
++      warnings.push(`Confidence score ${confidence.finalScore.toFixed(3)} abaixo do mínimo institucional de 0.55.`);
++      return { allowed: false, reason: 'Sinal bloqueado por baixa confiança agregada.', warnings, confidence, monteCarlo };
++    }
++
++    if (monteCarlo && monteCarlo.probabilityOfRuin > 0.05) {
++      warnings.push(`Risco de ruína Monte Carlo ${(monteCarlo.probabilityOfRuin * 100).toFixed(2)}% acima do limite de 5%.`);
++      return { allowed: false, reason: 'Sinal bloqueado por risco de ruína elevado.', warnings, confidence, monteCarlo };
++    }
++
++    if (monteCarlo && monteCarlo.p95MaxDrawdown > 0.35) {
++      warnings.push(`P95 de drawdown Monte Carlo ${(monteCarlo.p95MaxDrawdown * 100).toFixed(2)}% acima do limite de 35%.`);
++      return { allowed: false, reason: 'Sinal bloqueado por estresse Monte Carlo elevado.', warnings, confidence, monteCarlo };
++    }
++
++    return { allowed: true, reason: 'Sinal aprovado pela política institucional v0.7.', warnings, confidence, monteCarlo };
+   }
+ }
+diff --git a/src/infrastructure/audit/DecisionAuditLogger.ts b/src/infrastructure/audit/DecisionAuditLogger.ts
+new file mode 100644
+index 0000000..62e91b5
+--- /dev/null
++++ b/src/infrastructure/audit/DecisionAuditLogger.ts
+@@ -0,0 +1,22 @@
++import fs from 'fs/promises';
++import path from 'path';
++
++export interface DecisionAuditRecord {
++  timestamp: string;
++  status: string;
++  reason: string;
++  sampleSize: number;
++  confidenceScore?: number;
++  riskLevel?: string;
++  stakeFraction?: number;
++  riskOfRuin?: number;
++}
++
++export class DecisionAuditLogger {
++  constructor(private readonly filePath: string) {}
++
++  public async append(record: DecisionAuditRecord): Promise<void> {
++    await fs.mkdir(path.dirname(this.filePath), { recursive: true });
++    await fs.appendFile(this.filePath, `${JSON.stringify(record)}\n`, 'utf8');
++  }
++}
+diff --git a/src/infrastructure/http/Server.ts b/src/infrastructure/http/Server.ts
+index ac6a83b..677022c 100644
+--- a/src/infrastructure/http/Server.ts
++++ b/src/infrastructure/http/Server.ts
+@@ -7,6 +7,9 @@ import { RouletteStats } from '../../domain/services/RouletteStats';
+ import { ISignalRepository } from '../../domain/math/ISignalRepository';
+ import { BacktestEngine } from '../../domain/services/BacktestEngine';
+ import { RiskPolicy } from '../../domain/services/RiskPolicy';
++import { ConfidenceScorer } from '../../domain/services/ConfidenceScorer';
++import { MonteCarloEngine } from '../../domain/services/MonteCarloEngine';
++import { DecisionAuditLogger } from '../audit/DecisionAuditLogger';
+ 
+ interface AnalyzePayload {
+   history?: unknown;
+@@ -22,6 +25,9 @@ export class Server {
+   private readonly validator = RouletteStats;
+   private readonly backtestEngine = new BacktestEngine();
+   private readonly riskPolicy = new RiskPolicy();
++  private readonly confidenceScorer = new ConfidenceScorer();
++  private readonly monteCarloEngine = new MonteCarloEngine();
++  private readonly auditLogger = new DecisionAuditLogger('./data/decision-audit.jsonl');
+   private httpServer?: ReturnType<Express['listen']>;
+ 
+   constructor(
+@@ -116,17 +122,30 @@ export class Server {
+     const backtest = validation.values.length >= 180
+       ? this.backtestEngine.runWalkForward(validation.values).summary
+       : undefined;
+-    const riskDecision = this.riskPolicy.evaluate(analysis, backtest);
++    const monteCarlo = backtest ? this.monteCarloEngine.runFromBacktest(backtest) : undefined;
++    const confidence = this.confidenceScorer.score(analysis, backtest);
++    const riskDecision = this.riskPolicy.evaluate(analysis, backtest, confidence, monteCarlo);
+ 
+     if (this.signalRepository) {
+       await this.signalRepository.saveSignal({
+         type: 'STRATEGY_ANALYSIS',
+         value: JSON.stringify(validation.values.slice(-20)),
+         timestamp: Date.now(),
+-        analysis: JSON.stringify(analysis)
++        analysis: JSON.stringify({ analysis, backtest, confidence, monteCarlo, riskDecision })
+       });
+     }
+ 
++    await this.auditLogger.append({
++      timestamp: new Date().toISOString(),
++      status: riskDecision.allowed ? analysis.status : 'LOCKED',
++      reason: riskDecision.reason,
++      sampleSize: analysis.metrics.sampleSize,
++      confidenceScore: confidence.finalScore,
++      riskLevel: analysis.risk.level,
++      stakeFraction: riskDecision.allowed ? analysis.suggestedFraction : 0,
++      riskOfRuin: monteCarlo?.probabilityOfRuin
++    });
++
+     const effectiveFraction = riskDecision.allowed ? analysis.suggestedFraction : 0;
+     const unitStake = bankroll > 0 ? bankroll * effectiveFraction : 0;
+     return res.json({
+@@ -141,6 +160,8 @@ export class Server {
+         targetProfit: bankroll > 0 ? Number((bankroll * 0.2).toFixed(2)) : 0
+       },
+       backtest,
++      confidence,
++      monteCarlo,
+       institutionalRisk: riskDecision,
+       rawVision
+     });
+diff --git a/tests/confidence-scorer.test.js b/tests/confidence-scorer.test.js
+new file mode 100644
+index 0000000..3b70c9e
+--- /dev/null
++++ b/tests/confidence-scorer.test.js
+@@ -0,0 +1,41 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { ConfidenceScorer } = require('../dist/domain/services/ConfidenceScorer');
++
++test('ConfidenceScorer returns a bounded score and grade', () => {
++  const scorer = new ConfidenceScorer();
++  const analysis = {
++    status: 'ALLOWED',
++    reason: 'test',
++    metrics: {
++      sampleSize: 300,
++      normalizedEntropy: 0.97,
++      entropy: 5,
++      maxEntropy: 5.2,
++      chiSquare: 40,
++      maxAbsNumberZScore: 2,
++      hotNumbers: [],
++      coldNumbers: [],
++      sectors: [],
++      lastNumber: 1
++    },
++    signals: [{ type: 'SECTOR_BIAS', target: 'tiers', confidence: 0.62, rationale: 'test' }],
++    suggestedFraction: 0.005,
++    bankroll: 0.005,
++    risk: { level: 'MEDIUM', warnings: [] }
++  };
++
++  const score = scorer.score(analysis, {
++    trades: 40,
++    wins: 18,
++    losses: 22,
++    hitRate: 0.45,
++    roi: 0.03,
++    maxDrawdown: 0.1,
++    expectancyPerTrade: 0.001,
++    finalEquity: 1.03
++  });
++
++  assert.ok(score.finalScore >= 0 && score.finalScore <= 1);
++  assert.ok(['A', 'B', 'C', 'D', 'F'].includes(score.grade));
++});
+diff --git a/tests/monte-carlo-engine.test.js b/tests/monte-carlo-engine.test.js
+new file mode 100644
+index 0000000..5732bd2
+--- /dev/null
++++ b/tests/monte-carlo-engine.test.js
+@@ -0,0 +1,23 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { MonteCarloEngine } = require('../dist/domain/services/MonteCarloEngine');
++
++test('MonteCarloEngine returns bounded institutional risk metrics', () => {
++  const engine = new MonteCarloEngine();
++  const result = engine.runFromBacktest({
++    trades: 80,
++    wins: 35,
++    losses: 45,
++    hitRate: 35 / 80,
++    roi: 0.04,
++    maxDrawdown: 0.12,
++    expectancyPerTrade: 0.001,
++    finalEquity: 1.04
++  }, { simulations: 100, horizonTrades: 50, seed: 42 });
++
++  assert.equal(result.simulations, 100);
++  assert.equal(result.horizonTrades, 50);
++  assert.ok(result.probabilityOfRuin >= 0 && result.probabilityOfRuin <= 1);
++  assert.ok(result.p95MaxDrawdown >= 0 && result.p95MaxDrawdown <= 1);
++  assert.ok(result.p05FinalEquity > 0);
++});

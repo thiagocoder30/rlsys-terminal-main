@@ -7,6 +7,9 @@ import { RouletteStats } from '../../domain/services/RouletteStats';
 import { ISignalRepository } from '../../domain/math/ISignalRepository';
 import { BacktestEngine } from '../../domain/services/BacktestEngine';
 import { RiskPolicy } from '../../domain/services/RiskPolicy';
+import { ConfidenceScorer } from '../../domain/services/ConfidenceScorer';
+import { MonteCarloEngine } from '../../domain/services/MonteCarloEngine';
+import { DecisionAuditLogger } from '../audit/DecisionAuditLogger';
 
 interface AnalyzePayload {
   history?: unknown;
@@ -22,6 +25,9 @@ export class Server {
   private readonly validator = RouletteStats;
   private readonly backtestEngine = new BacktestEngine();
   private readonly riskPolicy = new RiskPolicy();
+  private readonly confidenceScorer = new ConfidenceScorer();
+  private readonly monteCarloEngine = new MonteCarloEngine();
+  private readonly auditLogger = new DecisionAuditLogger('./data/decision-audit.jsonl');
   private httpServer?: ReturnType<Express['listen']>;
 
   constructor(
@@ -116,16 +122,29 @@ export class Server {
     const backtest = validation.values.length >= 180
       ? this.backtestEngine.runWalkForward(validation.values).summary
       : undefined;
-    const riskDecision = this.riskPolicy.evaluate(analysis, backtest);
+    const monteCarlo = backtest ? this.monteCarloEngine.runFromBacktest(backtest) : undefined;
+    const confidence = this.confidenceScorer.score(analysis, backtest);
+    const riskDecision = this.riskPolicy.evaluate(analysis, backtest, confidence, monteCarlo);
 
     if (this.signalRepository) {
       await this.signalRepository.saveSignal({
         type: 'STRATEGY_ANALYSIS',
         value: JSON.stringify(validation.values.slice(-20)),
         timestamp: Date.now(),
-        analysis: JSON.stringify(analysis)
+        analysis: JSON.stringify({ analysis, backtest, confidence, monteCarlo, riskDecision })
       });
     }
+
+    await this.auditLogger.append({
+      timestamp: new Date().toISOString(),
+      status: riskDecision.allowed ? analysis.status : 'LOCKED',
+      reason: riskDecision.reason,
+      sampleSize: analysis.metrics.sampleSize,
+      confidenceScore: confidence.finalScore,
+      riskLevel: analysis.risk.level,
+      stakeFraction: riskDecision.allowed ? analysis.suggestedFraction : 0,
+      riskOfRuin: monteCarlo?.probabilityOfRuin
+    });
 
     const effectiveFraction = riskDecision.allowed ? analysis.suggestedFraction : 0;
     const unitStake = bankroll > 0 ? bankroll * effectiveFraction : 0;
@@ -141,6 +160,8 @@ export class Server {
         targetProfit: bankroll > 0 ? Number((bankroll * 0.2).toFixed(2)) : 0
       },
       backtest,
+      confidence,
+      monteCarlo,
       institutionalRisk: riskDecision,
       rawVision
     });
