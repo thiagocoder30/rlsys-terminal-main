@@ -28,3 +28,18 @@ curl -X POST http://localhost:3000/api/strategy/analyze \
 ```
 
 Para decisão real, envie pelo menos 120 giros válidos.
+
+## v0.6.0 — Camada institucional de risco
+
+Esta versão adiciona backtest walk-forward, política institucional de risco e persistência JSONL compatível com Termux/Arch/Android.
+
+Comandos recomendados:
+
+```bash
+npm install
+npm run check
+npm run build
+npm start
+```
+
+A API só libera `capital.unitStake` maior que zero quando o sinal passa pela política mínima de risco.

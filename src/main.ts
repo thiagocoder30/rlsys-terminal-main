@@ -1,10 +1,10 @@
 import { Server } from './infrastructure/http/Server';
 import { GeminiAdapter } from './infrastructure/adapters/GeminiAdapter';
-import { SQLiteSignalRepository } from './infrastructure/database/SQLiteSignalRepository';
+import { JsonlSignalRepository } from './infrastructure/database/JsonlSignalRepository';
 import { config } from './config';
 
 async function bootstrap(): Promise<void> {
-  const signalRepository = new SQLiteSignalRepository(config.sqliteDbPath);
+  const signalRepository = new JsonlSignalRepository(config.signalLogPath);
   await signalRepository.init();
 
   const geminiAdapter = new GeminiAdapter(config.geminiApiKey);

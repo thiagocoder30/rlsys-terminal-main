@@ -5,6 +5,8 @@ import { GeminiAdapter } from '../adapters/GeminiAdapter';
 import { StrategyEngine } from '../../domain/services/StrategyEngine';
 import { RouletteStats } from '../../domain/services/RouletteStats';
 import { ISignalRepository } from '../../domain/math/ISignalRepository';
+import { BacktestEngine } from '../../domain/services/BacktestEngine';
+import { RiskPolicy } from '../../domain/services/RiskPolicy';
 
 interface AnalyzePayload {
   history?: unknown;
@@ -18,6 +20,8 @@ export class Server {
   private readonly app: Express;
   private readonly engine: StrategyEngine;
   private readonly validator = RouletteStats;
+  private readonly backtestEngine = new BacktestEngine();
+  private readonly riskPolicy = new RiskPolicy();
   private httpServer?: ReturnType<Express['listen']>;
 
   constructor(
@@ -109,6 +113,11 @@ export class Server {
       return res.status(400).json({ status: 'DENIED', reason: 'Amostra insuficiente. Mínimo institucional: 120 giros válidos.' });
     }
 
+    const backtest = validation.values.length >= 180
+      ? this.backtestEngine.runWalkForward(validation.values).summary
+      : undefined;
+    const riskDecision = this.riskPolicy.evaluate(analysis, backtest);
+
     if (this.signalRepository) {
       await this.signalRepository.saveSignal({
         type: 'STRATEGY_ANALYSIS',
@@ -118,15 +127,21 @@ export class Server {
       });
     }
 
-    const unitStake = bankroll > 0 ? bankroll * analysis.suggestedFraction : 0;
+    const effectiveFraction = riskDecision.allowed ? analysis.suggestedFraction : 0;
+    const unitStake = bankroll > 0 ? bankroll * effectiveFraction : 0;
     return res.json({
       ...analysis,
+      status: riskDecision.allowed ? analysis.status : 'LOCKED',
+      reason: riskDecision.reason,
       capital: {
         bankroll,
         unitStake: Number(unitStake.toFixed(2)),
+        effectiveFraction,
         maxDrawdown: bankroll > 0 ? Number((bankroll * 0.15).toFixed(2)) : 0,
         targetProfit: bankroll > 0 ? Number((bankroll * 0.2).toFixed(2)) : 0
       },
+      backtest,
+      institutionalRisk: riskDecision,
       rawVision
     });
   }
