@@ -12,6 +12,10 @@ import { MonteCarloEngine } from '../../domain/services/MonteCarloEngine';
 import { DecisionAuditLogger } from '../audit/DecisionAuditLogger';
 import { BayesianEdgeValidator } from '../../domain/services/BayesianEdgeValidator';
 import { RegimeDetector } from '../../domain/services/RegimeDetector';
+import { StructuredLogger } from '../observability/StructuredLogger';
+import { MetricsRegistry } from '../observability/MetricsRegistry';
+import { HealthCheckService } from '../../application/health/HealthCheckService';
+import { config } from '../../config';
 
 interface AnalyzePayload {
   history?: unknown;
@@ -29,7 +33,10 @@ export class Server {
   private readonly riskPolicy = new RiskPolicy();
   private readonly confidenceScorer = new ConfidenceScorer();
   private readonly monteCarloEngine = new MonteCarloEngine();
-  private readonly auditLogger = new DecisionAuditLogger('./data/decision-audit.jsonl');
+  private readonly logger = new StructuredLogger('rl-sys-core', config.logLevel as any);
+  private readonly metrics = new MetricsRegistry('rl-sys-core', '0.9.0');
+  private readonly healthCheck = new HealthCheckService('0.9.0', config.dataPath);
+  private readonly auditLogger = new DecisionAuditLogger(config.auditLogPath);
   private readonly bayesianEdgeValidator = new BayesianEdgeValidator();
   private readonly regimeDetector = new RegimeDetector();
   private httpServer?: ReturnType<Express['listen']>;
@@ -48,7 +55,7 @@ export class Server {
 
   public start(): void {
     this.httpServer = this.app.listen(this.port, this.host, () => {
-      console.log(`RL.SYS API listening at http://${this.host}:${this.port}`);
+      this.logger.info('http_server_started', { host: this.host, port: this.port });
     });
   }
 
@@ -63,27 +70,49 @@ export class Server {
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
     this.app.use(express.static(path.resolve(process.cwd())));
+    this.app.use((req, res, next) => {
+      const startedAt = Date.now();
+      this.metrics.increment('http.requests.total');
+
+      res.on('finish', () => {
+        const durationMs = Date.now() - startedAt;
+        this.metrics.observeDuration('http.request.duration_ms', durationMs);
+        this.metrics.increment(`http.status.${res.statusCode}`);
+
+        if (res.statusCode >= 500) {
+          this.metrics.increment('http.errors.total');
+          this.logger.error('http_request_failed', { method: req.method, path: req.path, statusCode: res.statusCode, durationMs });
+        } else {
+          this.logger.debug('http_request_completed', { method: req.method, path: req.path, statusCode: res.statusCode, durationMs });
+        }
+      });
+
+      next();
+    });
   }
 
   private routes(): void {
     const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
 
     this.app.get('/health', (_req, res) => {
-      res.json({ status: 'ok', service: 'rl-sys-core', version: '0.8.0', timestamp: new Date().toISOString() });
+      res.json({ status: 'ok', service: 'rl-sys-core', version: '0.9.0', timestamp: new Date().toISOString() });
     });
 
     this.app.get('/api/strategy/health', (_req, res) => {
       res.json({
         status: 'ok',
         service: 'rl-sys-core',
-        version: '0.8.0',
+        version: '0.9.0',
         capabilities: [
           'walk-forward-backtest',
           'monte-carlo-risk',
           'confidence-scoring',
           'bayesian-edge-validation',
           'regime-detection',
-          'decision-audit'
+          'decision-audit',
+          'structured-logging',
+          'runtime-metrics',
+          'readiness-checks'
         ],
         gates: {
           minSampleSize: 120,
@@ -95,6 +124,15 @@ export class Server {
         },
         timestamp: new Date().toISOString()
       });
+    });
+
+    this.app.get('/api/strategy/metrics', (_req, res) => {
+      res.json(this.metrics.snapshot());
+    });
+
+    this.app.get('/api/strategy/readiness', async (_req, res) => {
+      const readiness = await this.healthCheck.readiness();
+      res.status(readiness.status === 'ok' ? 200 : 503).json(readiness);
     });
 
     this.app.post('/api/strategy/analyze', async (req, res) => this.analyzeHistory(req, res));
@@ -138,13 +176,18 @@ export class Server {
   }
 
   private async runAnalysis(historyInput: unknown, bankroll: number, res: Response, rawVision?: string): Promise<Response> {
+    this.metrics.increment('strategy.analysis.requested');
+    const analysisStartedAt = Date.now();
     const validation = this.validator.validate(historyInput);
     if (!validation.ok) {
+      this.metrics.increment('strategy.analysis.denied.validation');
+      this.logger.warn('strategy_analysis_validation_failed', { errors: validation.errors.slice(0, 5) });
       return res.status(422).json({ status: 'DENIED', reason: 'Histórico inválido.', errors: validation.errors.slice(0, 20) });
     }
 
     const analysis = this.engine.analyze(validation.values);
     if (!analysis) {
+      this.metrics.increment('strategy.analysis.denied.sample_size');
       return res.status(400).json({ status: 'DENIED', reason: 'Amostra insuficiente. Mínimo institucional: 120 giros válidos.' });
     }
 
@@ -179,6 +222,18 @@ export class Server {
       probabilityEdgePositive: bayesianEdge.probabilityEdgePositive,
       regimeLabel: regime.label,
       regimeStabilityScore: regime.stabilityScore
+    });
+
+    this.metrics.increment(riskDecision.allowed ? 'strategy.analysis.allowed' : 'strategy.analysis.locked');
+    this.metrics.observeDuration('strategy.analysis.duration_ms', Date.now() - analysisStartedAt);
+    this.logger.info('strategy_analysis_completed', {
+      status: riskDecision.allowed ? analysis.status : 'LOCKED',
+      reason: riskDecision.reason,
+      sampleSize: analysis.metrics.sampleSize,
+      confidenceScore: confidence.finalScore,
+      riskOfRuin: monteCarlo?.probabilityOfRuin,
+      bayesianVerdict: bayesianEdge.verdict,
+      regimeLabel: regime.label
     });
 
     const effectiveFraction = riskDecision.allowed ? analysis.suggestedFraction : 0;

@@ -10,4 +10,7 @@ export const config = {
     historyBufferSize: parseInt(process.env.HISTORY_BUFFER_SIZE || '100', 10),
     geminiApiKey: process.env.GEMINI_API_KEY || '',
     signalLogPath: process.env.SIGNAL_LOG_PATH || './data/signals.jsonl',
+    auditLogPath: process.env.AUDIT_LOG_PATH || './data/decision-audit.jsonl',
+    dataPath: process.env.DATA_PATH || './data',
+    logLevel: process.env.LOG_LEVEL || 'info',
 };
