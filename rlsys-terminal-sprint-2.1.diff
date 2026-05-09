@@ -1,0 +1,578 @@
+diff --git a/RELATORIO_TECNICO_SPRINT_2_1.md b/RELATORIO_TECNICO_SPRINT_2_1.md
+new file mode 100644
+index 0000000..2aee838
+--- /dev/null
++++ b/RELATORIO_TECNICO_SPRINT_2_1.md
+@@ -0,0 +1,21 @@
++# Sprint 2.1 — Institutional Backtesting Engine
++
++## Objetivo
++Adicionar uma camada institucional de backtesting capaz de avaliar estratégia fora da amostra, comparar contra baseline, medir stress scenarios, drawdown surface e risco de ruína proxy.
++
++## Entregas
++- `InstitutionalBacktestEngine`
++- `InstitutionalBacktestService`
++- endpoint `/api/backtest/institutional/evaluate`
++- comparação contra baseline `RANDOM_SECTOR`
++- walk-forward por janelas treino/teste
++- stress scenarios por multiplicador de stake
++- drawdown surface
++- risk-of-ruin proxy
++- testes automatizados
++
++## Governança
++O `operationalGate` permanece `BLOCKED`. A saída é evidência de pesquisa e não autorização automática de aposta.
++
++## Validação esperada
++`npm run check` deve compilar TypeScript e executar todos os testes.
+diff --git a/package-lock.json b/package-lock.json
+index f434546..a530f22 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -1,12 +1,12 @@
+ {
+   "name": "rl-sys-core",
+-  "version": "1.5.0",
++  "version": "2.0.0",
+   "lockfileVersion": 3,
+   "requires": true,
+   "packages": {
+     "": {
+       "name": "rl-sys-core",
+-      "version": "1.5.0",
++      "version": "2.0.0",
+       "license": "MIT",
+       "dependencies": {
+         "@google/generative-ai": "^0.24.1",
+diff --git a/package.json b/package.json
+index cb6aa8f..32a64c2 100644
+--- a/package.json
++++ b/package.json
+@@ -1,6 +1,6 @@
+ {
+   "name": "rl-sys-core",
+-  "version": "1.5.0",
++  "version": "2.0.0",
+   "description": "RL.sys Core - enterprise-grade institutional roulette research and risk engine",
+   "main": "dist/main.js",
+   "scripts": {
+diff --git a/src/application/backtesting/InstitutionalBacktestService.ts b/src/application/backtesting/InstitutionalBacktestService.ts
+new file mode 100644
+index 0000000..71721ef
+--- /dev/null
++++ b/src/application/backtesting/InstitutionalBacktestService.ts
+@@ -0,0 +1,61 @@
++import { DatasetEngine } from '../../domain/research/DatasetEngine';
++import { DataIntegrityValidator } from '../../domain/research/DataIntegrityValidator';
++import { InstitutionalBacktestEngine, InstitutionalBacktestResult } from '../../domain/backtesting/InstitutionalBacktestEngine';
++
++export type InstitutionalBacktestStatus = 'REJECTED' | 'RESEARCH_REVIEW' | 'CANDIDATE';
++
++export interface InstitutionalBacktestReport {
++  status: InstitutionalBacktestStatus;
++  operationalGate: 'BLOCKED';
++  generatedAt: string;
++  datasetChecksum: string;
++  result?: InstitutionalBacktestResult;
++  blockers: string[];
++  recommendations: string[];
++}
++
++export class InstitutionalBacktestService {
++  constructor(
++    private readonly datasetEngine = new DatasetEngine(),
++    private readonly integrityValidator = new DataIntegrityValidator(),
++    private readonly backtestEngine = new InstitutionalBacktestEngine()
++  ) {}
++
++  public evaluate(input: string | unknown[]): InstitutionalBacktestReport {
++    const parsed = this.datasetEngine.parse(input);
++    const normalized = this.datasetEngine.normalize(parsed.records);
++    const integrity = this.integrityValidator.validate(normalized.records);
++
++    if (!integrity.valid) {
++      return {
++        status: 'REJECTED',
++        operationalGate: 'BLOCKED',
++        generatedAt: new Date().toISOString(),
++        datasetChecksum: normalized.checksum,
++        blockers: ['dataset_integrity_failed', ...integrity.issues.map(issue => issue.code).slice(0, 8)],
++        recommendations: ['Corrigir dataset antes de executar backtest institucional.', 'Usar amostras maiores, sem valores inválidos e com ordenação temporal consistente.']
++      };
++    }
++
++    const result = this.backtestEngine.run(normalized.records.map(record => record.value));
++    return {
++      status: result.summary.approval,
++      operationalGate: 'BLOCKED',
++      generatedAt: new Date().toISOString(),
++      datasetChecksum: normalized.checksum,
++      result,
++      blockers: result.summary.blockers,
++      recommendations: this.recommendations(result)
++    };
++  }
++
++  private recommendations(result: InstitutionalBacktestResult): string[] {
++    const recommendations = ['Manter gate operacional bloqueado: backtest é evidência de pesquisa, não autorização automática de stake.'];
++    if (result.summary.trades < 100) recommendations.push('Aumentar amostra para obter mais trades out-of-sample.');
++    if (!result.baseline.strategyOutperformed) recommendations.push('Rejeitar hipótese até superar baseline independente.');
++    if (result.summary.maxDrawdown > 0.2) recommendations.push('Reduzir stake ou reforçar filtro de risco: drawdown acima do alvo institucional.');
++    if (result.stress.some(item => item.riskFlag !== 'PASS')) recommendations.push('Investigar falhas em cenários de stress antes de qualquer revisão operacional.');
++    if (result.summary.approval === 'CANDIDATE') recommendations.push('Submeter a validação adversarial, dados independentes e revisão manual de risco.');
++    return [...new Set(recommendations)];
++  }
++}
+diff --git a/src/config.ts b/src/config.ts
+index 3922771..8795f89 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -5,7 +5,7 @@
+ import 'dotenv/config'; // Certifique-se de ter o pacote dotenv instalado
+ 
+ export const config = {
+-    appVersion: process.env.APP_VERSION || '1.0.0',
++    appVersion: process.env.APP_VERSION || '2.0.0',
+     nodeEnv: process.env.NODE_ENV || 'development',
+     serverPort: parseInt(process.env.PORT || '3000', 10),
+     serverHost: process.env.HOST || '0.0.0.0',
+diff --git a/src/domain/backtesting/InstitutionalBacktestEngine.ts b/src/domain/backtesting/InstitutionalBacktestEngine.ts
+new file mode 100644
+index 0000000..51fdc6f
+--- /dev/null
++++ b/src/domain/backtesting/InstitutionalBacktestEngine.ts
+@@ -0,0 +1,314 @@
++import { RouletteSectorName, RouletteStats } from '../services/RouletteStats';
++import { StrategyEngine, StrategyEngineOptions } from '../services/StrategyEngine';
++
++export type BacktestDecision = 'TRADE' | 'SKIP';
++export type BaselinePolicy = 'RANDOM_SECTOR' | 'ALWAYS_VOISINS' | 'NO_TRADE';
++
++export interface InstitutionalBacktestOptions {
++  initialEquity: number;
++  trainingWindow: number;
++  testWindow: number;
++  stepSize: number;
++  maxStakeFraction: number;
++  baselinePolicy: BaselinePolicy;
++  engineOptions: Partial<StrategyEngineOptions>;
++}
++
++export interface InstitutionalTrade {
++  index: number;
++  windowId: number;
++  decision: BacktestDecision;
++  target: RouletteSectorName | 'none';
++  stakeFraction: number;
++  won: boolean;
++  pnl: number;
++  equity: number;
++  drawdown: number;
++}
++
++export interface BacktestWindowSummary {
++  id: number;
++  trainStart: number;
++  trainEnd: number;
++  testStart: number;
++  testEnd: number;
++  trades: number;
++  roi: number;
++  maxDrawdown: number;
++  expectancy: number;
++}
++
++export interface BaselineComparison {
++  policy: BaselinePolicy;
++  trades: number;
++  roi: number;
++  maxDrawdown: number;
++  expectancy: number;
++  strategyOutperformed: boolean;
++  excessRoi: number;
++}
++
++export interface StressScenarioResult {
++  name: string;
++  equityMultiplier: number;
++  roi: number;
++  maxDrawdown: number;
++  riskFlag: 'PASS' | 'WATCH' | 'FAIL';
++}
++
++export interface DrawdownSurfacePoint {
++  stakeMultiplier: number;
++  maxDrawdown: number;
++  finalEquity: number;
++  ruinProbabilityProxy: number;
++}
++
++export interface InstitutionalBacktestSummary {
++  sampleSize: number;
++  windows: number;
++  trades: number;
++  hitRate: number;
++  roi: number;
++  maxDrawdown: number;
++  expectancy: number;
++  finalEquity: number;
++  profitFactor: number;
++  stabilityScore: number;
++  riskOfRuinProxy: number;
++  approval: 'REJECTED' | 'RESEARCH_REVIEW' | 'CANDIDATE';
++  blockers: string[];
++}
++
++export interface InstitutionalBacktestResult {
++  summary: InstitutionalBacktestSummary;
++  windows: BacktestWindowSummary[];
++  trades: InstitutionalTrade[];
++  baseline: BaselineComparison;
++  stress: StressScenarioResult[];
++  drawdownSurface: DrawdownSurfacePoint[];
++}
++
++const DEFAULT_OPTIONS: InstitutionalBacktestOptions = {
++  initialEquity: 1,
++  trainingWindow: 240,
++  testWindow: 60,
++  stepSize: 60,
++  maxStakeFraction: 0.01,
++  baselinePolicy: 'RANDOM_SECTOR',
++  engineOptions: { minSampleSize: 120 }
++};
++
++export class InstitutionalBacktestEngine {
++  private readonly stats = new RouletteStats();
++  private readonly options: InstitutionalBacktestOptions;
++
++  constructor(options: Partial<InstitutionalBacktestOptions> = {}) {
++    this.options = {
++      ...DEFAULT_OPTIONS,
++      ...options,
++      engineOptions: { ...DEFAULT_OPTIONS.engineOptions, ...(options.engineOptions ?? {}) }
++    };
++  }
++
++  public run(history: number[]): InstitutionalBacktestResult {
++    const cleanHistory = this.validate(history);
++    const strategyTrades = this.walkForward(cleanHistory, 'STRATEGY');
++    const baselineTrades = this.walkForward(cleanHistory, this.options.baselinePolicy);
++    const windows = this.windowSummaries(strategyTrades);
++    const summary = this.summary(cleanHistory.length, windows, strategyTrades);
++    const baseline = this.baselineComparison(summary, baselineTrades);
++    const stress = this.stressScenarios(strategyTrades);
++    const drawdownSurface = this.drawdownSurface(strategyTrades);
++
++    return { summary: { ...summary, approval: this.approval(summary, baseline, stress), blockers: this.blockers(summary, baseline, stress) }, windows, trades: strategyTrades, baseline, stress, drawdownSurface };
++  }
++
++  private validate(history: number[]): number[] {
++    const result = RouletteStats.validate(history);
++    if (!result.ok) {
++      throw new Error(`invalid_backtest_history: ${result.errors.slice(0, 3).join('; ')}`);
++    }
++    return result.values;
++  }
++
++  private walkForward(history: number[], mode: 'STRATEGY' | BaselinePolicy): InstitutionalTrade[] {
++    const trades: InstitutionalTrade[] = [];
++    let equity = this.options.initialEquity;
++    let peak = equity;
++    let windowId = 0;
++    const engine = new StrategyEngine(this.options.engineOptions);
++
++    for (let trainStart = 0; trainStart + this.options.trainingWindow + this.options.testWindow < history.length; trainStart += this.options.stepSize) {
++      const trainEnd = trainStart + this.options.trainingWindow;
++      const testEnd = trainEnd + this.options.testWindow;
++      const training = history.slice(trainStart, trainEnd);
++      const analysis = mode === 'STRATEGY' ? engine.analyze(training) : null;
++
++      for (let index = trainEnd; index < testEnd; index += 1) {
++        const decision = this.decision(mode, analysis, index);
++        if (decision.target === 'none' || decision.stakeFraction <= 0) continue;
++
++        const nextNumber = history[index];
++        const won = this.stats.sectorOf(nextNumber) === decision.target;
++        const pnl = this.pnl(decision.target, decision.stakeFraction, won);
++        equity *= 1 + pnl;
++        peak = Math.max(peak, equity);
++        const drawdown = peak === 0 ? 0 : (peak - equity) / peak;
++
++        trades.push({ index, windowId, decision: 'TRADE', target: decision.target, stakeFraction: decision.stakeFraction, won, pnl, equity, drawdown });
++      }
++
++      windowId += 1;
++    }
++
++    return trades;
++  }
++
++  private decision(mode: 'STRATEGY' | BaselinePolicy, analysis: ReturnType<StrategyEngine['analyze']>, index: number): { target: RouletteSectorName | 'none'; stakeFraction: number } {
++    if (mode === 'NO_TRADE') return { target: 'none', stakeFraction: 0 };
++    if (mode === 'ALWAYS_VOISINS') return { target: 'voisins', stakeFraction: this.options.maxStakeFraction / 2 };
++    if (mode === 'RANDOM_SECTOR') {
++      const sectors: RouletteSectorName[] = ['voisins', 'tiers', 'orphelins'];
++      return { target: sectors[index % sectors.length], stakeFraction: this.options.maxStakeFraction / 2 };
++    }
++
++    if (!analysis || analysis.status !== 'ALLOWED' || analysis.signals.length === 0) return { target: 'none', stakeFraction: 0 };
++    return {
++      target: analysis.signals[0].target,
++      stakeFraction: Math.min(this.options.maxStakeFraction, Math.max(0, analysis.suggestedFraction))
++    };
++  }
++
++  private pnl(target: RouletteSectorName, stakeFraction: number, won: boolean): number {
++    const sectorSize = target === 'unknown' ? 0 : RouletteStats.SECTORS[target]?.length ?? 0;
++    if (!won) return -stakeFraction;
++    const payout = sectorSize > 0 ? RouletteStats.EUROPEAN_WHEEL_SIZE / sectorSize - 1 : 0;
++    return stakeFraction * payout;
++  }
++
++  private windowSummaries(trades: InstitutionalTrade[]): BacktestWindowSummary[] {
++    const byWindow = new Map<number, InstitutionalTrade[]>();
++    for (const trade of trades) byWindow.set(trade.windowId, [...(byWindow.get(trade.windowId) ?? []), trade]);
++
++    return Array.from(byWindow.entries()).map(([id, rows]) => {
++      const first = rows[0];
++      const last = rows[rows.length - 1];
++      const startEquity = id === 0 ? this.options.initialEquity : trades.find(t => t.windowId === id - 1)?.equity ?? this.options.initialEquity;
++      const roi = last ? last.equity / startEquity - 1 : 0;
++      return {
++        id,
++        trainStart: id * this.options.stepSize,
++        trainEnd: id * this.options.stepSize + this.options.trainingWindow,
++        testStart: id * this.options.stepSize + this.options.trainingWindow,
++        testEnd: id * this.options.stepSize + this.options.trainingWindow + this.options.testWindow,
++        trades: rows.length,
++        roi: round(roi),
++        maxDrawdown: round(Math.max(...rows.map(row => row.drawdown), 0)),
++        expectancy: round(rows.reduce((sum, row) => sum + row.pnl, 0) / Math.max(1, rows.length))
++      };
++    });
++  }
++
++  private summary(sampleSize: number, windows: BacktestWindowSummary[], trades: InstitutionalTrade[]): Omit<InstitutionalBacktestSummary, 'approval' | 'blockers'> {
++    const wins = trades.filter(trade => trade.won).length;
++    const losses = trades.length - wins;
++    const grossProfit = trades.filter(trade => trade.pnl > 0).reduce((sum, trade) => sum + trade.pnl, 0);
++    const grossLoss = Math.abs(trades.filter(trade => trade.pnl < 0).reduce((sum, trade) => sum + trade.pnl, 0));
++    const finalEquity = trades.length > 0 ? trades[trades.length - 1].equity : this.options.initialEquity;
++    const positiveWindows = windows.filter(window => window.roi > 0).length;
++    const roi = finalEquity / this.options.initialEquity - 1;
++    const maxDrawdown = Math.max(...trades.map(trade => trade.drawdown), 0);
++    const expectancy = trades.reduce((sum, trade) => sum + trade.pnl, 0) / Math.max(1, trades.length);
++    const riskOfRuinProxy = round(Math.min(1, Math.max(0, maxDrawdown * 1.8 + (losses / Math.max(1, trades.length)) * 0.25 - Math.max(0, roi) * 0.1)));
++
++    return {
++      sampleSize,
++      windows: windows.length,
++      trades: trades.length,
++      hitRate: round(wins / Math.max(1, trades.length)),
++      roi: round(roi),
++      maxDrawdown: round(maxDrawdown),
++      expectancy: round(expectancy),
++      finalEquity: round(finalEquity),
++      profitFactor: grossLoss === 0 ? round(grossProfit) : round(grossProfit / grossLoss),
++      stabilityScore: round((positiveWindows / Math.max(1, windows.length)) * 0.55 + Math.max(0, 1 - maxDrawdown) * 0.25 + Math.min(1, Math.max(0, roi)) * 0.2),
++      riskOfRuinProxy
++    };
++  }
++
++  private baselineComparison(summary: Omit<InstitutionalBacktestSummary, 'approval' | 'blockers'>, baselineTrades: InstitutionalTrade[]): BaselineComparison {
++    const baselineSummary = this.summary(summary.sampleSize, this.windowSummaries(baselineTrades), baselineTrades);
++    const excessRoi = round(summary.roi - baselineSummary.roi);
++    return {
++      policy: this.options.baselinePolicy,
++      trades: baselineSummary.trades,
++      roi: baselineSummary.roi,
++      maxDrawdown: baselineSummary.maxDrawdown,
++      expectancy: baselineSummary.expectancy,
++      strategyOutperformed: excessRoi > 0,
++      excessRoi
++    };
++  }
++
++  private stressScenarios(trades: InstitutionalTrade[]): StressScenarioResult[] {
++    return [
++      this.replayStress('stake_half', trades, 0.5),
++      this.replayStress('stake_base', trades, 1),
++      this.replayStress('stake_double', trades, 2)
++    ];
++  }
++
++  private replayStress(name: string, trades: InstitutionalTrade[], multiplier: number): StressScenarioResult {
++    let equity = this.options.initialEquity;
++    let peak = equity;
++    let maxDrawdown = 0;
++    for (const trade of trades) {
++      const pnl = Math.max(-0.99, trade.pnl * multiplier);
++      equity *= 1 + pnl;
++      peak = Math.max(peak, equity);
++      maxDrawdown = Math.max(maxDrawdown, (peak - equity) / peak);
++    }
++    const roi = equity / this.options.initialEquity - 1;
++    return {
++      name,
++      equityMultiplier: multiplier,
++      roi: round(roi),
++      maxDrawdown: round(maxDrawdown),
++      riskFlag: maxDrawdown > 0.35 || roi < -0.2 ? 'FAIL' : maxDrawdown > 0.18 || roi < 0 ? 'WATCH' : 'PASS'
++    };
++  }
++
++  private drawdownSurface(trades: InstitutionalTrade[]): DrawdownSurfacePoint[] {
++    return [0.25, 0.5, 1, 1.5, 2].map(multiplier => {
++      const stress = this.replayStress(`surface_${multiplier}`, trades, multiplier);
++      return {
++        stakeMultiplier: multiplier,
++        maxDrawdown: stress.maxDrawdown,
++        finalEquity: round(1 + stress.roi),
++        ruinProbabilityProxy: round(Math.min(1, stress.maxDrawdown * 1.7 + (stress.roi < 0 ? 0.15 : 0)))
++      };
++    });
++  }
++
++  private approval(summary: Omit<InstitutionalBacktestSummary, 'approval' | 'blockers'>, baseline: BaselineComparison, stress: StressScenarioResult[]): InstitutionalBacktestSummary['approval'] {
++    if (summary.trades < 30 || summary.maxDrawdown > 0.35 || summary.riskOfRuinProxy > 0.35 || stress.some(item => item.riskFlag === 'FAIL')) return 'REJECTED';
++    if (baseline.strategyOutperformed && summary.roi > 0 && summary.stabilityScore >= 0.55 && summary.riskOfRuinProxy <= 0.22) return 'CANDIDATE';
++    return 'RESEARCH_REVIEW';
++  }
++
++  private blockers(summary: Omit<InstitutionalBacktestSummary, 'approval' | 'blockers'>, baseline: BaselineComparison, stress: StressScenarioResult[]): string[] {
++    const blockers: string[] = [];
++    if (summary.trades < 30) blockers.push('insufficient_out_of_sample_trades');
++    if (summary.roi <= 0) blockers.push('non_positive_strategy_roi');
++    if (!baseline.strategyOutperformed) blockers.push('baseline_not_outperformed');
++    if (summary.maxDrawdown > 0.35) blockers.push('drawdown_above_institutional_limit');
++    if (summary.riskOfRuinProxy > 0.35) blockers.push('risk_of_ruin_proxy_above_limit');
++    if (stress.some(item => item.riskFlag === 'FAIL')) blockers.push('stress_scenario_failed');
++    return blockers;
++  }
++}
++
++function round(value: number): number {
++  if (!Number.isFinite(value)) return 0;
++  return Number(value.toFixed(6));
++}
+diff --git a/src/infrastructure/http/Server.ts b/src/infrastructure/http/Server.ts
+index 04de315..bc36c2e 100644
+--- a/src/infrastructure/http/Server.ts
++++ b/src/infrastructure/http/Server.ts
+@@ -23,6 +23,7 @@ import { StatisticalResearchService } from '../../application/research/Statistic
+ import { SequentialResearchService } from '../../application/research/SequentialResearchService';
+ import { PersistenceResearchService } from '../../application/research/PersistenceResearchService';
+ import { ResearchReportingService } from '../../application/research/ResearchReportingService';
++import { InstitutionalBacktestService } from '../../application/backtesting/InstitutionalBacktestService';
+ import { config } from '../../config';
+ 
+ interface AnalyzePayload {
+@@ -54,6 +55,7 @@ export class Server {
+   private readonly sequentialResearchService = new SequentialResearchService();
+   private readonly persistenceResearchService = new PersistenceResearchService();
+   private readonly researchReportingService = new ResearchReportingService(config.appVersion);
++  private readonly institutionalBacktestService = new InstitutionalBacktestService();
+   private httpServer?: ReturnType<Express['listen']>;
+ 
+   constructor(
+@@ -141,7 +143,11 @@ export class Server {
+           'out-of-sample-consistency',
+           'unified-research-reporting',
+           'reproducible-research-envelope',
+-          'research-audit-trail'
++          'research-audit-trail',
++          'institutional-backtesting',
++          'baseline-comparison',
++          'stress-scenario-analysis',
++          'drawdown-surface-analysis'
+         ],
+         gates: {
+           minSampleSize: 120,
+@@ -221,6 +227,13 @@ export class Server {
+       res.status(report.executiveSummary.status === 'REJECTED' ? 422 : 200).json(report);
+     });
+ 
++    this.app.post('/api/backtest/institutional/evaluate', (req, res) => {
++      const dataset = req.body?.dataset ?? req.body?.records ?? req.body?.history ?? req.body;
++      const report = this.institutionalBacktestService.evaluate(dataset);
++      this.metrics.increment(`backtest.institutional.${report.status.toLowerCase()}`);
++      res.status(report.status === 'REJECTED' ? 422 : 200).json(report);
++    });
++
+     this.app.post('/api/strategy/analyze', async (req, res) => this.analyzeHistory(req, res));
+     this.app.post('/upload-history', async (req, res) => this.analyzeHistory(req, res));
+ 
+diff --git a/tests/institutional-backtest-engine.test.js b/tests/institutional-backtest-engine.test.js
+new file mode 100644
+index 0000000..028b078
+--- /dev/null
++++ b/tests/institutional-backtest-engine.test.js
+@@ -0,0 +1,32 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { InstitutionalBacktestEngine } = require('../dist/domain/backtesting/InstitutionalBacktestEngine');
++
++function concentratedHistory(size = 900) {
++  return Array.from({ length: size }, (_, index) => [31, 32, 33, 34, 35, 36, 30, 29, 31, 32][index % 10]);
++}
++
++test('InstitutionalBacktestEngine returns bounded institutional metrics and gates', () => {
++  const engine = new InstitutionalBacktestEngine({
++    trainingWindow: 180,
++    testWindow: 45,
++    stepSize: 45,
++    engineOptions: { minSampleSize: 120, minSectorAbsZScore: 1.1 }
++  });
++  const result = engine.run(concentratedHistory());
++
++  assert.ok(result.summary.sampleSize >= 900);
++  assert.ok(result.summary.windows >= 1);
++  assert.ok(result.summary.trades >= 0);
++  assert.ok(result.summary.maxDrawdown >= 0 && result.summary.maxDrawdown <= 1);
++  assert.ok(result.summary.riskOfRuinProxy >= 0 && result.summary.riskOfRuinProxy <= 1);
++  assert.ok(['REJECTED', 'RESEARCH_REVIEW', 'CANDIDATE'].includes(result.summary.approval));
++  assert.equal(result.baseline.policy, 'RANDOM_SECTOR');
++  assert.equal(result.stress.length, 3);
++  assert.equal(result.drawdownSurface.length, 5);
++});
++
++test('InstitutionalBacktestEngine rejects invalid roulette history', () => {
++  const engine = new InstitutionalBacktestEngine();
++  assert.throws(() => engine.run([0, 1, 37]), /invalid_backtest_history/);
++});
+diff --git a/tests/institutional-backtest-service.test.js b/tests/institutional-backtest-service.test.js
+new file mode 100644
+index 0000000..c6dfe0f
+--- /dev/null
++++ b/tests/institutional-backtest-service.test.js
+@@ -0,0 +1,29 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { InstitutionalBacktestService } = require('../dist/application/backtesting/InstitutionalBacktestService');
++
++function toRecords(values) {
++  return values.map((value, index) => ({
++    value,
++    timestamp: new Date(Date.UTC(2026, 0, 1, 0, 0, index)).toISOString(),
++    tableId: 'mesa-backtest'
++  }));
++}
++
++test('InstitutionalBacktestService rejects corrupted datasets and keeps operational gate blocked', () => {
++  const report = new InstitutionalBacktestService().evaluate([{ value: 99 }, { value: -1 }]);
++  assert.equal(report.status, 'REJECTED');
++  assert.equal(report.operationalGate, 'BLOCKED');
++  assert.ok(report.blockers.includes('dataset_integrity_failed'));
++});
++
++test('InstitutionalBacktestService returns institutional research report for clean dataset', () => {
++  const values = Array.from({ length: 900 }, (_, index) => [31, 32, 33, 34, 35, 36, 30, 29][index % 8]);
++  const report = new InstitutionalBacktestService().evaluate(toRecords(values));
++
++  assert.ok(['REJECTED', 'RESEARCH_REVIEW', 'CANDIDATE'].includes(report.status));
++  assert.equal(report.operationalGate, 'BLOCKED');
++  assert.ok(report.datasetChecksum.length >= 12);
++  assert.ok(report.result.summary.sampleSize >= 900);
++  assert.ok(Array.isArray(report.recommendations));
++});

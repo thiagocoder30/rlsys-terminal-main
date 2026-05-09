@@ -23,6 +23,7 @@ import { StatisticalResearchService } from '../../application/research/Statistic
 import { SequentialResearchService } from '../../application/research/SequentialResearchService';
 import { PersistenceResearchService } from '../../application/research/PersistenceResearchService';
 import { ResearchReportingService } from '../../application/research/ResearchReportingService';
+import { InstitutionalBacktestService } from '../../application/backtesting/InstitutionalBacktestService';
 import { config } from '../../config';
 
 interface AnalyzePayload {
@@ -54,6 +55,7 @@ export class Server {
   private readonly sequentialResearchService = new SequentialResearchService();
   private readonly persistenceResearchService = new PersistenceResearchService();
   private readonly researchReportingService = new ResearchReportingService(config.appVersion);
+  private readonly institutionalBacktestService = new InstitutionalBacktestService();
   private httpServer?: ReturnType<Express['listen']>;
 
   constructor(
@@ -141,7 +143,11 @@ export class Server {
           'out-of-sample-consistency',
           'unified-research-reporting',
           'reproducible-research-envelope',
-          'research-audit-trail'
+          'research-audit-trail',
+          'institutional-backtesting',
+          'baseline-comparison',
+          'stress-scenario-analysis',
+          'drawdown-surface-analysis'
         ],
         gates: {
           minSampleSize: 120,
@@ -219,6 +225,13 @@ export class Server {
       const report = this.researchReportingService.evaluate(dataset);
       this.metrics.increment(`research.report.${report.executiveSummary.status.toLowerCase()}`);
       res.status(report.executiveSummary.status === 'REJECTED' ? 422 : 200).json(report);
+    });
+
+    this.app.post('/api/backtest/institutional/evaluate', (req, res) => {
+      const dataset = req.body?.dataset ?? req.body?.records ?? req.body?.history ?? req.body;
+      const report = this.institutionalBacktestService.evaluate(dataset);
+      this.metrics.increment(`backtest.institutional.${report.status.toLowerCase()}`);
+      res.status(report.status === 'REJECTED' ? 422 : 200).json(report);
     });
 
     this.app.post('/api/strategy/analyze', async (req, res) => this.analyzeHistory(req, res));
