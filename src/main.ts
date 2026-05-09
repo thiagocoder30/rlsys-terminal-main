@@ -2,8 +2,11 @@ import { Server } from './infrastructure/http/Server';
 import { GeminiAdapter } from './infrastructure/adapters/GeminiAdapter';
 import { JsonlSignalRepository } from './infrastructure/database/JsonlSignalRepository';
 import { config } from './config';
+import { ConfigValidator } from './application/config/ConfigValidator';
 
 async function bootstrap(): Promise<void> {
+  new ConfigValidator().assertValid(config);
+
   const signalRepository = new JsonlSignalRepository(config.signalLogPath);
   await signalRepository.init();
 

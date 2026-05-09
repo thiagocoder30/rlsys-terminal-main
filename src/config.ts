@@ -5,6 +5,8 @@
 import 'dotenv/config'; // Certifique-se de ter o pacote dotenv instalado
 
 export const config = {
+    appVersion: process.env.APP_VERSION || '1.0.0',
+    nodeEnv: process.env.NODE_ENV || 'development',
     serverPort: parseInt(process.env.PORT || '3000', 10),
     serverHost: process.env.HOST || '0.0.0.0',
     historyBufferSize: parseInt(process.env.HISTORY_BUFFER_SIZE || '100', 10),

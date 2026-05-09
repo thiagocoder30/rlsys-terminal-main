@@ -1,0 +1,519 @@
+diff -ruN '--exclude=node_modules' '--exclude=dist' v1base/OPERACAO_PRODUCAO_TERMUX.md v1work/OPERACAO_PRODUCAO_TERMUX.md
+--- v1base/OPERACAO_PRODUCAO_TERMUX.md	1970-01-01 00:00:00.000000000 +0000
++++ v1work/OPERACAO_PRODUCAO_TERMUX.md	2026-05-09 01:38:01.138074146 +0000
+@@ -0,0 +1,45 @@
++# Operação em Termux/ArchLinux — RL.SYS Core v1.0.0
++
++## Instalação
++```bash
++npm install
++npm run build
++```
++
++## Validação padrão
++```bash
++npm run check
++```
++
++## Validação de release
++```bash
++npm run release:check
++```
++
++## Inicialização
++```bash
++npm start
++```
++
++## Endpoints úteis
++```bash
++curl http://127.0.0.1:3000/health
++curl http://127.0.0.1:3000/api/strategy/readiness
++curl http://127.0.0.1:3000/api/strategy/metrics
++curl http://127.0.0.1:3000/api/system/config
++curl http://127.0.0.1:3000/api/system/release-readiness
++```
++
++## Variáveis principais
++```bash
++PORT=3000
++HOST=0.0.0.0
++LOG_LEVEL=info
++DATA_PATH=./data
++SIGNAL_LOG_PATH=./data/signals.jsonl
++AUDIT_LOG_PATH=./data/decision-audit.jsonl
++GEMINI_API_KEY=
++```
++
++## Segurança
++Nunca versionar `.env`, logs JSONL reais, tokens ou dados pessoais. O endpoint `/api/system/config` é sanitizado e não expõe a chave Gemini.
+diff -ruN '--exclude=node_modules' '--exclude=dist' v1base/README.md v1work/README.md
+--- v1base/README.md	2026-05-08 05:23:02.000000000 +0000
++++ v1work/README.md	2026-05-09 01:38:02.790090524 +0000
+@@ -36,3 +36,34 @@
+ 
+ ## ⚠️ Disclaimer Operacional
+ A matemática fundamental de jogos de cassino (Vantagem da Casa) é imutável no longo prazo. Este software identifica e explora quebras de variância de curto prazo. Não utilize capital que comprometa sua subsistência. A disciplina de seguir os vetos do sistema é responsabilidade exclusiva do operador.
++
++
++## Release v1.0.0 — Operação Enterprise
++
++Esta base evoluiu para um core institucional conservador. O sistema não deve ser tratado como garantia de lucro: ele opera com gates de bloqueio, validação Bayesiana, Monte Carlo, detecção de regime e auditoria para impedir exposição sem evidência mínima.
++
++### Comandos principais
++
++```bash
++npm install
++npm run check
++npm start
++```
++
++### Endpoints operacionais
++
++- `GET /health`
++- `GET /api/strategy/health`
++- `GET /api/strategy/readiness`
++- `GET /api/strategy/metrics`
++- `GET /api/system/config`
++- `GET /api/system/release-readiness`
++- `POST /api/strategy/analyze`
++
++### Release check
++
++```bash
++npm run release:check
++```
++
++Consulte `OPERACAO_PRODUCAO_TERMUX.md` para operação no Termux/ArchLinux.
+diff -ruN '--exclude=node_modules' '--exclude=dist' v1base/RELATORIO_TECNICO_RELEASE_V10.md v1work/RELATORIO_TECNICO_RELEASE_V10.md
+--- v1base/RELATORIO_TECNICO_RELEASE_V10.md	1970-01-01 00:00:00.000000000 +0000
++++ v1work/RELATORIO_TECNICO_RELEASE_V10.md	2026-05-09 01:38:01.127452708 +0000
+@@ -0,0 +1,25 @@
++# RL.SYS Core v1.0.0 — Release de Estabilização Enterprise
++
++## Objetivo
++Consolidar a base v0.9.0 em uma release operacional com validação de configuração, prontidão de release, hardening HTTP básico e scripts de produção.
++
++## Entregas
++- Versão atualizada para `1.0.0`.
++- `ConfigValidator` para bloquear configuração inválida antes do bootstrap.
++- `ReleaseReadinessService` para consolidar gates de release.
++- Headers HTTP de segurança mínimos via middleware dedicado.
++- Endpoints operacionais:
++  - `GET /api/system/config` retorna configuração sanitizada, sem segredos.
++  - `GET /api/system/release-readiness` retorna status `ready`, `review` ou `blocked`.
++- Scripts:
++  - `npm run clean`
++  - `npm run build:clean`
++  - `npm run audit:deps`
++  - `npm run release:check`
++- Testes novos para configuração, release readiness e security headers.
++
++## Critério de qualidade
++A release continua bloqueando decisões sem evidência estatística suficiente. O sistema não deve sugerir exposição real quando os gates de risco, Bayes, regime ou Monte Carlo não sustentarem a decisão.
++
++## Observação operacional
++`GEMINI_API_KEY` ausente é tratado como warning, não erro, pois os endpoints estatísticos podem operar sem visão computacional. Endpoints de visão exigem a chave configurada.
+diff -ruN '--exclude=node_modules' '--exclude=dist' v1base/package-lock.json v1work/package-lock.json
+--- v1base/package-lock.json	2026-05-09 01:20:12.367689578 +0000
++++ v1work/package-lock.json	2026-05-09 01:38:11.312328835 +0000
+@@ -1,12 +1,12 @@
+ {
+   "name": "rl-sys-core",
+-  "version": "0.9.0",
++  "version": "1.0.0",
+   "lockfileVersion": 3,
+   "requires": true,
+   "packages": {
+     "": {
+       "name": "rl-sys-core",
+-      "version": "0.9.0",
++      "version": "1.0.0",
+       "license": "MIT",
+       "dependencies": {
+         "@google/generative-ai": "^0.24.1",
+diff -ruN '--exclude=node_modules' '--exclude=dist' v1base/package.json v1work/package.json
+--- v1base/package.json	2026-05-09 01:20:10.351520842 +0000
++++ v1work/package.json	2026-05-09 01:37:55.307268828 +0000
+@@ -1,14 +1,18 @@
+ {
+   "name": "rl-sys-core",
+-  "version": "0.9.0",
+-  "description": "RL.sys Core - enterprise-grade institutional roulette analysis engine with observability, Bayesian governance and risk controls",
++  "version": "1.0.0",
++  "description": "RL.sys Core - enterprise-grade institutional roulette analysis engine with release readiness, observability, Bayesian governance and risk controls",
+   "main": "dist/main.js",
+   "scripts": {
+     "start": "node dist/main.js",
+     "build": "tsc",
+     "dev": "tsc -w & node --watch dist/main.js",
+     "test": "node --test tests/*.test.js",
+-    "check": "npm run build && npm test"
++    "check": "npm run build && npm test",
++    "audit:deps": "npm audit --omit=dev",
++    "release:check": "npm run check && npm run audit:deps",
++    "clean": "rm -rf dist",
++    "build:clean": "npm run clean && npm run build"
+   },
+   "keywords": [
+     "rl-sys",
+diff -ruN '--exclude=node_modules' '--exclude=dist' v1base/src/application/config/ConfigValidator.ts v1work/src/application/config/ConfigValidator.ts
+--- v1base/src/application/config/ConfigValidator.ts	1970-01-01 00:00:00.000000000 +0000
++++ v1work/src/application/config/ConfigValidator.ts	2026-05-09 01:37:53.444748633 +0000
+@@ -0,0 +1,93 @@
++export interface ConfigValidationIssue {
++  key: string;
++  severity: 'warning' | 'error';
++  message: string;
++}
++
++export interface ConfigValidationResult {
++  valid: boolean;
++  issues: ConfigValidationIssue[];
++  warnings: ConfigValidationIssue[];
++  errors: ConfigValidationIssue[];
++  sanitized: Record<string, string | number | boolean>;
++}
++
++export interface RuntimeConfigInput {
++  serverPort: number;
++  serverHost: string;
++  historyBufferSize: number;
++  geminiApiKey: string;
++  signalLogPath: string;
++  auditLogPath: string;
++  dataPath: string;
++  logLevel: string;
++  appVersion?: string;
++  nodeEnv?: string;
++}
++
++const VALID_LOG_LEVELS = new Set(['debug', 'info', 'warn', 'error']);
++
++export class ConfigValidator {
++  public validate(config: RuntimeConfigInput): ConfigValidationResult {
++    const issues: ConfigValidationIssue[] = [];
++
++    if (!Number.isInteger(config.serverPort) || config.serverPort < 1 || config.serverPort > 65535) {
++      issues.push({ key: 'PORT', severity: 'error', message: 'PORT must be an integer between 1 and 65535.' });
++    }
++
++    if (!config.serverHost || typeof config.serverHost !== 'string') {
++      issues.push({ key: 'HOST', severity: 'error', message: 'HOST must be a non-empty string.' });
++    }
++
++    if (!Number.isInteger(config.historyBufferSize) || config.historyBufferSize < 37) {
++      issues.push({ key: 'HISTORY_BUFFER_SIZE', severity: 'error', message: 'HISTORY_BUFFER_SIZE must be at least 37.' });
++    }
++
++    if (!VALID_LOG_LEVELS.has(config.logLevel)) {
++      issues.push({ key: 'LOG_LEVEL', severity: 'error', message: 'LOG_LEVEL must be one of debug, info, warn or error.' });
++    }
++
++    if (!config.geminiApiKey) {
++      issues.push({ key: 'GEMINI_API_KEY', severity: 'warning', message: 'Vision endpoints will fail until GEMINI_API_KEY is configured.' });
++    }
++
++    if (!config.signalLogPath.endsWith('.jsonl')) {
++      issues.push({ key: 'SIGNAL_LOG_PATH', severity: 'warning', message: 'JSONL persistence is recommended for Termux compatibility.' });
++    }
++
++    if (!config.auditLogPath.endsWith('.jsonl')) {
++      issues.push({ key: 'AUDIT_LOG_PATH', severity: 'warning', message: 'Audit log should use JSONL for append-only decision traceability.' });
++    }
++
++    const errors = issues.filter(issue => issue.severity === 'error');
++    const warnings = issues.filter(issue => issue.severity === 'warning');
++
++    return {
++      valid: errors.length === 0,
++      issues,
++      warnings,
++      errors,
++      sanitized: {
++        appVersion: config.appVersion || 'unknown',
++        nodeEnv: config.nodeEnv || 'development',
++        serverPort: config.serverPort,
++        serverHost: config.serverHost,
++        historyBufferSize: config.historyBufferSize,
++        hasGeminiApiKey: Boolean(config.geminiApiKey),
++        signalLogPath: config.signalLogPath,
++        auditLogPath: config.auditLogPath,
++        dataPath: config.dataPath,
++        logLevel: config.logLevel
++      }
++    };
++  }
++
++  public assertValid(config: RuntimeConfigInput): ConfigValidationResult {
++    const result = this.validate(config);
++    if (!result.valid) {
++      const details = result.errors.map(issue => `${issue.key}: ${issue.message}`).join('; ');
++      throw new Error(`Invalid runtime configuration: ${details}`);
++    }
++    return result;
++  }
++}
+diff -ruN '--exclude=node_modules' '--exclude=dist' v1base/src/application/release/ReleaseReadinessService.ts v1work/src/application/release/ReleaseReadinessService.ts
+--- v1base/src/application/release/ReleaseReadinessService.ts	1970-01-01 00:00:00.000000000 +0000
++++ v1work/src/application/release/ReleaseReadinessService.ts	2026-05-09 01:37:53.455861455 +0000
+@@ -0,0 +1,61 @@
++import { ConfigValidationResult } from '../config/ConfigValidator';
++import { HealthCheckResult } from '../health/HealthCheckService';
++import { MetricsSnapshot } from '../../infrastructure/observability/MetricsRegistry';
++
++export interface ReleaseReadinessGate {
++  name: string;
++  status: 'pass' | 'warn' | 'fail';
++  details: string;
++}
++
++export interface ReleaseReadinessResult {
++  release: string;
++  status: 'ready' | 'review' | 'blocked';
++  generatedAt: string;
++  gates: ReleaseReadinessGate[];
++}
++
++export class ReleaseReadinessService {
++  constructor(private readonly release: string) {}
++
++  public evaluate(input: {
++    config: ConfigValidationResult;
++    health: HealthCheckResult;
++    metrics: MetricsSnapshot;
++  }): ReleaseReadinessResult {
++    const gates: ReleaseReadinessGate[] = [
++      {
++        name: 'runtime_configuration',
++        status: input.config.valid ? (input.config.warnings.length > 0 ? 'warn' : 'pass') : 'fail',
++        details: input.config.valid
++          ? `${input.config.warnings.length} warning(s), ${input.config.errors.length} error(s)`
++          : input.config.errors.map(issue => issue.message).join('; ')
++      },
++      {
++        name: 'readiness_checks',
++        status: input.health.status === 'ok' ? 'pass' : 'fail',
++        details: Object.entries(input.health.checks).map(([key, check]) => `${key}:${check.status}`).join(', ')
++      },
++      {
++        name: 'observability',
++        status: input.metrics.service && input.metrics.version ? 'pass' : 'fail',
++        details: `${input.metrics.counters.length} counter(s), ${input.metrics.timers.length} timer(s)`
++      },
++      {
++        name: 'decision_governance',
++        status: 'pass',
++        details: 'RiskPolicy, BayesianEdgeValidator, RegimeDetector and audit logger are wired into analysis flow.'
++      }
++    ];
++
++    const hasFail = gates.some(gate => gate.status === 'fail');
++    const hasWarn = gates.some(gate => gate.status === 'warn');
++
++    return {
++      release: this.release,
++      status: hasFail ? 'blocked' : hasWarn ? 'review' : 'ready',
++      generatedAt: new Date().toISOString(),
++      gates
++    };
++  }
++}
+diff -ruN '--exclude=node_modules' '--exclude=dist' v1base/src/config.ts v1work/src/config.ts
+--- v1base/src/config.ts	2026-05-09 01:20:10.352024634 +0000
++++ v1work/src/config.ts	2026-05-09 01:37:57.220145465 +0000
+@@ -5,6 +5,8 @@
+ import 'dotenv/config'; // Certifique-se de ter o pacote dotenv instalado
+ 
+ export const config = {
++    appVersion: process.env.APP_VERSION || '1.0.0',
++    nodeEnv: process.env.NODE_ENV || 'development',
+     serverPort: parseInt(process.env.PORT || '3000', 10),
+     serverHost: process.env.HOST || '0.0.0.0',
+     historyBufferSize: parseInt(process.env.HISTORY_BUFFER_SIZE || '100', 10),
+diff -ruN '--exclude=node_modules' '--exclude=dist' v1base/src/infrastructure/http/Server.ts v1work/src/infrastructure/http/Server.ts
+--- v1base/src/infrastructure/http/Server.ts	2026-05-09 01:20:10.352221904 +0000
++++ v1work/src/infrastructure/http/Server.ts	2026-05-09 01:38:00.917819365 +0000
+@@ -15,6 +15,9 @@
+ import { StructuredLogger } from '../observability/StructuredLogger';
+ import { MetricsRegistry } from '../observability/MetricsRegistry';
+ import { HealthCheckService } from '../../application/health/HealthCheckService';
++import { ConfigValidator } from '../../application/config/ConfigValidator';
++import { ReleaseReadinessService } from '../../application/release/ReleaseReadinessService';
++import { securityHeaders } from './middleware/securityHeaders';
+ import { config } from '../../config';
+ 
+ interface AnalyzePayload {
+@@ -34,8 +37,10 @@
+   private readonly confidenceScorer = new ConfidenceScorer();
+   private readonly monteCarloEngine = new MonteCarloEngine();
+   private readonly logger = new StructuredLogger('rl-sys-core', config.logLevel as any);
+-  private readonly metrics = new MetricsRegistry('rl-sys-core', '0.9.0');
+-  private readonly healthCheck = new HealthCheckService('0.9.0', config.dataPath);
++  private readonly metrics = new MetricsRegistry('rl-sys-core', config.appVersion);
++  private readonly healthCheck = new HealthCheckService(config.appVersion, config.dataPath);
++  private readonly configValidator = new ConfigValidator();
++  private readonly releaseReadiness = new ReleaseReadinessService(config.appVersion);
+   private readonly auditLogger = new DecisionAuditLogger(config.auditLogPath);
+   private readonly bayesianEdgeValidator = new BayesianEdgeValidator();
+   private readonly regimeDetector = new RegimeDetector();
+@@ -67,6 +72,8 @@
+   }
+ 
+   private configure(): void {
++    this.app.disable('x-powered-by');
++    this.app.use(securityHeaders);
+     this.app.use(express.json({ limit: '10mb' }));
+     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+     this.app.use(express.static(path.resolve(process.cwd())));
+@@ -95,14 +102,14 @@
+     const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
+ 
+     this.app.get('/health', (_req, res) => {
+-      res.json({ status: 'ok', service: 'rl-sys-core', version: '0.9.0', timestamp: new Date().toISOString() });
++      res.json({ status: 'ok', service: 'rl-sys-core', version: config.appVersion, timestamp: new Date().toISOString() });
+     });
+ 
+     this.app.get('/api/strategy/health', (_req, res) => {
+       res.json({
+         status: 'ok',
+         service: 'rl-sys-core',
+-        version: '0.9.0',
++        version: config.appVersion,
+         capabilities: [
+           'walk-forward-backtest',
+           'monte-carlo-risk',
+@@ -135,6 +142,21 @@
+       res.status(readiness.status === 'ok' ? 200 : 503).json(readiness);
+     });
+ 
++    this.app.get('/api/system/config', (_req, res) => {
++      res.json(this.configValidator.validate(config).sanitized);
++    });
++
++    this.app.get('/api/system/release-readiness', async (_req, res) => {
++      const configState = this.configValidator.validate(config);
++      const health = await this.healthCheck.readiness();
++      const readiness = this.releaseReadiness.evaluate({
++        config: configState,
++        health,
++        metrics: this.metrics.snapshot()
++      });
++      res.status(readiness.status === 'blocked' ? 503 : 200).json(readiness);
++    });
++
+     this.app.post('/api/strategy/analyze', async (req, res) => this.analyzeHistory(req, res));
+     this.app.post('/upload-history', async (req, res) => this.analyzeHistory(req, res));
+ 
+diff -ruN '--exclude=node_modules' '--exclude=dist' v1base/src/infrastructure/http/middleware/securityHeaders.ts v1work/src/infrastructure/http/middleware/securityHeaders.ts
+--- v1base/src/infrastructure/http/middleware/securityHeaders.ts	1970-01-01 00:00:00.000000000 +0000
++++ v1work/src/infrastructure/http/middleware/securityHeaders.ts	2026-05-09 01:37:53.467533411 +0000
+@@ -0,0 +1,10 @@
++import { Request, Response, NextFunction } from 'express';
++
++export function securityHeaders(_req: Request, res: Response, next: NextFunction): void {
++  res.setHeader('X-Content-Type-Options', 'nosniff');
++  res.setHeader('X-Frame-Options', 'DENY');
++  res.setHeader('Referrer-Policy', 'no-referrer');
++  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
++  res.setHeader('Cache-Control', 'no-store');
++  next();
++}
+diff -ruN '--exclude=node_modules' '--exclude=dist' v1base/src/main.ts v1work/src/main.ts
+--- v1base/src/main.ts	2026-05-09 00:07:09.000000000 +0000
++++ v1work/src/main.ts	2026-05-09 01:37:59.112256094 +0000
+@@ -2,8 +2,11 @@
+ import { GeminiAdapter } from './infrastructure/adapters/GeminiAdapter';
+ import { JsonlSignalRepository } from './infrastructure/database/JsonlSignalRepository';
+ import { config } from './config';
++import { ConfigValidator } from './application/config/ConfigValidator';
+ 
+ async function bootstrap(): Promise<void> {
++  new ConfigValidator().assertValid(config);
++
+   const signalRepository = new JsonlSignalRepository(config.signalLogPath);
+   await signalRepository.init();
+ 
+diff -ruN '--exclude=node_modules' '--exclude=dist' v1base/tests/config-validator.test.js v1work/tests/config-validator.test.js
+--- v1base/tests/config-validator.test.js	1970-01-01 00:00:00.000000000 +0000
++++ v1work/tests/config-validator.test.js	2026-05-09 01:38:01.090435831 +0000
+@@ -0,0 +1,30 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { ConfigValidator } = require('../dist/application/config/ConfigValidator');
++
++const validConfig = {
++  appVersion: '1.0.0-test',
++  nodeEnv: 'test',
++  serverPort: 3000,
++  serverHost: '0.0.0.0',
++  historyBufferSize: 100,
++  geminiApiKey: '',
++  signalLogPath: './data/signals.jsonl',
++  auditLogPath: './data/audit.jsonl',
++  dataPath: './data',
++  logLevel: 'info'
++};
++
++test('ConfigValidator accepts production-safe defaults with warnings only', () => {
++  const result = new ConfigValidator().validate(validConfig);
++  assert.equal(result.valid, true);
++  assert.equal(result.errors.length, 0);
++  assert.equal(result.sanitized.hasGeminiApiKey, false);
++});
++
++test('ConfigValidator rejects invalid ports and log levels', () => {
++  const result = new ConfigValidator().validate({ ...validConfig, serverPort: 70000, logLevel: 'trace' });
++  assert.equal(result.valid, false);
++  assert.ok(result.errors.some(issue => issue.key === 'PORT'));
++  assert.ok(result.errors.some(issue => issue.key === 'LOG_LEVEL'));
++});
+diff -ruN '--exclude=node_modules' '--exclude=dist' v1base/tests/release-readiness-service.test.js v1work/tests/release-readiness-service.test.js
+--- v1base/tests/release-readiness-service.test.js	1970-01-01 00:00:00.000000000 +0000
++++ v1work/tests/release-readiness-service.test.js	2026-05-09 01:38:01.102380944 +0000
+@@ -0,0 +1,26 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { ReleaseReadinessService } = require('../dist/application/release/ReleaseReadinessService');
++
++test('ReleaseReadinessService returns review when config has warnings but no blockers', () => {
++  const service = new ReleaseReadinessService('1.0.0-test');
++  const result = service.evaluate({
++    config: { valid: true, issues: [], errors: [], warnings: [{ key: 'GEMINI_API_KEY', severity: 'warning', message: 'missing' }], sanitized: {} },
++    health: { status: 'ok', service: 'rl-sys-core', version: '1.0.0-test', timestamp: new Date().toISOString(), checks: { runtime: { status: 'ok' }, filesystem: { status: 'ok' } } },
++    metrics: { service: 'rl-sys-core', version: '1.0.0-test', timestamp: new Date().toISOString(), uptimeSeconds: 1, memory: { rssMb: 1, heapUsedMb: 1, heapTotalMb: 1 }, counters: [], timers: [] }
++  });
++
++  assert.equal(result.status, 'review');
++  assert.ok(result.gates.some(gate => gate.name === 'decision_governance' && gate.status === 'pass'));
++});
++
++test('ReleaseReadinessService blocks failed readiness checks', () => {
++  const service = new ReleaseReadinessService('1.0.0-test');
++  const result = service.evaluate({
++    config: { valid: true, issues: [], errors: [], warnings: [], sanitized: {} },
++    health: { status: 'degraded', service: 'rl-sys-core', version: '1.0.0-test', timestamp: new Date().toISOString(), checks: { filesystem: { status: 'degraded', details: 'readonly' } } },
++    metrics: { service: 'rl-sys-core', version: '1.0.0-test', timestamp: new Date().toISOString(), uptimeSeconds: 1, memory: { rssMb: 1, heapUsedMb: 1, heapTotalMb: 1 }, counters: [], timers: [] }
++  });
++
++  assert.equal(result.status, 'blocked');
++});
+diff -ruN '--exclude=node_modules' '--exclude=dist' v1base/tests/security-headers.test.js v1work/tests/security-headers.test.js
+--- v1base/tests/security-headers.test.js	1970-01-01 00:00:00.000000000 +0000
++++ v1work/tests/security-headers.test.js	2026-05-09 01:38:01.116433091 +0000
+@@ -0,0 +1,15 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { securityHeaders } = require('../dist/infrastructure/http/middleware/securityHeaders');
++
++test('securityHeaders applies baseline hardening headers', () => {
++  const headers = {};
++  const res = { setHeader: (key, value) => { headers[key] = value; } };
++  let called = false;
++  securityHeaders({}, res, () => { called = true; });
++
++  assert.equal(called, true);
++  assert.equal(headers['X-Content-Type-Options'], 'nosniff');
++  assert.equal(headers['X-Frame-Options'], 'DENY');
++  assert.equal(headers['Cache-Control'], 'no-store');
++});

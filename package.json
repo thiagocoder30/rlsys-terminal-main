@@ -1,14 +1,18 @@
 {
   "name": "rl-sys-core",
-  "version": "0.9.0",
-  "description": "RL.sys Core - enterprise-grade institutional roulette analysis engine with observability, Bayesian governance and risk controls",
+  "version": "1.0.0",
+  "description": "RL.sys Core - enterprise-grade institutional roulette analysis engine with release readiness, observability, Bayesian governance and risk controls",
   "main": "dist/main.js",
   "scripts": {
     "start": "node dist/main.js",
     "build": "tsc",
     "dev": "tsc -w & node --watch dist/main.js",
     "test": "node --test tests/*.test.js",
-    "check": "npm run build && npm test"
+    "check": "npm run build && npm test",
+    "audit:deps": "npm audit --omit=dev",
+    "release:check": "npm run check && npm run audit:deps",
+    "clean": "rm -rf dist",
+    "build:clean": "npm run clean && npm run build"
   },
   "keywords": [
     "rl-sys",

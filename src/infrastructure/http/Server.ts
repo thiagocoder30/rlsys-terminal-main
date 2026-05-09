@@ -15,6 +15,9 @@ import { RegimeDetector } from '../../domain/services/RegimeDetector';
 import { StructuredLogger } from '../observability/StructuredLogger';
 import { MetricsRegistry } from '../observability/MetricsRegistry';
 import { HealthCheckService } from '../../application/health/HealthCheckService';
+import { ConfigValidator } from '../../application/config/ConfigValidator';
+import { ReleaseReadinessService } from '../../application/release/ReleaseReadinessService';
+import { securityHeaders } from './middleware/securityHeaders';
 import { config } from '../../config';
 
 interface AnalyzePayload {
@@ -34,8 +37,10 @@ export class Server {
   private readonly confidenceScorer = new ConfidenceScorer();
   private readonly monteCarloEngine = new MonteCarloEngine();
   private readonly logger = new StructuredLogger('rl-sys-core', config.logLevel as any);
-  private readonly metrics = new MetricsRegistry('rl-sys-core', '0.9.0');
-  private readonly healthCheck = new HealthCheckService('0.9.0', config.dataPath);
+  private readonly metrics = new MetricsRegistry('rl-sys-core', config.appVersion);
+  private readonly healthCheck = new HealthCheckService(config.appVersion, config.dataPath);
+  private readonly configValidator = new ConfigValidator();
+  private readonly releaseReadiness = new ReleaseReadinessService(config.appVersion);
   private readonly auditLogger = new DecisionAuditLogger(config.auditLogPath);
   private readonly bayesianEdgeValidator = new BayesianEdgeValidator();
   private readonly regimeDetector = new RegimeDetector();
@@ -67,6 +72,8 @@ export class Server {
   }
 
   private configure(): void {
+    this.app.disable('x-powered-by');
+    this.app.use(securityHeaders);
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
     this.app.use(express.static(path.resolve(process.cwd())));
@@ -95,14 +102,14 @@ export class Server {
     const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
 
     this.app.get('/health', (_req, res) => {
-      res.json({ status: 'ok', service: 'rl-sys-core', version: '0.9.0', timestamp: new Date().toISOString() });
+      res.json({ status: 'ok', service: 'rl-sys-core', version: config.appVersion, timestamp: new Date().toISOString() });
     });
 
     this.app.get('/api/strategy/health', (_req, res) => {
       res.json({
         status: 'ok',
         service: 'rl-sys-core',
-        version: '0.9.0',
+        version: config.appVersion,
         capabilities: [
           'walk-forward-backtest',
           'monte-carlo-risk',
@@ -133,6 +140,21 @@ export class Server {
     this.app.get('/api/strategy/readiness', async (_req, res) => {
       const readiness = await this.healthCheck.readiness();
       res.status(readiness.status === 'ok' ? 200 : 503).json(readiness);
+    });
+
+    this.app.get('/api/system/config', (_req, res) => {
+      res.json(this.configValidator.validate(config).sanitized);
+    });
+
+    this.app.get('/api/system/release-readiness', async (_req, res) => {
+      const configState = this.configValidator.validate(config);
+      const health = await this.healthCheck.readiness();
+      const readiness = this.releaseReadiness.evaluate({
+        config: configState,
+        health,
+        metrics: this.metrics.snapshot()
+      });
+      res.status(readiness.status === 'blocked' ? 503 : 200).json(readiness);
     });
 
     this.app.post('/api/strategy/analyze', async (req, res) => this.analyzeHistory(req, res));

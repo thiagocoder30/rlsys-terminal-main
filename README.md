@@ -36,3 +36,34 @@ npm run start
 
 ## ⚠️ Disclaimer Operacional
 A matemática fundamental de jogos de cassino (Vantagem da Casa) é imutável no longo prazo. Este software identifica e explora quebras de variância de curto prazo. Não utilize capital que comprometa sua subsistência. A disciplina de seguir os vetos do sistema é responsabilidade exclusiva do operador.
+
+
+## Release v1.0.0 — Operação Enterprise
+
+Esta base evoluiu para um core institucional conservador. O sistema não deve ser tratado como garantia de lucro: ele opera com gates de bloqueio, validação Bayesiana, Monte Carlo, detecção de regime e auditoria para impedir exposição sem evidência mínima.
+
+### Comandos principais
+
+```bash
+npm install
+npm run check
+npm start
+```
+
+### Endpoints operacionais
+
+- `GET /health`
+- `GET /api/strategy/health`
+- `GET /api/strategy/readiness`
+- `GET /api/strategy/metrics`
+- `GET /api/system/config`
+- `GET /api/system/release-readiness`
+- `POST /api/strategy/analyze`
+
+### Release check
+
+```bash
+npm run release:check
+```
+
+Consulte `OPERACAO_PRODUCAO_TERMUX.md` para operação no Termux/ArchLinux.
