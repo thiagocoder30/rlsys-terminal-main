@@ -1,0 +1,833 @@
+diff --git a/RELATORIO_TECNICO_SPRINT_2_3.md b/RELATORIO_TECNICO_SPRINT_2_3.md
+new file mode 100644
+index 0000000..1c98cd1
+--- /dev/null
++++ b/RELATORIO_TECNICO_SPRINT_2_3.md
+@@ -0,0 +1,24 @@
++# RELATORIO TECNICO - SPRINT 2.3
++
++## Objetivo
++Adicionar uma camada institucional de stress testing e drawdown surface para avaliar sobrevivência da estratégia em cenários adversos.
++
++## Entregas
++- `StressScenarioAnalyzer`
++- `StressScenarioService`
++- Endpoint `/api/backtest/stress/evaluate`
++- Drawdown surface multi-stake/multi-shock
++- Tail-risk proxy
++- Recovery factor
++- Longest underwater run
++- Ruin probability proxy
++- Testes automatizados
++
++## Política de segurança
++O gate operacional permanece `BLOCKED`. Esta sprint produz evidência de pesquisa e rejeição/triagem de robustez, não autorização automática para stake.
++
++## Critérios institucionais
++- Rejeitar falhas severas em stress scenarios
++- Rejeitar drawdown catastrófico
++- Rejeitar clusters de falha na superfície de drawdown
++- Exigir revisão manual mesmo para candidatos resilientes
+diff --git a/dist/application/backtesting/StressScenarioService.js b/dist/application/backtesting/StressScenarioService.js
+new file mode 100644
+index 0000000..66a3d5a
+--- /dev/null
++++ b/dist/application/backtesting/StressScenarioService.js
+@@ -0,0 +1,65 @@
++"use strict";
++Object.defineProperty(exports, "__esModule", { value: true });
++exports.StressScenarioService = void 0;
++const DatasetEngine_1 = require("../../domain/research/DatasetEngine");
++const DataIntegrityValidator_1 = require("../../domain/research/DataIntegrityValidator");
++const StressScenarioAnalyzer_1 = require("../../domain/risk/StressScenarioAnalyzer");
++class StressScenarioService {
++    constructor(datasetEngine = new DatasetEngine_1.DatasetEngine(), integrityValidator = new DataIntegrityValidator_1.DataIntegrityValidator(), analyzer = new StressScenarioAnalyzer_1.StressScenarioAnalyzer()) {
++        this.datasetEngine = datasetEngine;
++        this.integrityValidator = integrityValidator;
++        this.analyzer = analyzer;
++    }
++    evaluate(input) {
++        const parsed = this.datasetEngine.parse(input);
++        const normalized = this.datasetEngine.normalize(parsed.records);
++        const integrity = this.integrityValidator.validate(normalized.records);
++        if (!integrity.valid) {
++            return {
++                status: 'REJECTED',
++                operationalGate: 'BLOCKED',
++                generatedAt: new Date().toISOString(),
++                datasetChecksum: normalized.checksum,
++                blockers: ['dataset_integrity_failed', ...integrity.issues.map(issue => issue.code).slice(0, 8)],
++                recommendations: ['Corrigir integridade do dataset antes de executar stress institucional.', 'Usar histórico maior, ordenado e sem valores inválidos.']
++            };
++        }
++        try {
++            const analysis = this.analyzer.analyze(normalized.records.map(record => record.value));
++            return {
++                status: analysis.summary.approval,
++                operationalGate: 'BLOCKED',
++                generatedAt: new Date().toISOString(),
++                datasetChecksum: normalized.checksum,
++                analysis,
++                blockers: analysis.summary.blockers,
++                recommendations: this.recommendations(analysis)
++            };
++        }
++        catch (error) {
++            return {
++                status: 'REJECTED',
++                operationalGate: 'BLOCKED',
++                generatedAt: new Date().toISOString(),
++                datasetChecksum: normalized.checksum,
++                blockers: ['stress_analysis_failed', error?.message ?? 'unknown_error'],
++                recommendations: ['Revisar tamanho e qualidade da amostra antes de repetir o stress test.']
++            };
++        }
++    }
++    recommendations(analysis) {
++        const recommendations = ['Manter gate operacional bloqueado: stress test é evidência de pesquisa, não autorização automática de stake.'];
++        if (analysis.summary.worstDrawdown > 0.25)
++            recommendations.push('Reduzir stake base ou reforçar filtros: drawdown sob stress acima do alvo prudencial.');
++        if (analysis.summary.worstRuinProbabilityProxy > 0.25)
++            recommendations.push('Executar Monte Carlo v2 e risk-of-ruin avançado antes de qualquer revisão operacional.');
++        if (analysis.summary.tailRiskScore > 0.35)
++            recommendations.push('Investigar cauda de perdas e clusters adversos com dataset independente.');
++        if (analysis.scenarios.some(scenario => scenario.riskGrade === 'FAIL'))
++            recommendations.push('Rejeitar hipótese até eliminar falhas em cenários críticos.');
++        if (analysis.summary.approval === 'RESILIENT_CANDIDATE')
++            recommendations.push('Submeter candidato a validação adversarial, bootstrap e revisão manual de risco.');
++        return [...new Set(recommendations)];
++    }
++}
++exports.StressScenarioService = StressScenarioService;
+diff --git a/dist/domain/risk/StressScenarioAnalyzer.js b/dist/domain/risk/StressScenarioAnalyzer.js
+new file mode 100644
+index 0000000..e1cbe42
+--- /dev/null
++++ b/dist/domain/risk/StressScenarioAnalyzer.js
+@@ -0,0 +1,192 @@
++"use strict";
++Object.defineProperty(exports, "__esModule", { value: true });
++exports.StressScenarioAnalyzer = void 0;
++const RouletteStats_1 = require("../services/RouletteStats");
++const DEFAULT_OPTIONS = {
++    initialEquity: 1,
++    baseStakeFraction: 0.01,
++    ruinThreshold: 0.5,
++    windowSize: 60,
++    maxExposureFraction: 0.03
++};
++const DEFAULT_SCENARIOS = [
++    { name: 'baseline_control', description: 'Replay determinístico com stake base e sem choques artificiais.', stakeMultiplier: 1, lossShockMultiplier: 1, winHaircut: 0 },
++    { name: 'double_stake_stress', description: 'Exposição dobrada para medir sensibilidade de drawdown.', stakeMultiplier: 2, lossShockMultiplier: 1, winHaircut: 0 },
++    { name: 'adverse_loss_cluster', description: 'Cluster adverso com perdas artificialmente amplificadas.', stakeMultiplier: 1.5, lossShockMultiplier: 1.35, winHaircut: 0.05, forcedLossEvery: 11 },
++    { name: 'payout_haircut', description: 'Redução conservadora de ganhos para simular fricção operacional.', stakeMultiplier: 1, lossShockMultiplier: 1, winHaircut: 0.18 },
++    { name: 'capital_pressure', description: 'Stress de exposição máxima e sequência desfavorável.', stakeMultiplier: 2.5, lossShockMultiplier: 1.5, winHaircut: 0.1, forcedLossEvery: 7 }
++];
++class StressScenarioAnalyzer {
++    constructor(options = {}) {
++        this.stats = new RouletteStats_1.RouletteStats();
++        this.options = { ...DEFAULT_OPTIONS, ...options };
++    }
++    analyze(history) {
++        const values = this.validate(history);
++        const sectors = values.map(value => this.stats.sectorOf(value));
++        const scenarios = DEFAULT_SCENARIOS.map(scenario => this.replayScenario(sectors, scenario));
++        const drawdownSurface = this.buildDrawdownSurface(sectors);
++        const summary = this.summarize(values.length, scenarios, drawdownSurface);
++        return { summary, scenarios, drawdownSurface, options: this.options };
++    }
++    validate(history) {
++        const result = RouletteStats_1.RouletteStats.validate(history);
++        if (!result.ok) {
++            throw new Error(`invalid_stress_history: ${result.errors.slice(0, 3).join('; ')}`);
++        }
++        if (result.values.length < Math.max(90, this.options.windowSize * 2)) {
++            throw new Error('insufficient_stress_history: minimum 120 valid spins recommended');
++        }
++        return result.values;
++    }
++    replayScenario(sectors, scenario) {
++        const target = this.learnStableTarget(sectors);
++        let equity = this.options.initialEquity;
++        let peak = equity;
++        let maxDrawdown = 0;
++        let underwaterRun = 0;
++        let longestUnderwaterRun = 0;
++        const returns = [];
++        const equityCurve = [];
++        sectors.forEach((sector, index) => {
++            const forcedLoss = scenario.forcedLossEvery !== undefined && index > 0 && index % scenario.forcedLossEvery === 0;
++            const won = !forcedLoss && sector === target;
++            const pnl = this.pnl(target, won, scenario);
++            equity *= 1 + Math.max(-0.99, pnl);
++            peak = Math.max(peak, equity);
++            const drawdown = peak <= 0 ? 0 : (peak - equity) / peak;
++            maxDrawdown = Math.max(maxDrawdown, drawdown);
++            underwaterRun = drawdown > 0 ? underwaterRun + 1 : 0;
++            longestUnderwaterRun = Math.max(longestUnderwaterRun, underwaterRun);
++            returns.push(pnl);
++            equityCurve.push({ index, equity: round(equity), drawdown: round(drawdown), underwater: drawdown > 0 });
++        });
++        const roi = equity / this.options.initialEquity - 1;
++        const tailLoss95 = this.tailLoss(returns, 0.95);
++        const recoveryFactor = maxDrawdown <= 0 ? Math.max(0, roi) : Math.max(0, roi) / maxDrawdown;
++        const exposureUtilization = Math.min(1, (this.options.baseStakeFraction * scenario.stakeMultiplier) / this.options.maxExposureFraction);
++        const ruinProbabilityProxy = this.ruinProxy(maxDrawdown, roi, tailLoss95, longestUnderwaterRun, sectors.length);
++        const riskGrade = this.grade(maxDrawdown, ruinProbabilityProxy, roi, tailLoss95);
++        return {
++            name: scenario.name,
++            description: scenario.description,
++            finalEquity: round(equity),
++            roi: round(roi),
++            maxDrawdown: round(maxDrawdown),
++            longestUnderwaterRun,
++            recoveryFactor: round(recoveryFactor),
++            exposureUtilization: round(exposureUtilization),
++            ruinProbabilityProxy: round(ruinProbabilityProxy),
++            tailLoss95: round(tailLoss95),
++            riskGrade,
++            equityCurve
++        };
++    }
++    learnStableTarget(sectors) {
++        const tradable = ['voisins', 'tiers', 'orphelins'];
++        const counts = new Map(tradable.map(sector => [sector, 0]));
++        for (const sector of sectors.slice(0, Math.max(30, Math.floor(sectors.length * 0.35)))) {
++            if (sector === 'voisins' || sector === 'tiers' || sector === 'orphelins')
++                counts.set(sector, (counts.get(sector) ?? 0) + 1);
++        }
++        return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0];
++    }
++    pnl(target, won, scenario) {
++        const stake = this.options.baseStakeFraction * scenario.stakeMultiplier;
++        if (!won)
++            return -stake * scenario.lossShockMultiplier;
++        const sectorSize = RouletteStats_1.RouletteStats.SECTORS[target]?.length ?? 0;
++        const payout = sectorSize > 0 ? RouletteStats_1.RouletteStats.EUROPEAN_WHEEL_SIZE / sectorSize - 1 : 0;
++        return stake * payout * Math.max(0, 1 - scenario.winHaircut);
++    }
++    buildDrawdownSurface(sectors) {
++        const stakeMultipliers = [0.5, 1, 1.5, 2, 2.5, 3];
++        const shockMultipliers = [1, 1.15, 1.3, 1.5];
++        return stakeMultipliers.flatMap(stakeMultiplier => shockMultipliers.map(shockMultiplier => {
++            const outcome = this.replayScenario(sectors, {
++                name: `surface_${stakeMultiplier}_${shockMultiplier}`,
++                description: 'Drawdown surface stress point.',
++                stakeMultiplier,
++                lossShockMultiplier: shockMultiplier,
++                winHaircut: Math.max(0, (shockMultiplier - 1) * 0.25)
++            });
++            return {
++                stakeMultiplier,
++                shockMultiplier,
++                maxDrawdown: outcome.maxDrawdown,
++                finalEquity: outcome.finalEquity,
++                ruinProbabilityProxy: outcome.ruinProbabilityProxy,
++                riskGrade: outcome.riskGrade
++            };
++        }));
++    }
++    summarize(sampleSize, scenarios, surface) {
++        const worstDrawdown = Math.max(...scenarios.map(item => item.maxDrawdown), ...surface.map(item => item.maxDrawdown), 0);
++        const worstRuinProbabilityProxy = Math.max(...scenarios.map(item => item.ruinProbabilityProxy), ...surface.map(item => item.ruinProbabilityProxy), 0);
++        const medianRecoveryFactor = median(scenarios.map(item => item.recoveryFactor));
++        const failedScenarios = scenarios.filter(item => item.riskGrade === 'FAIL').length;
++        const watchedScenarios = scenarios.filter(item => item.riskGrade === 'WATCH').length;
++        const surfaceFailRate = surface.length === 0 ? 1 : surface.filter(item => item.riskGrade === 'FAIL').length / surface.length;
++        const tailRiskScore = round(Math.min(1, worstRuinProbabilityProxy * 0.45 + worstDrawdown * 0.35 + surfaceFailRate * 0.2));
++        const resilienceScore = round(Math.max(0, 1 - tailRiskScore) * 0.5 + Math.min(1, medianRecoveryFactor) * 0.25 + Math.max(0, 1 - failedScenarios / Math.max(1, scenarios.length)) * 0.25);
++        const partial = { sampleSize, scenarios: scenarios.length, worstDrawdown: round(worstDrawdown), worstRuinProbabilityProxy: round(worstRuinProbabilityProxy), medianRecoveryFactor: round(medianRecoveryFactor), tailRiskScore, resilienceScore };
++        const blockers = this.blockers(partial, failedScenarios, watchedScenarios, surfaceFailRate);
++        return { ...partial, approval: this.approval(partial, blockers), blockers };
++    }
++    blockers(summary, failedScenarios, watchedScenarios, surfaceFailRate) {
++        const blockers = [];
++        if (summary.sampleSize < 180)
++            blockers.push('insufficient_stress_sample');
++        if (summary.worstDrawdown > 0.45)
++            blockers.push('catastrophic_drawdown_surface');
++        if (summary.worstRuinProbabilityProxy > 0.45)
++            blockers.push('ruin_probability_above_limit');
++        if (failedScenarios > 0)
++            blockers.push('stress_scenario_failed');
++        if (surfaceFailRate > 0.35)
++            blockers.push('drawdown_surface_failure_cluster');
++        if (watchedScenarios >= 3)
++            blockers.push('multiple_watch_scenarios');
++        if (summary.resilienceScore < 0.45)
++            blockers.push('low_resilience_score');
++        return blockers;
++    }
++    approval(summary, blockers) {
++        if (blockers.some(code => ['catastrophic_drawdown_surface', 'ruin_probability_above_limit', 'stress_scenario_failed', 'drawdown_surface_failure_cluster'].includes(code)))
++            return 'REJECTED';
++        if (summary.resilienceScore >= 0.68 && summary.tailRiskScore <= 0.28 && blockers.length === 0)
++            return 'RESILIENT_CANDIDATE';
++        return 'RESEARCH_REVIEW';
++    }
++    tailLoss(returns, percentile) {
++        const losses = returns.filter(value => value < 0).map(value => Math.abs(value)).sort((a, b) => a - b);
++        if (losses.length === 0)
++            return 0;
++        const index = Math.min(losses.length - 1, Math.max(0, Math.floor(losses.length * percentile) - 1));
++        return losses[index];
++    }
++    ruinProxy(maxDrawdown, roi, tailLoss95, longestUnderwaterRun, sampleSize) {
++        const underwaterPressure = sampleSize === 0 ? 1 : longestUnderwaterRun / sampleSize;
++        return Math.min(1, Math.max(0, maxDrawdown * 0.55 + tailLoss95 * 7.5 + underwaterPressure * 0.25 + (roi < 0 ? 0.2 : 0) - Math.max(0, roi) * 0.05));
++    }
++    grade(maxDrawdown, ruinProbabilityProxy, roi, tailLoss95) {
++        if (maxDrawdown > 0.45 || ruinProbabilityProxy > 0.45 || tailLoss95 > this.options.baseStakeFraction * 4 || roi < -0.35)
++            return 'FAIL';
++        if (maxDrawdown > 0.25 || ruinProbabilityProxy > 0.25 || roi < 0)
++            return 'WATCH';
++        return 'PASS';
++    }
++}
++exports.StressScenarioAnalyzer = StressScenarioAnalyzer;
++function median(values) {
++    if (values.length === 0)
++        return 0;
++    const sorted = [...values].sort((a, b) => a - b);
++    const middle = Math.floor(sorted.length / 2);
++    return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
++}
++function round(value) {
++    if (!Number.isFinite(value))
++        return 0;
++    return Number(value.toFixed(6));
++}
+diff --git a/dist/infrastructure/http/Server.js b/dist/infrastructure/http/Server.js
+index 0d9fc95..c85ed77 100644
+--- a/dist/infrastructure/http/Server.js
++++ b/dist/infrastructure/http/Server.js
+@@ -29,6 +29,7 @@ const PersistenceResearchService_1 = require("../../application/research/Persist
+ const ResearchReportingService_1 = require("../../application/research/ResearchReportingService");
+ const InstitutionalBacktestService_1 = require("../../application/backtesting/InstitutionalBacktestService");
+ const AdvancedWalkForwardService_1 = require("../../application/backtesting/AdvancedWalkForwardService");
++const StressScenarioService_1 = require("../../application/backtesting/StressScenarioService");
+ const config_1 = require("../../config");
+ class Server {
+     constructor(port, host, gemini, signalRepository) {
+@@ -56,6 +57,7 @@ class Server {
+         this.researchReportingService = new ResearchReportingService_1.ResearchReportingService(config_1.config.appVersion);
+         this.institutionalBacktestService = new InstitutionalBacktestService_1.InstitutionalBacktestService();
+         this.advancedWalkForwardService = new AdvancedWalkForwardService_1.AdvancedWalkForwardService();
++        this.stressScenarioService = new StressScenarioService_1.StressScenarioService();
+         this.app = (0, express_1.default)();
+         this.engine = new StrategyEngine_1.StrategyEngine();
+         this.configure();
+@@ -135,7 +137,12 @@ class Server {
+                     'drawdown-surface-analysis',
+                     'advanced-walk-forward-validation',
+                     'out-of-sample-consistency-analysis',
+-                    'overfit-risk-scoring'
++                    'overfit-risk-scoring',
++                    'stress-scenario-engine',
++                    'drawdown-surface-analysis-v2',
++                    'tail-risk-analysis',
++                    'capital-exposure-stress',
++                    'recovery-factor-analysis'
+                 ],
+                 gates: {
+                     minSampleSize: 120,
+@@ -210,6 +217,12 @@ class Server {
+             this.metrics.increment(`backtest.walk_forward_advanced.${report.status.toLowerCase()}`);
+             res.status(report.status === 'REJECTED' ? 422 : 200).json(report);
+         });
++        this.app.post('/api/backtest/stress/evaluate', (req, res) => {
++            const dataset = req.body?.dataset ?? req.body?.records ?? req.body?.history ?? req.body;
++            const report = this.stressScenarioService.evaluate(dataset);
++            this.metrics.increment(`backtest.stress.${report.status.toLowerCase()}`);
++            res.status(report.status === 'REJECTED' ? 422 : 200).json(report);
++        });
+         this.app.post('/api/strategy/analyze', async (req, res) => this.analyzeHistory(req, res));
+         this.app.post('/upload-history', async (req, res) => this.analyzeHistory(req, res));
+         this.app.post('/api/vision/analyze', upload.single('image'), async (req, res) => {
+diff --git a/package-lock.json b/package-lock.json
+index f2c3750..9542fc9 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -1,12 +1,12 @@
+ {
+   "name": "rl-sys-core",
+-  "version": "2.2.0",
++  "version": "2.3.0",
+   "lockfileVersion": 3,
+   "requires": true,
+   "packages": {
+     "": {
+       "name": "rl-sys-core",
+-      "version": "2.2.0",
++      "version": "2.3.0",
+       "license": "MIT",
+       "dependencies": {
+         "@google/generative-ai": "^0.24.1",
+diff --git a/package.json b/package.json
+index dbbba71..7371074 100644
+--- a/package.json
++++ b/package.json
+@@ -1,6 +1,6 @@
+ {
+   "name": "rl-sys-core",
+-  "version": "2.2.0",
++  "version": "2.3.0",
+   "description": "RL.sys Core - enterprise-grade institutional roulette research and risk engine",
+   "main": "dist/main.js",
+   "scripts": {
+diff --git a/src/application/backtesting/StressScenarioService.ts b/src/application/backtesting/StressScenarioService.ts
+new file mode 100644
+index 0000000..a70f927
+--- /dev/null
++++ b/src/application/backtesting/StressScenarioService.ts
+@@ -0,0 +1,72 @@
++import { DatasetEngine } from '../../domain/research/DatasetEngine';
++import { DataIntegrityValidator } from '../../domain/research/DataIntegrityValidator';
++import { StressScenarioAnalysis, StressScenarioAnalyzer } from '../../domain/risk/StressScenarioAnalyzer';
++
++export type StressScenarioStatus = 'REJECTED' | 'RESEARCH_REVIEW' | 'RESILIENT_CANDIDATE';
++
++export interface StressScenarioReport {
++  status: StressScenarioStatus;
++  operationalGate: 'BLOCKED';
++  generatedAt: string;
++  datasetChecksum: string;
++  analysis?: StressScenarioAnalysis;
++  blockers: string[];
++  recommendations: string[];
++}
++
++export class StressScenarioService {
++  constructor(
++    private readonly datasetEngine = new DatasetEngine(),
++    private readonly integrityValidator = new DataIntegrityValidator(),
++    private readonly analyzer = new StressScenarioAnalyzer()
++  ) {}
++
++  public evaluate(input: string | unknown[]): StressScenarioReport {
++    const parsed = this.datasetEngine.parse(input);
++    const normalized = this.datasetEngine.normalize(parsed.records);
++    const integrity = this.integrityValidator.validate(normalized.records);
++
++    if (!integrity.valid) {
++      return {
++        status: 'REJECTED',
++        operationalGate: 'BLOCKED',
++        generatedAt: new Date().toISOString(),
++        datasetChecksum: normalized.checksum,
++        blockers: ['dataset_integrity_failed', ...integrity.issues.map(issue => issue.code).slice(0, 8)],
++        recommendations: ['Corrigir integridade do dataset antes de executar stress institucional.', 'Usar histórico maior, ordenado e sem valores inválidos.']
++      };
++    }
++
++    try {
++      const analysis = this.analyzer.analyze(normalized.records.map(record => record.value));
++      return {
++        status: analysis.summary.approval,
++        operationalGate: 'BLOCKED',
++        generatedAt: new Date().toISOString(),
++        datasetChecksum: normalized.checksum,
++        analysis,
++        blockers: analysis.summary.blockers,
++        recommendations: this.recommendations(analysis)
++      };
++    } catch (error: any) {
++      return {
++        status: 'REJECTED',
++        operationalGate: 'BLOCKED',
++        generatedAt: new Date().toISOString(),
++        datasetChecksum: normalized.checksum,
++        blockers: ['stress_analysis_failed', error?.message ?? 'unknown_error'],
++        recommendations: ['Revisar tamanho e qualidade da amostra antes de repetir o stress test.']
++      };
++    }
++  }
++
++  private recommendations(analysis: StressScenarioAnalysis): string[] {
++    const recommendations = ['Manter gate operacional bloqueado: stress test é evidência de pesquisa, não autorização automática de stake.'];
++    if (analysis.summary.worstDrawdown > 0.25) recommendations.push('Reduzir stake base ou reforçar filtros: drawdown sob stress acima do alvo prudencial.');
++    if (analysis.summary.worstRuinProbabilityProxy > 0.25) recommendations.push('Executar Monte Carlo v2 e risk-of-ruin avançado antes de qualquer revisão operacional.');
++    if (analysis.summary.tailRiskScore > 0.35) recommendations.push('Investigar cauda de perdas e clusters adversos com dataset independente.');
++    if (analysis.scenarios.some(scenario => scenario.riskGrade === 'FAIL')) recommendations.push('Rejeitar hipótese até eliminar falhas em cenários críticos.');
++    if (analysis.summary.approval === 'RESILIENT_CANDIDATE') recommendations.push('Submeter candidato a validação adversarial, bootstrap e revisão manual de risco.');
++    return [...new Set(recommendations)];
++  }
++}
+diff --git a/src/domain/risk/StressScenarioAnalyzer.ts b/src/domain/risk/StressScenarioAnalyzer.ts
+new file mode 100644
+index 0000000..56ce5ab
+--- /dev/null
++++ b/src/domain/risk/StressScenarioAnalyzer.ts
+@@ -0,0 +1,263 @@
++import { RouletteSectorName, RouletteStats } from '../services/RouletteStats';
++
++type TradableSector = Exclude<RouletteSectorName, 'zero' | 'unknown'>;
++
++export interface StressScenarioOptions {
++  initialEquity: number;
++  baseStakeFraction: number;
++  ruinThreshold: number;
++  windowSize: number;
++  maxExposureFraction: number;
++}
++
++export interface StressScenarioDefinition {
++  name: string;
++  description: string;
++  stakeMultiplier: number;
++  lossShockMultiplier: number;
++  winHaircut: number;
++  forcedLossEvery?: number;
++}
++
++export interface EquityPoint {
++  index: number;
++  equity: number;
++  drawdown: number;
++  underwater: boolean;
++}
++
++export interface StressScenarioOutcome {
++  name: string;
++  description: string;
++  finalEquity: number;
++  roi: number;
++  maxDrawdown: number;
++  longestUnderwaterRun: number;
++  recoveryFactor: number;
++  exposureUtilization: number;
++  ruinProbabilityProxy: number;
++  tailLoss95: number;
++  riskGrade: 'PASS' | 'WATCH' | 'FAIL';
++  equityCurve: EquityPoint[];
++}
++
++export interface DrawdownSurfaceCell {
++  stakeMultiplier: number;
++  shockMultiplier: number;
++  maxDrawdown: number;
++  finalEquity: number;
++  ruinProbabilityProxy: number;
++  riskGrade: 'PASS' | 'WATCH' | 'FAIL';
++}
++
++export interface StressScenarioSummary {
++  sampleSize: number;
++  scenarios: number;
++  worstDrawdown: number;
++  worstRuinProbabilityProxy: number;
++  medianRecoveryFactor: number;
++  tailRiskScore: number;
++  resilienceScore: number;
++  approval: 'REJECTED' | 'RESEARCH_REVIEW' | 'RESILIENT_CANDIDATE';
++  blockers: string[];
++}
++
++export interface StressScenarioAnalysis {
++  summary: StressScenarioSummary;
++  scenarios: StressScenarioOutcome[];
++  drawdownSurface: DrawdownSurfaceCell[];
++  options: StressScenarioOptions;
++}
++
++const DEFAULT_OPTIONS: StressScenarioOptions = {
++  initialEquity: 1,
++  baseStakeFraction: 0.01,
++  ruinThreshold: 0.5,
++  windowSize: 60,
++  maxExposureFraction: 0.03
++};
++
++const DEFAULT_SCENARIOS: StressScenarioDefinition[] = [
++  { name: 'baseline_control', description: 'Replay determinístico com stake base e sem choques artificiais.', stakeMultiplier: 1, lossShockMultiplier: 1, winHaircut: 0 },
++  { name: 'double_stake_stress', description: 'Exposição dobrada para medir sensibilidade de drawdown.', stakeMultiplier: 2, lossShockMultiplier: 1, winHaircut: 0 },
++  { name: 'adverse_loss_cluster', description: 'Cluster adverso com perdas artificialmente amplificadas.', stakeMultiplier: 1.5, lossShockMultiplier: 1.35, winHaircut: 0.05, forcedLossEvery: 11 },
++  { name: 'payout_haircut', description: 'Redução conservadora de ganhos para simular fricção operacional.', stakeMultiplier: 1, lossShockMultiplier: 1, winHaircut: 0.18 },
++  { name: 'capital_pressure', description: 'Stress de exposição máxima e sequência desfavorável.', stakeMultiplier: 2.5, lossShockMultiplier: 1.5, winHaircut: 0.1, forcedLossEvery: 7 }
++];
++
++export class StressScenarioAnalyzer {
++  private readonly stats = new RouletteStats();
++  private readonly options: StressScenarioOptions;
++
++  constructor(options: Partial<StressScenarioOptions> = {}) {
++    this.options = { ...DEFAULT_OPTIONS, ...options };
++  }
++
++  public analyze(history: number[]): StressScenarioAnalysis {
++    const values = this.validate(history);
++    const sectors = values.map(value => this.stats.sectorOf(value));
++    const scenarios = DEFAULT_SCENARIOS.map(scenario => this.replayScenario(sectors, scenario));
++    const drawdownSurface = this.buildDrawdownSurface(sectors);
++    const summary = this.summarize(values.length, scenarios, drawdownSurface);
++    return { summary, scenarios, drawdownSurface, options: this.options };
++  }
++
++  private validate(history: number[]): number[] {
++    const result = RouletteStats.validate(history);
++    if (!result.ok) {
++      throw new Error(`invalid_stress_history: ${result.errors.slice(0, 3).join('; ')}`);
++    }
++    if (result.values.length < Math.max(90, this.options.windowSize * 2)) {
++      throw new Error('insufficient_stress_history: minimum 120 valid spins recommended');
++    }
++    return result.values;
++  }
++
++  private replayScenario(sectors: RouletteSectorName[], scenario: StressScenarioDefinition): StressScenarioOutcome {
++    const target = this.learnStableTarget(sectors);
++    let equity = this.options.initialEquity;
++    let peak = equity;
++    let maxDrawdown = 0;
++    let underwaterRun = 0;
++    let longestUnderwaterRun = 0;
++    const returns: number[] = [];
++    const equityCurve: EquityPoint[] = [];
++
++    sectors.forEach((sector, index) => {
++      const forcedLoss = scenario.forcedLossEvery !== undefined && index > 0 && index % scenario.forcedLossEvery === 0;
++      const won = !forcedLoss && sector === target;
++      const pnl = this.pnl(target, won, scenario);
++      equity *= 1 + Math.max(-0.99, pnl);
++      peak = Math.max(peak, equity);
++      const drawdown = peak <= 0 ? 0 : (peak - equity) / peak;
++      maxDrawdown = Math.max(maxDrawdown, drawdown);
++      underwaterRun = drawdown > 0 ? underwaterRun + 1 : 0;
++      longestUnderwaterRun = Math.max(longestUnderwaterRun, underwaterRun);
++      returns.push(pnl);
++      equityCurve.push({ index, equity: round(equity), drawdown: round(drawdown), underwater: drawdown > 0 });
++    });
++
++    const roi = equity / this.options.initialEquity - 1;
++    const tailLoss95 = this.tailLoss(returns, 0.95);
++    const recoveryFactor = maxDrawdown <= 0 ? Math.max(0, roi) : Math.max(0, roi) / maxDrawdown;
++    const exposureUtilization = Math.min(1, (this.options.baseStakeFraction * scenario.stakeMultiplier) / this.options.maxExposureFraction);
++    const ruinProbabilityProxy = this.ruinProxy(maxDrawdown, roi, tailLoss95, longestUnderwaterRun, sectors.length);
++    const riskGrade = this.grade(maxDrawdown, ruinProbabilityProxy, roi, tailLoss95);
++
++    return {
++      name: scenario.name,
++      description: scenario.description,
++      finalEquity: round(equity),
++      roi: round(roi),
++      maxDrawdown: round(maxDrawdown),
++      longestUnderwaterRun,
++      recoveryFactor: round(recoveryFactor),
++      exposureUtilization: round(exposureUtilization),
++      ruinProbabilityProxy: round(ruinProbabilityProxy),
++      tailLoss95: round(tailLoss95),
++      riskGrade,
++      equityCurve
++    };
++  }
++
++  private learnStableTarget(sectors: RouletteSectorName[]): TradableSector {
++    const tradable: TradableSector[] = ['voisins', 'tiers', 'orphelins'];
++    const counts = new Map<TradableSector, number>(tradable.map(sector => [sector, 0]));
++    for (const sector of sectors.slice(0, Math.max(30, Math.floor(sectors.length * 0.35)))) {
++      if (sector === 'voisins' || sector === 'tiers' || sector === 'orphelins') counts.set(sector, (counts.get(sector) ?? 0) + 1);
++    }
++    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0];
++  }
++
++  private pnl(target: TradableSector, won: boolean, scenario: StressScenarioDefinition): number {
++    const stake = this.options.baseStakeFraction * scenario.stakeMultiplier;
++    if (!won) return -stake * scenario.lossShockMultiplier;
++    const sectorSize = RouletteStats.SECTORS[target]?.length ?? 0;
++    const payout = sectorSize > 0 ? RouletteStats.EUROPEAN_WHEEL_SIZE / sectorSize - 1 : 0;
++    return stake * payout * Math.max(0, 1 - scenario.winHaircut);
++  }
++
++  private buildDrawdownSurface(sectors: RouletteSectorName[]): DrawdownSurfaceCell[] {
++    const stakeMultipliers = [0.5, 1, 1.5, 2, 2.5, 3];
++    const shockMultipliers = [1, 1.15, 1.3, 1.5];
++    return stakeMultipliers.flatMap(stakeMultiplier => shockMultipliers.map(shockMultiplier => {
++      const outcome = this.replayScenario(sectors, {
++        name: `surface_${stakeMultiplier}_${shockMultiplier}`,
++        description: 'Drawdown surface stress point.',
++        stakeMultiplier,
++        lossShockMultiplier: shockMultiplier,
++        winHaircut: Math.max(0, (shockMultiplier - 1) * 0.25)
++      });
++      return {
++        stakeMultiplier,
++        shockMultiplier,
++        maxDrawdown: outcome.maxDrawdown,
++        finalEquity: outcome.finalEquity,
++        ruinProbabilityProxy: outcome.ruinProbabilityProxy,
++        riskGrade: outcome.riskGrade
++      };
++    }));
++  }
++
++  private summarize(sampleSize: number, scenarios: StressScenarioOutcome[], surface: DrawdownSurfaceCell[]): StressScenarioSummary {
++    const worstDrawdown = Math.max(...scenarios.map(item => item.maxDrawdown), ...surface.map(item => item.maxDrawdown), 0);
++    const worstRuinProbabilityProxy = Math.max(...scenarios.map(item => item.ruinProbabilityProxy), ...surface.map(item => item.ruinProbabilityProxy), 0);
++    const medianRecoveryFactor = median(scenarios.map(item => item.recoveryFactor));
++    const failedScenarios = scenarios.filter(item => item.riskGrade === 'FAIL').length;
++    const watchedScenarios = scenarios.filter(item => item.riskGrade === 'WATCH').length;
++    const surfaceFailRate = surface.length === 0 ? 1 : surface.filter(item => item.riskGrade === 'FAIL').length / surface.length;
++    const tailRiskScore = round(Math.min(1, worstRuinProbabilityProxy * 0.45 + worstDrawdown * 0.35 + surfaceFailRate * 0.2));
++    const resilienceScore = round(Math.max(0, 1 - tailRiskScore) * 0.5 + Math.min(1, medianRecoveryFactor) * 0.25 + Math.max(0, 1 - failedScenarios / Math.max(1, scenarios.length)) * 0.25);
++    const partial = { sampleSize, scenarios: scenarios.length, worstDrawdown: round(worstDrawdown), worstRuinProbabilityProxy: round(worstRuinProbabilityProxy), medianRecoveryFactor: round(medianRecoveryFactor), tailRiskScore, resilienceScore };
++    const blockers = this.blockers(partial, failedScenarios, watchedScenarios, surfaceFailRate);
++    return { ...partial, approval: this.approval(partial, blockers), blockers };
++  }
++
++  private blockers(summary: Omit<StressScenarioSummary, 'approval' | 'blockers'>, failedScenarios: number, watchedScenarios: number, surfaceFailRate: number): string[] {
++    const blockers: string[] = [];
++    if (summary.sampleSize < 180) blockers.push('insufficient_stress_sample');
++    if (summary.worstDrawdown > 0.45) blockers.push('catastrophic_drawdown_surface');
++    if (summary.worstRuinProbabilityProxy > 0.45) blockers.push('ruin_probability_above_limit');
++    if (failedScenarios > 0) blockers.push('stress_scenario_failed');
++    if (surfaceFailRate > 0.35) blockers.push('drawdown_surface_failure_cluster');
++    if (watchedScenarios >= 3) blockers.push('multiple_watch_scenarios');
++    if (summary.resilienceScore < 0.45) blockers.push('low_resilience_score');
++    return blockers;
++  }
++
++  private approval(summary: Omit<StressScenarioSummary, 'approval' | 'blockers'>, blockers: string[]): StressScenarioSummary['approval'] {
++    if (blockers.some(code => ['catastrophic_drawdown_surface', 'ruin_probability_above_limit', 'stress_scenario_failed', 'drawdown_surface_failure_cluster'].includes(code))) return 'REJECTED';
++    if (summary.resilienceScore >= 0.68 && summary.tailRiskScore <= 0.28 && blockers.length === 0) return 'RESILIENT_CANDIDATE';
++    return 'RESEARCH_REVIEW';
++  }
++
++  private tailLoss(returns: number[], percentile: number): number {
++    const losses = returns.filter(value => value < 0).map(value => Math.abs(value)).sort((a, b) => a - b);
++    if (losses.length === 0) return 0;
++    const index = Math.min(losses.length - 1, Math.max(0, Math.floor(losses.length * percentile) - 1));
++    return losses[index];
++  }
++
++  private ruinProxy(maxDrawdown: number, roi: number, tailLoss95: number, longestUnderwaterRun: number, sampleSize: number): number {
++    const underwaterPressure = sampleSize === 0 ? 1 : longestUnderwaterRun / sampleSize;
++    return Math.min(1, Math.max(0, maxDrawdown * 0.55 + tailLoss95 * 7.5 + underwaterPressure * 0.25 + (roi < 0 ? 0.2 : 0) - Math.max(0, roi) * 0.05));
++  }
++
++  private grade(maxDrawdown: number, ruinProbabilityProxy: number, roi: number, tailLoss95: number): StressScenarioOutcome['riskGrade'] {
++    if (maxDrawdown > 0.45 || ruinProbabilityProxy > 0.45 || tailLoss95 > this.options.baseStakeFraction * 4 || roi < -0.35) return 'FAIL';
++    if (maxDrawdown > 0.25 || ruinProbabilityProxy > 0.25 || roi < 0) return 'WATCH';
++    return 'PASS';
++  }
++}
++
++function median(values: number[]): number {
++  if (values.length === 0) return 0;
++  const sorted = [...values].sort((a, b) => a - b);
++  const middle = Math.floor(sorted.length / 2);
++  return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
++}
++
++function round(value: number): number {
++  if (!Number.isFinite(value)) return 0;
++  return Number(value.toFixed(6));
++}
+diff --git a/src/infrastructure/http/Server.ts b/src/infrastructure/http/Server.ts
+index 10a406a..b8a5f34 100644
+--- a/src/infrastructure/http/Server.ts
++++ b/src/infrastructure/http/Server.ts
+@@ -25,6 +25,7 @@ import { PersistenceResearchService } from '../../application/research/Persisten
+ import { ResearchReportingService } from '../../application/research/ResearchReportingService';
+ import { InstitutionalBacktestService } from '../../application/backtesting/InstitutionalBacktestService';
+ import { AdvancedWalkForwardService } from '../../application/backtesting/AdvancedWalkForwardService';
++import { StressScenarioService } from '../../application/backtesting/StressScenarioService';
+ import { config } from '../../config';
+ 
+ interface AnalyzePayload {
+@@ -58,6 +59,7 @@ export class Server {
+   private readonly researchReportingService = new ResearchReportingService(config.appVersion);
+   private readonly institutionalBacktestService = new InstitutionalBacktestService();
+   private readonly advancedWalkForwardService = new AdvancedWalkForwardService();
++  private readonly stressScenarioService = new StressScenarioService();
+   private httpServer?: ReturnType<Express['listen']>;
+ 
+   constructor(
+@@ -152,7 +154,12 @@ export class Server {
+           'drawdown-surface-analysis',
+           'advanced-walk-forward-validation',
+           'out-of-sample-consistency-analysis',
+-          'overfit-risk-scoring'
++          'overfit-risk-scoring',
++          'stress-scenario-engine',
++          'drawdown-surface-analysis-v2',
++          'tail-risk-analysis',
++          'capital-exposure-stress',
++          'recovery-factor-analysis'
+         ],
+         gates: {
+           minSampleSize: 120,
+@@ -248,6 +255,15 @@ export class Server {
+       res.status(report.status === 'REJECTED' ? 422 : 200).json(report);
+     });
+ 
++
++
++    this.app.post('/api/backtest/stress/evaluate', (req, res) => {
++      const dataset = req.body?.dataset ?? req.body?.records ?? req.body?.history ?? req.body;
++      const report = this.stressScenarioService.evaluate(dataset);
++      this.metrics.increment(`backtest.stress.${report.status.toLowerCase()}`);
++      res.status(report.status === 'REJECTED' ? 422 : 200).json(report);
++    });
++
+     this.app.post('/api/strategy/analyze', async (req, res) => this.analyzeHistory(req, res));
+     this.app.post('/upload-history', async (req, res) => this.analyzeHistory(req, res));
+ 
+diff --git a/tests/stress-scenario-analyzer.test.js b/tests/stress-scenario-analyzer.test.js
+new file mode 100644
+index 0000000..6f9b8c3
+--- /dev/null
++++ b/tests/stress-scenario-analyzer.test.js
+@@ -0,0 +1,27 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { StressScenarioAnalyzer } = require('../dist/domain/risk/StressScenarioAnalyzer');
++
++const rotating = Array.from({ length: 240 }, (_, index) => index % 37);
++const concentrated = Array.from({ length: 260 }, (_, index) => index % 5 === 0 ? 17 : [17, 34, 6, 13, 36, 11][index % 6]);
++
++test('StressScenarioAnalyzer returns bounded stress metrics and drawdown surface', () => {
++  const result = new StressScenarioAnalyzer().analyze(rotating);
++  assert.equal(result.summary.sampleSize, rotating.length);
++  assert.ok(result.scenarios.length >= 5);
++  assert.ok(result.drawdownSurface.length >= 12);
++  assert.ok(result.summary.worstDrawdown >= 0 && result.summary.worstDrawdown <= 1);
++  assert.ok(result.summary.tailRiskScore >= 0 && result.summary.tailRiskScore <= 1);
++  assert.ok(result.summary.resilienceScore >= 0 && result.summary.resilienceScore <= 1);
++});
++
++test('StressScenarioAnalyzer rejects invalid roulette histories', () => {
++  assert.throws(() => new StressScenarioAnalyzer().analyze([1, 2, 99, 4]), /invalid_stress_history/);
++});
++
++test('StressScenarioAnalyzer flags aggressive capital pressure without opening operational gate', () => {
++  const result = new StressScenarioAnalyzer({ baseStakeFraction: 0.02 }).analyze(concentrated);
++  assert.ok(['REJECTED', 'RESEARCH_REVIEW', 'RESILIENT_CANDIDATE'].includes(result.summary.approval));
++  assert.ok(result.scenarios.some(scenario => ['WATCH', 'FAIL', 'PASS'].includes(scenario.riskGrade)));
++  assert.ok(result.summary.worstRuinProbabilityProxy >= 0 && result.summary.worstRuinProbabilityProxy <= 1);
++});
+diff --git a/tests/stress-scenario-service.test.js b/tests/stress-scenario-service.test.js
+new file mode 100644
+index 0000000..970d904
+--- /dev/null
++++ b/tests/stress-scenario-service.test.js
+@@ -0,0 +1,20 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { StressScenarioService } = require('../dist/application/backtesting/StressScenarioService');
++
++const csv = 'spin,timestamp\n' + Array.from({ length: 220 }, (_, index) => `${index % 37},2026-01-01T00:${String(index % 60).padStart(2, '0')}:00Z`).join('\n');
++
++test('StressScenarioService returns institutional stress report with blocked gate', () => {
++  const report = new StressScenarioService().evaluate(csv);
++  assert.equal(report.operationalGate, 'BLOCKED');
++  assert.ok(report.datasetChecksum.length > 10);
++  assert.ok(report.analysis.summary.scenarios >= 5);
++  assert.ok(Array.isArray(report.recommendations));
++});
++
++test('StressScenarioService rejects corrupted datasets', () => {
++  const report = new StressScenarioService().evaluate([{ value: 1 }, { value: 88 }]);
++  assert.equal(report.status, 'REJECTED');
++  assert.equal(report.operationalGate, 'BLOCKED');
++  assert.ok(report.blockers.includes('dataset_integrity_failed'));
++});

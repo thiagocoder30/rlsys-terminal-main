@@ -25,6 +25,7 @@ import { PersistenceResearchService } from '../../application/research/Persisten
 import { ResearchReportingService } from '../../application/research/ResearchReportingService';
 import { InstitutionalBacktestService } from '../../application/backtesting/InstitutionalBacktestService';
 import { AdvancedWalkForwardService } from '../../application/backtesting/AdvancedWalkForwardService';
+import { StressScenarioService } from '../../application/backtesting/StressScenarioService';
 import { config } from '../../config';
 
 interface AnalyzePayload {
@@ -58,6 +59,7 @@ export class Server {
   private readonly researchReportingService = new ResearchReportingService(config.appVersion);
   private readonly institutionalBacktestService = new InstitutionalBacktestService();
   private readonly advancedWalkForwardService = new AdvancedWalkForwardService();
+  private readonly stressScenarioService = new StressScenarioService();
   private httpServer?: ReturnType<Express['listen']>;
 
   constructor(
@@ -152,7 +154,12 @@ export class Server {
           'drawdown-surface-analysis',
           'advanced-walk-forward-validation',
           'out-of-sample-consistency-analysis',
-          'overfit-risk-scoring'
+          'overfit-risk-scoring',
+          'stress-scenario-engine',
+          'drawdown-surface-analysis-v2',
+          'tail-risk-analysis',
+          'capital-exposure-stress',
+          'recovery-factor-analysis'
         ],
         gates: {
           minSampleSize: 120,
@@ -245,6 +252,15 @@ export class Server {
       const dataset = req.body?.dataset ?? req.body?.records ?? req.body?.history ?? req.body;
       const report = this.advancedWalkForwardService.evaluate(dataset);
       this.metrics.increment(`backtest.walk_forward_advanced.${report.status.toLowerCase()}`);
+      res.status(report.status === 'REJECTED' ? 422 : 200).json(report);
+    });
+
+
+
+    this.app.post('/api/backtest/stress/evaluate', (req, res) => {
+      const dataset = req.body?.dataset ?? req.body?.records ?? req.body?.history ?? req.body;
+      const report = this.stressScenarioService.evaluate(dataset);
+      this.metrics.increment(`backtest.stress.${report.status.toLowerCase()}`);
       res.status(report.status === 'REJECTED' ? 422 : 200).json(report);
     });
 
