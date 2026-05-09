@@ -27,6 +27,7 @@ import { InstitutionalBacktestService } from '../../application/backtesting/Inst
 import { AdvancedWalkForwardService } from '../../application/backtesting/AdvancedWalkForwardService';
 import { StressScenarioService } from '../../application/backtesting/StressScenarioService';
 import { CapitalExposureService } from '../../application/backtesting/CapitalExposureService';
+import { MonteCarloV2Service } from '../../application/backtesting/MonteCarloV2Service';
 import { config } from '../../config';
 
 interface AnalyzePayload {
@@ -62,6 +63,7 @@ export class Server {
   private readonly advancedWalkForwardService = new AdvancedWalkForwardService();
   private readonly stressScenarioService = new StressScenarioService();
   private readonly capitalExposureService = new CapitalExposureService();
+  private readonly monteCarloV2Service = new MonteCarloV2Service();
   private httpServer?: ReturnType<Express['listen']>;
 
   constructor(
@@ -166,7 +168,12 @@ export class Server {
           'advanced-risk-of-ruin',
           'equity-curve-simulation',
           'underwater-curve-analysis',
-          'exposure-throttling-governance'
+          'exposure-throttling-governance',
+          'monte-carlo-v2',
+          'bootstrap-resampling',
+          'confidence-bands',
+          'sequence-dependency-risk',
+          'tail-risk-bootstrap-analysis'
         ],
         gates: {
           minSampleSize: 120,
@@ -276,6 +283,14 @@ export class Server {
       const dataset = req.body?.dataset ?? req.body?.records ?? req.body?.history ?? req.body;
       const report = this.capitalExposureService.evaluate(dataset);
       this.metrics.increment(`backtest.capital_exposure.${report.status.toLowerCase()}`);
+      res.status(report.status === 'REJECTED' ? 422 : 200).json(report);
+    });
+
+
+    this.app.post('/api/backtest/monte-carlo/v2/evaluate', (req, res) => {
+      const dataset = req.body?.dataset ?? req.body?.records ?? req.body?.history ?? req.body;
+      const report = this.monteCarloV2Service.evaluate(dataset);
+      this.metrics.increment(`backtest.monte_carlo_v2.${report.status.toLowerCase()}`);
       res.status(report.status === 'REJECTED' ? 422 : 200).json(report);
     });
 
