@@ -22,6 +22,7 @@ import { ResearchDatasetService } from '../../application/research/ResearchDatas
 import { StatisticalResearchService } from '../../application/research/StatisticalResearchService';
 import { SequentialResearchService } from '../../application/research/SequentialResearchService';
 import { PersistenceResearchService } from '../../application/research/PersistenceResearchService';
+import { ResearchReportingService } from '../../application/research/ResearchReportingService';
 import { config } from '../../config';
 
 interface AnalyzePayload {
@@ -52,6 +53,7 @@ export class Server {
   private readonly statisticalResearchService = new StatisticalResearchService();
   private readonly sequentialResearchService = new SequentialResearchService();
   private readonly persistenceResearchService = new PersistenceResearchService();
+  private readonly researchReportingService = new ResearchReportingService(config.appVersion);
   private httpServer?: ReturnType<Express['listen']>;
 
   constructor(
@@ -136,7 +138,10 @@ export class Server {
           'temporal-clustering-analysis',
           'edge-persistence-analysis',
           'edge-decay-modeling',
-          'out-of-sample-consistency'
+          'out-of-sample-consistency',
+          'unified-research-reporting',
+          'reproducible-research-envelope',
+          'research-audit-trail'
         ],
         gates: {
           minSampleSize: 120,
@@ -206,6 +211,14 @@ export class Server {
       const report = this.persistenceResearchService.evaluate(dataset);
       this.metrics.increment(`research.persistence.${report.status.toLowerCase()}`);
       res.status(report.status === 'REJECTED' ? 422 : 200).json(report);
+    });
+
+
+    this.app.post('/api/research/report/evaluate', (req, res) => {
+      const dataset = req.body?.dataset ?? req.body?.records ?? req.body?.history ?? req.body;
+      const report = this.researchReportingService.evaluate(dataset);
+      this.metrics.increment(`research.report.${report.executiveSummary.status.toLowerCase()}`);
+      res.status(report.executiveSummary.status === 'REJECTED' ? 422 : 200).json(report);
     });
 
     this.app.post('/api/strategy/analyze', async (req, res) => this.analyzeHistory(req, res));
