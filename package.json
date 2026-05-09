@@ -1,6 +1,6 @@
 {
   "name": "rl-sys-core",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "RL.sys Core - enterprise-grade institutional roulette research and risk engine",
   "main": "dist/main.js",
   "scripts": {
