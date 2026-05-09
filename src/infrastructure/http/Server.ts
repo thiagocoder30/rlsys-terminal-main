@@ -19,6 +19,7 @@ import { ConfigValidator } from '../../application/config/ConfigValidator';
 import { ReleaseReadinessService } from '../../application/release/ReleaseReadinessService';
 import { securityHeaders } from './middleware/securityHeaders';
 import { ResearchDatasetService } from '../../application/research/ResearchDatasetService';
+import { StatisticalResearchService } from '../../application/research/StatisticalResearchService';
 import { config } from '../../config';
 
 interface AnalyzePayload {
@@ -46,6 +47,7 @@ export class Server {
   private readonly bayesianEdgeValidator = new BayesianEdgeValidator();
   private readonly regimeDetector = new RegimeDetector();
   private readonly researchDatasetService = new ResearchDatasetService();
+  private readonly statisticalResearchService = new StatisticalResearchService();
   private httpServer?: ReturnType<Express['listen']>;
 
   constructor(
@@ -122,7 +124,9 @@ export class Server {
           'structured-logging',
           'runtime-metrics',
           'readiness-checks',
-          'research-dataset-integrity'
+          'research-dataset-integrity',
+          'statistical-significance-engine',
+          'hypothesis-validation'
         ],
         gates: {
           minSampleSize: 120,
@@ -164,6 +168,15 @@ export class Server {
       const dataset = req.body?.dataset ?? req.body?.records ?? req.body?.history ?? req.body;
       const report = this.researchDatasetService.evaluate(dataset);
       this.metrics.increment(`research.dataset.${report.status.toLowerCase()}`);
+      res.status(report.status === 'REJECTED' ? 422 : 200).json(report);
+    });
+
+
+
+    this.app.post('/api/research/statistics/evaluate', (req, res) => {
+      const dataset = req.body?.dataset ?? req.body?.records ?? req.body?.history ?? req.body;
+      const report = this.statisticalResearchService.evaluate(dataset);
+      this.metrics.increment(`research.statistics.${report.status.toLowerCase()}`);
       res.status(report.status === 'REJECTED' ? 422 : 200).json(report);
     });
 
