@@ -1,0 +1,550 @@
+diff --git a/RELATORIO_TECNICO_SPRINT_1_1.md b/RELATORIO_TECNICO_SPRINT_1_1.md
+new file mode 100644
+index 0000000..d7dd865
+--- /dev/null
++++ b/RELATORIO_TECNICO_SPRINT_1_1.md
+@@ -0,0 +1,21 @@
++# RL.SYS Sprint 1.1 — Quant Research Foundation
++
++## Objetivo
++Criar a fundação científica para ingestão, normalização e validação de datasets históricos de roleta antes de qualquer inferência de edge.
++
++## Entregas
++- `DatasetEngine`: parser para JSON, CSV e texto simples.
++- `DataIntegrityValidator`: validação institucional de integridade, cobertura, repetição e cronologia.
++- `ResearchDatasetService`: orquestra parse, normalização, checksum, score e recomendações.
++- Endpoint `/api/research/dataset/evaluate`.
++- Testes automatizados cobrindo parse, checksum, rejeição e recomendações.
++
++## Critérios de governança
++- Dataset pequeno é bloqueado como pesquisa insuficiente.
++- Spins fora do domínio 0-36 são rejeitados.
++- Checksums SHA-256 dão rastreabilidade aos registros normalizados.
++- Timestamps são normalizados em ISO-8601 quando disponíveis.
++- O sistema recomenda coleta massiva antes de qualquer alegação de edge.
++
++## Status
++Build e testes validados em ambiente Node/TypeScript.
+diff --git a/package-lock.json b/package-lock.json
+index 9fe4ec9..7d20511 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -1,12 +1,12 @@
+ {
+   "name": "rl-sys-core",
+-  "version": "1.0.0",
++  "version": "1.1.0",
+   "lockfileVersion": 3,
+   "requires": true,
+   "packages": {
+     "": {
+       "name": "rl-sys-core",
+-      "version": "1.0.0",
++      "version": "1.1.0",
+       "license": "MIT",
+       "dependencies": {
+         "@google/generative-ai": "^0.24.1",
+diff --git a/package.json b/package.json
+index 65fd252..e7459f8 100644
+--- a/package.json
++++ b/package.json
+@@ -1,7 +1,7 @@
+ {
+   "name": "rl-sys-core",
+-  "version": "1.0.0",
+-  "description": "RL.sys Core - enterprise-grade institutional roulette analysis engine with release readiness, observability, Bayesian governance and risk controls",
++  "version": "1.1.0",
++  "description": "RL.sys Core - enterprise-grade institutional roulette research and risk engine",
+   "main": "dist/main.js",
+   "scripts": {
+     "start": "node dist/main.js",
+diff --git a/src/application/research/ResearchDatasetService.ts b/src/application/research/ResearchDatasetService.ts
+new file mode 100644
+index 0000000..7469215
+--- /dev/null
++++ b/src/application/research/ResearchDatasetService.ts
+@@ -0,0 +1,46 @@
++import { DatasetEngine, DatasetNormalizationResult, DatasetParseResult } from '../../domain/research/DatasetEngine';
++import { DataIntegrityValidator, IntegrityReport } from '../../domain/research/DataIntegrityValidator';
++
++export interface ResearchDatasetReport {
++  status: 'ACCEPTED' | 'REJECTED' | 'REVIEW';
++  parse: DatasetParseResult;
++  normalized: DatasetNormalizationResult;
++  integrity: IntegrityReport;
++  recommendations: string[];
++}
++
++export class ResearchDatasetService {
++  constructor(
++    private readonly datasetEngine = new DatasetEngine(),
++    private readonly integrityValidator = new DataIntegrityValidator()
++  ) {}
++
++  public evaluate(input: string | unknown[]): ResearchDatasetReport {
++    const parse = this.datasetEngine.parse(input);
++    const normalized = this.datasetEngine.normalize(parse.records);
++    const integrity = this.integrityValidator.validate(normalized.records);
++    const rejectedRatio = parse.records.length + parse.rejectedRows.length === 0
++      ? 1
++      : parse.rejectedRows.length / (parse.records.length + parse.rejectedRows.length);
++
++    const recommendations = this.recommend(integrity, rejectedRatio);
++    const status = !integrity.valid || rejectedRatio > 0.1
++      ? 'REJECTED'
++      : integrity.score >= 0.85 && rejectedRatio === 0
++        ? 'ACCEPTED'
++        : 'REVIEW';
++
++    return { status, parse, normalized, integrity, recommendations };
++  }
++
++  private recommend(integrity: IntegrityReport, rejectedRatio: number): string[] {
++    const recommendations: string[] = [];
++    if (integrity.totalRecords < 10_000) recommendations.push('Aumentar dataset para milhares/dezenas de milhares de spins antes de inferir edge.');
++    if (integrity.timestampCoverage < 0.8) recommendations.push('Coletar timestamps para análise temporal, regime switching e decay de edge.');
++    if (integrity.uniqueValues < 37) recommendations.push('Verificar cobertura completa dos números 0-36.');
++    if (rejectedRatio > 0) recommendations.push(`Sanear linhas rejeitadas antes de backtests institucionais: ${(rejectedRatio * 100).toFixed(2)}%.`);
++    if (!integrity.chronological) recommendations.push('Ordenar o dataset cronologicamente antes de qualquer walk-forward.');
++    if (recommendations.length === 0) recommendations.push('Dataset apto para próxima fase de pesquisa estatística controlada.');
++    return recommendations;
++  }
++}
+diff --git a/src/domain/research/DataIntegrityValidator.ts b/src/domain/research/DataIntegrityValidator.ts
+new file mode 100644
+index 0000000..ba8af0e
+--- /dev/null
++++ b/src/domain/research/DataIntegrityValidator.ts
+@@ -0,0 +1,109 @@
++import { NormalizedSpinRecord } from './DatasetEngine';
++
++export type IntegritySeverity = 'info' | 'warning' | 'error';
++
++export interface IntegrityIssue {
++  severity: IntegritySeverity;
++  code: string;
++  message: string;
++  index?: number;
++}
++
++export interface IntegrityReport {
++  valid: boolean;
++  score: number;
++  totalRecords: number;
++  uniqueValues: number;
++  duplicateRatio: number;
++  longestRepeatRun: number;
++  timestampCoverage: number;
++  chronological: boolean;
++  issues: IntegrityIssue[];
++}
++
++export class DataIntegrityValidator {
++  constructor(private readonly options = { minRecords: 120, maxDuplicateRatio: 0.4, maxRepeatRun: 12 }) {}
++
++  public validate(records: NormalizedSpinRecord[]): IntegrityReport {
++    const issues: IntegrityIssue[] = [];
++    const totalRecords = records.length;
++
++    if (totalRecords < this.options.minRecords) {
++      issues.push({ severity: 'error', code: 'INSUFFICIENT_RECORDS', message: `Dataset precisa de pelo menos ${this.options.minRecords} spins para pesquisa institucional.` });
++    }
++
++    records.forEach((record, index) => {
++      if (!Number.isInteger(record.value) || record.value < 0 || record.value > 36) {
++        issues.push({ severity: 'error', code: 'INVALID_SPIN', message: `Valor fora do domínio 0-36: ${record.value}`, index });
++      }
++      if (record.sequence !== index) {
++        issues.push({ severity: 'warning', code: 'NON_CANONICAL_SEQUENCE', message: 'Sequência normalizada fora da ordem esperada.', index });
++      }
++    });
++
++    const duplicateRatio = this.calculateDuplicateRatio(records);
++    if (duplicateRatio > this.options.maxDuplicateRatio) {
++      issues.push({ severity: 'warning', code: 'HIGH_DUPLICATE_RATIO', message: `Razão de duplicação suspeita: ${duplicateRatio.toFixed(3)}.` });
++    }
++
++    const longestRepeatRun = this.longestRepeatRun(records.map(record => record.value));
++    if (longestRepeatRun > this.options.maxRepeatRun) {
++      issues.push({ severity: 'warning', code: 'LONG_REPEAT_RUN', message: `Sequência repetida longa detectada: ${longestRepeatRun}.` });
++    }
++
++    const chronological = this.isChronological(records);
++    if (!chronological) {
++      issues.push({ severity: 'warning', code: 'NON_CHRONOLOGICAL_TIMESTAMPS', message: 'Timestamps fora de ordem cronológica.' });
++    }
++
++    const timestampCoverage = totalRecords === 0 ? 0 : records.filter(record => Boolean(record.timestamp)).length / totalRecords;
++    if (timestampCoverage > 0 && timestampCoverage < 0.8) {
++      issues.push({ severity: 'info', code: 'LOW_TIMESTAMP_COVERAGE', message: `Cobertura parcial de timestamps: ${timestampCoverage.toFixed(3)}.` });
++    }
++
++    const errorCount = issues.filter(issue => issue.severity === 'error').length;
++    const warningCount = issues.filter(issue => issue.severity === 'warning').length;
++    const score = Math.max(0, Math.min(1, 1 - errorCount * 0.35 - warningCount * 0.1 - (timestampCoverage === 0 ? 0.05 : 0)));
++
++    return {
++      valid: errorCount === 0,
++      score: Number(score.toFixed(4)),
++      totalRecords,
++      uniqueValues: new Set(records.map(record => record.value)).size,
++      duplicateRatio: Number(duplicateRatio.toFixed(4)),
++      longestRepeatRun,
++      timestampCoverage: Number(timestampCoverage.toFixed(4)),
++      chronological,
++      issues
++    };
++  }
++
++  private calculateDuplicateRatio(records: NormalizedSpinRecord[]): number {
++    if (records.length <= 1) return 0;
++    let duplicates = 0;
++    for (let index = 1; index < records.length; index += 1) {
++      if (records[index].value === records[index - 1].value) duplicates += 1;
++    }
++    return duplicates / (records.length - 1);
++  }
++
++  private longestRepeatRun(values: number[]): number {
++    let longest = 0;
++    let current = 0;
++    let previous: number | undefined;
++    values.forEach(value => {
++      current = value === previous ? current + 1 : 1;
++      previous = value;
++      longest = Math.max(longest, current);
++    });
++    return longest;
++  }
++
++  private isChronological(records: NormalizedSpinRecord[]): boolean {
++    const timestamps = records.map(record => record.timestamp).filter(Boolean) as string[];
++    for (let index = 1; index < timestamps.length; index += 1) {
++      if (new Date(timestamps[index]).getTime() < new Date(timestamps[index - 1]).getTime()) return false;
++    }
++    return true;
++  }
++}
+diff --git a/src/domain/research/DatasetEngine.ts b/src/domain/research/DatasetEngine.ts
+new file mode 100644
+index 0000000..b441cb6
+--- /dev/null
++++ b/src/domain/research/DatasetEngine.ts
+@@ -0,0 +1,181 @@
++import crypto from 'crypto';
++
++export type DatasetFormat = 'json' | 'csv' | 'plain';
++
++export interface RawSpinRecord {
++  value: number;
++  timestamp?: string;
++  tableId?: string;
++  sourceIndex: number;
++}
++
++export interface NormalizedSpinRecord {
++  sequence: number;
++  value: number;
++  timestamp?: string;
++  tableId?: string;
++  checksum: string;
++}
++
++export interface DatasetParseResult {
++  format: DatasetFormat;
++  records: RawSpinRecord[];
++  rejectedRows: Array<{ index: number; reason: string; raw: unknown }>;
++}
++
++export interface DatasetNormalizationResult {
++  records: NormalizedSpinRecord[];
++  checksum: string;
++  metadata: {
++    totalRecords: number;
++    firstTimestamp?: string;
++    lastTimestamp?: string;
++    tableIds: string[];
++  };
++}
++
++function stableHash(input: unknown): string {
++  return crypto.createHash('sha256').update(JSON.stringify(input)).digest('hex');
++}
++
++function parseTimestamp(value: unknown): string | undefined {
++  if (value === undefined || value === null || value === '') return undefined;
++  const date = new Date(String(value));
++  if (Number.isNaN(date.getTime())) return undefined;
++  return date.toISOString();
++}
++
++function parseSpinValue(value: unknown): number | undefined {
++  const numeric = typeof value === 'number' ? value : Number(String(value).trim());
++  if (!Number.isInteger(numeric) || numeric < 0 || numeric > 36) return undefined;
++  return numeric;
++}
++
++export class DatasetEngine {
++  public parse(input: string | unknown[]): DatasetParseResult {
++    if (Array.isArray(input)) return this.parseJsonArray(input);
++    const body = String(input ?? '').trim();
++    if (!body) return { format: 'plain', records: [], rejectedRows: [{ index: 0, reason: 'empty_dataset', raw: input }] };
++
++    if (body.startsWith('[') || body.startsWith('{')) {
++      try {
++        const parsed = JSON.parse(body);
++        const rows = Array.isArray(parsed) ? parsed : parsed.records ?? parsed.spins ?? parsed.history ?? [];
++        return this.parseJsonArray(Array.isArray(rows) ? rows : []);
++      } catch (error: any) {
++        return { format: 'json', records: [], rejectedRows: [{ index: 0, reason: `invalid_json:${error.message}`, raw: body.slice(0, 120) }] };
++      }
++    }
++
++    if (body.includes('\n') && body.split('\n')[0].includes(',')) return this.parseCsv(body);
++    return this.parsePlain(body);
++  }
++
++  public normalize(records: RawSpinRecord[]): DatasetNormalizationResult {
++    const sorted = [...records].sort((a, b) => {
++      if (!a.timestamp || !b.timestamp) return a.sourceIndex - b.sourceIndex;
++      const delta = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
++      return delta === 0 ? a.sourceIndex - b.sourceIndex : delta;
++    });
++
++    const normalized = sorted.map((record, index) => {
++      const payload = {
++        sequence: index,
++        value: record.value,
++        timestamp: record.timestamp,
++        tableId: record.tableId ?? 'unknown'
++      };
++      return {
++        ...payload,
++        tableId: record.tableId,
++        checksum: stableHash(payload)
++      };
++    });
++
++    const timestamps = normalized.map(item => item.timestamp).filter(Boolean) as string[];
++    const tableIds = [...new Set(normalized.map(item => item.tableId).filter(Boolean) as string[])].sort();
++
++    return {
++      records: normalized,
++      checksum: stableHash(normalized.map(({ checksum, ...rest }) => rest)),
++      metadata: {
++        totalRecords: normalized.length,
++        firstTimestamp: timestamps[0],
++        lastTimestamp: timestamps[timestamps.length - 1],
++        tableIds
++      }
++    };
++  }
++
++  private parseJsonArray(rows: unknown[]): DatasetParseResult {
++    const records: RawSpinRecord[] = [];
++    const rejectedRows: DatasetParseResult['rejectedRows'] = [];
++
++    rows.forEach((row, index) => {
++      const candidate: any = row;
++      const rawValue = typeof candidate === 'object' && candidate !== null
++        ? candidate.value ?? candidate.number ?? candidate.spin ?? candidate.result
++        : candidate;
++      const value = parseSpinValue(rawValue);
++      if (value === undefined) {
++        rejectedRows.push({ index, reason: 'invalid_spin_value', raw: row });
++        return;
++      }
++      records.push({
++        value,
++        timestamp: parseTimestamp(candidate?.timestamp ?? candidate?.time ?? candidate?.createdAt),
++        tableId: candidate?.tableId ?? candidate?.table ?? candidate?.mesa,
++        sourceIndex: index
++      });
++    });
++
++    return { format: 'json', records, rejectedRows };
++  }
++
++  private parseCsv(body: string): DatasetParseResult {
++    const lines = body.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
++    const header = lines[0].split(',').map(item => item.trim().toLowerCase());
++    const hasHeader = header.some(item => ['value', 'number', 'spin', 'result', 'timestamp', 'time', 'tableid', 'table'].includes(item));
++    const records: RawSpinRecord[] = [];
++    const rejectedRows: DatasetParseResult['rejectedRows'] = [];
++    const dataLines = hasHeader ? lines.slice(1) : lines;
++
++    const valueIndex = hasHeader ? this.firstHeaderIndex(header, ['value', 'number', 'spin', 'result']) : 0;
++    const timestampIndex = hasHeader ? this.firstHeaderIndex(header, ['timestamp', 'time', 'createdat']) : -1;
++    const tableIndex = hasHeader ? this.firstHeaderIndex(header, ['tableid', 'table', 'mesa']) : -1;
++
++    dataLines.forEach((line, localIndex) => {
++      const index = hasHeader ? localIndex + 1 : localIndex;
++      const columns = line.split(',').map(item => item.trim());
++      const value = parseSpinValue(columns[valueIndex]);
++      if (value === undefined) {
++        rejectedRows.push({ index, reason: 'invalid_spin_value', raw: line });
++        return;
++      }
++      records.push({
++        value,
++        timestamp: timestampIndex >= 0 ? parseTimestamp(columns[timestampIndex]) : undefined,
++        tableId: tableIndex >= 0 ? columns[tableIndex] : undefined,
++        sourceIndex: index
++      });
++    });
++
++    return { format: 'csv', records, rejectedRows };
++  }
++
++  private parsePlain(body: string): DatasetParseResult {
++    const tokens = body.split(/[\s,;|]+/).filter(Boolean);
++    const records: RawSpinRecord[] = [];
++    const rejectedRows: DatasetParseResult['rejectedRows'] = [];
++    tokens.forEach((token, index) => {
++      const value = parseSpinValue(token);
++      if (value === undefined) rejectedRows.push({ index, reason: 'invalid_spin_value', raw: token });
++      else records.push({ value, sourceIndex: index });
++    });
++    return { format: 'plain', records, rejectedRows };
++  }
++
++  private firstHeaderIndex(header: string[], candidates: string[]): number {
++    return Math.max(0, candidates.map(candidate => header.indexOf(candidate)).find(index => index >= 0) ?? 0);
++  }
++}
+diff --git a/src/infrastructure/http/Server.ts b/src/infrastructure/http/Server.ts
+index 951c7b7..731b89b 100644
+--- a/src/infrastructure/http/Server.ts
++++ b/src/infrastructure/http/Server.ts
+@@ -18,6 +18,7 @@ import { HealthCheckService } from '../../application/health/HealthCheckService'
+ import { ConfigValidator } from '../../application/config/ConfigValidator';
+ import { ReleaseReadinessService } from '../../application/release/ReleaseReadinessService';
+ import { securityHeaders } from './middleware/securityHeaders';
++import { ResearchDatasetService } from '../../application/research/ResearchDatasetService';
+ import { config } from '../../config';
+ 
+ interface AnalyzePayload {
+@@ -44,6 +45,7 @@ export class Server {
+   private readonly auditLogger = new DecisionAuditLogger(config.auditLogPath);
+   private readonly bayesianEdgeValidator = new BayesianEdgeValidator();
+   private readonly regimeDetector = new RegimeDetector();
++  private readonly researchDatasetService = new ResearchDatasetService();
+   private httpServer?: ReturnType<Express['listen']>;
+ 
+   constructor(
+@@ -119,7 +121,8 @@ export class Server {
+           'decision-audit',
+           'structured-logging',
+           'runtime-metrics',
+-          'readiness-checks'
++          'readiness-checks',
++          'research-dataset-integrity'
+         ],
+         gates: {
+           minSampleSize: 120,
+@@ -157,6 +160,13 @@ export class Server {
+       res.status(readiness.status === 'blocked' ? 503 : 200).json(readiness);
+     });
+ 
++    this.app.post('/api/research/dataset/evaluate', (req, res) => {
++      const dataset = req.body?.dataset ?? req.body?.records ?? req.body?.history ?? req.body;
++      const report = this.researchDatasetService.evaluate(dataset);
++      this.metrics.increment(`research.dataset.${report.status.toLowerCase()}`);
++      res.status(report.status === 'REJECTED' ? 422 : 200).json(report);
++    });
++
+     this.app.post('/api/strategy/analyze', async (req, res) => this.analyzeHistory(req, res));
+     this.app.post('/upload-history', async (req, res) => this.analyzeHistory(req, res));
+ 
+diff --git a/tests/data-integrity-validator.test.js b/tests/data-integrity-validator.test.js
+new file mode 100644
+index 0000000..f4e3b13
+--- /dev/null
++++ b/tests/data-integrity-validator.test.js
+@@ -0,0 +1,25 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { DatasetEngine } = require('../dist/domain/research/DatasetEngine');
++const { DataIntegrityValidator } = require('../dist/domain/research/DataIntegrityValidator');
++
++test('DataIntegrityValidator accepts research-sized canonical datasets', () => {
++  const engine = new DatasetEngine();
++  const values = Array.from({ length: 150 }, (_, index) => index % 37);
++  const normalized = engine.normalize(engine.parse(values).records);
++  const report = new DataIntegrityValidator({ minRecords: 120, maxDuplicateRatio: 0.4, maxRepeatRun: 12 }).validate(normalized.records);
++
++  assert.equal(report.valid, true);
++  assert.equal(report.totalRecords, 150);
++  assert.equal(report.uniqueValues, 37);
++  assert.ok(report.score > 0.8);
++});
++
++test('DataIntegrityValidator blocks insufficient datasets', () => {
++  const engine = new DatasetEngine();
++  const normalized = engine.normalize(engine.parse([1, 2, 3, 4, 5]).records);
++  const report = new DataIntegrityValidator().validate(normalized.records);
++
++  assert.equal(report.valid, false);
++  assert.ok(report.issues.some(issue => issue.code === 'INSUFFICIENT_RECORDS'));
++});
+diff --git a/tests/dataset-engine.test.js b/tests/dataset-engine.test.js
+new file mode 100644
+index 0000000..76af88b
+--- /dev/null
++++ b/tests/dataset-engine.test.js
+@@ -0,0 +1,27 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { DatasetEngine } = require('../dist/domain/research/DatasetEngine');
++
++test('DatasetEngine parses and normalizes CSV datasets with checksums', () => {
++  const engine = new DatasetEngine();
++  const csv = ['timestamp,value,tableId','2026-01-01T00:00:01Z,7,A','2026-01-01T00:00:02Z,12,A','2026-01-01T00:00:03Z,36,A'].join('\n');
++  const parsed = engine.parse(csv);
++  const normalized = engine.normalize(parsed.records);
++
++  assert.equal(parsed.format, 'csv');
++  assert.equal(parsed.records.length, 3);
++  assert.equal(parsed.rejectedRows.length, 0);
++  assert.equal(normalized.records.length, 3);
++  assert.equal(normalized.records[0].sequence, 0);
++  assert.equal(typeof normalized.records[0].checksum, 'string');
++  assert.equal(normalized.checksum.length, 64);
++  assert.deepEqual(normalized.metadata.tableIds, ['A']);
++});
++
++test('DatasetEngine rejects invalid spin values without throwing', () => {
++  const engine = new DatasetEngine();
++  const parsed = engine.parse('[0,1,36,37,-1,"x"]');
++
++  assert.equal(parsed.records.length, 3);
++  assert.equal(parsed.rejectedRows.length, 3);
++});
+diff --git a/tests/research-dataset-service.test.js b/tests/research-dataset-service.test.js
+new file mode 100644
+index 0000000..26958da
+--- /dev/null
++++ b/tests/research-dataset-service.test.js
+@@ -0,0 +1,22 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { ResearchDatasetService } = require('../dist/application/research/ResearchDatasetService');
++
++test('ResearchDatasetService returns accepted report for clean research dataset', () => {
++  const service = new ResearchDatasetService();
++  const dataset = Array.from({ length: 160 }, (_, index) => ({ value: index % 37, timestamp: new Date(Date.UTC(2026, 0, 1, 0, 0, index)).toISOString(), tableId: 'mesa-a' }));
++  const report = service.evaluate(dataset);
++
++  assert.equal(report.status, 'ACCEPTED');
++  assert.equal(report.integrity.valid, true);
++  assert.equal(report.normalized.metadata.totalRecords, 160);
++});
++
++test('ResearchDatasetService rejects corrupted dataset', () => {
++  const service = new ResearchDatasetService();
++  const report = service.evaluate('1 2 3 99 -4 x');
++
++  assert.equal(report.status, 'REJECTED');
++  assert.ok(report.parse.rejectedRows.length >= 3);
++  assert.ok(report.recommendations.length > 0);
++});

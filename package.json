@@ -1,7 +1,7 @@
 {
   "name": "rl-sys-core",
-  "version": "1.0.0",
-  "description": "RL.sys Core - enterprise-grade institutional roulette analysis engine with release readiness, observability, Bayesian governance and risk controls",
+  "version": "1.1.0",
+  "description": "RL.sys Core - enterprise-grade institutional roulette research and risk engine",
   "main": "dist/main.js",
   "scripts": {
     "start": "node dist/main.js",

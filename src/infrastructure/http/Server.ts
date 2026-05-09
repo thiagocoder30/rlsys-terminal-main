@@ -18,6 +18,7 @@ import { HealthCheckService } from '../../application/health/HealthCheckService'
 import { ConfigValidator } from '../../application/config/ConfigValidator';
 import { ReleaseReadinessService } from '../../application/release/ReleaseReadinessService';
 import { securityHeaders } from './middleware/securityHeaders';
+import { ResearchDatasetService } from '../../application/research/ResearchDatasetService';
 import { config } from '../../config';
 
 interface AnalyzePayload {
@@ -44,6 +45,7 @@ export class Server {
   private readonly auditLogger = new DecisionAuditLogger(config.auditLogPath);
   private readonly bayesianEdgeValidator = new BayesianEdgeValidator();
   private readonly regimeDetector = new RegimeDetector();
+  private readonly researchDatasetService = new ResearchDatasetService();
   private httpServer?: ReturnType<Express['listen']>;
 
   constructor(
@@ -119,7 +121,8 @@ export class Server {
           'decision-audit',
           'structured-logging',
           'runtime-metrics',
-          'readiness-checks'
+          'readiness-checks',
+          'research-dataset-integrity'
         ],
         gates: {
           minSampleSize: 120,
@@ -155,6 +158,13 @@ export class Server {
         metrics: this.metrics.snapshot()
       });
       res.status(readiness.status === 'blocked' ? 503 : 200).json(readiness);
+    });
+
+    this.app.post('/api/research/dataset/evaluate', (req, res) => {
+      const dataset = req.body?.dataset ?? req.body?.records ?? req.body?.history ?? req.body;
+      const report = this.researchDatasetService.evaluate(dataset);
+      this.metrics.increment(`research.dataset.${report.status.toLowerCase()}`);
+      res.status(report.status === 'REJECTED' ? 422 : 200).json(report);
     });
 
     this.app.post('/api/strategy/analyze', async (req, res) => this.analyzeHistory(req, res));
