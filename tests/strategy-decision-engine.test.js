@@ -59,7 +59,11 @@ test('StrategyDecisionEngine returns research-only entry candidate for strong ev
   assert.equal(report.execution.liveStakeFraction, 0);
   assert.ok(['CONSERVATIVE_ENTRY', 'MODERATE_ENTRY'].includes(report.action));
   assert.ok(report.confidenceScore >= 0 && report.confidenceScore <= 1);
-  assert.ok(report.rules.length >= 6);
+  assert.ok(report.rules.length >= 7);
+  assert.equal(report.execution.bankrollGuard.status, 'MARTINGALE_READY');
+  assert.ok(report.execution.bankrollGuard.baseStake > 0);
+  assert.ok(report.execution.bankrollGuard.martingaleStakeSequence.length >= 2);
+  assert.equal(report.execution.bankrollGuard.totalExposureFraction <= report.execution.stopLossFraction, true);
 });
 
 test('StrategyDecisionEngine blocks NO_GO warmup regardless of other evidence', () => {
@@ -79,4 +83,28 @@ test('StrategyDecisionEngine never opens live stake even for candidates', () => 
   assert.equal(report.execution.liveStakeFraction, 0);
   assert.ok(report.execution.paperStakeFraction >= 0);
   assert.equal(report.execution.mode, 'RESEARCH_ONLY');
+});
+
+
+test('StrategyDecisionEngine blocks unsafe bankroll progression when stake does not fit stop loss budget', () => {
+  const engine = new StrategyDecisionEngine();
+  const context = baseContext({
+    bankroll: 10,
+    strategy: { ...baseContext().strategy, suggestedFraction: 0.009 }
+  });
+  const report = engine.decide(context);
+
+  assert.equal(report.operationalGate, 'NO_GO');
+  assert.ok(report.blockers.some((blocker) => blocker.includes('Stake sugerida')));
+  assert.equal(report.execution.liveStakeFraction, 0);
+});
+
+test('StrategyDecisionEngine exposes no-stake bankroll guard for observation states', () => {
+  const engine = new StrategyDecisionEngine();
+  const context = baseContext({ strategy: { ...baseContext().strategy, signalCount: 0 } });
+  const report = engine.decide(context);
+
+  assert.equal(report.operationalGate, 'OBSERVE');
+  assert.equal(report.execution.bankrollGuard.status, 'NO_STAKE');
+  assert.deepEqual(report.execution.bankrollGuard.martingaleStakeSequence, []);
 });

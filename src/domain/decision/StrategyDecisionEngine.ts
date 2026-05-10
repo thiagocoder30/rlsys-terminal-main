@@ -10,6 +10,7 @@ export type DecisionRuleId =
   | 'BENCHMARK_EDGE'
   | 'CAPITAL_SURVIVAL'
   | 'MONTE_CARLO_ROBUSTNESS'
+  | 'BANKROLL_GUARD'
   | 'GOVERNANCE_SAFETY';
 
 export interface WarmupDecisionSnapshot {
@@ -73,6 +74,23 @@ export interface DecisionRuleResult {
   readonly message: string;
 }
 
+export type BankrollGuardStatus = 'NO_STAKE' | 'PROTECTED' | 'MARTINGALE_READY' | 'BLOCKED';
+
+export interface BankrollGuardPlan {
+  readonly status: BankrollGuardStatus;
+  readonly bankroll: number;
+  readonly baseStake: number;
+  readonly baseStakeFraction: number;
+  readonly maxMartingaleLevels: number;
+  readonly martingaleMultiplier: number;
+  readonly martingaleStakeSequence: readonly number[];
+  readonly totalPlannedExposure: number;
+  readonly totalExposureFraction: number;
+  readonly stopLossAmount: number;
+  readonly takeProfitAmount: number;
+  readonly reasons: readonly string[];
+}
+
 export interface DecisionExecutionPlan {
   readonly mode: ExecutionMode;
   readonly paperStakeFraction: number;
@@ -81,6 +99,7 @@ export interface DecisionExecutionPlan {
   readonly stopLossFraction: number;
   readonly takeProfitFraction: number;
   readonly validForSpins: number;
+  readonly bankrollGuard: BankrollGuardPlan;
 }
 
 export interface StrategyDecisionReport {
@@ -106,6 +125,21 @@ interface DecisionRule {
   evaluate(context: StrategyDecisionContext): DecisionRuleResult;
 }
 
+const DEFAULT_BANKROLL_GUARD: BankrollGuardPlan = {
+  status: 'NO_STAKE',
+  bankroll: 0,
+  baseStake: 0,
+  baseStakeFraction: 0,
+  maxMartingaleLevels: 0,
+  martingaleMultiplier: 2,
+  martingaleStakeSequence: [],
+  totalPlannedExposure: 0,
+  totalExposureFraction: 0,
+  stopLossAmount: 0,
+  takeProfitAmount: 0,
+  reasons: ['Sem entrada autorizada pelo gate.']
+};
+
 const DEFAULT_EXECUTION: DecisionExecutionPlan = {
   mode: 'RESEARCH_ONLY',
   paperStakeFraction: 0,
@@ -113,7 +147,8 @@ const DEFAULT_EXECUTION: DecisionExecutionPlan = {
   maxSessionExposureFraction: 0,
   stopLossFraction: 0.15,
   takeProfitFraction: 0.25,
-  validForSpins: 0
+  validForSpins: 0,
+  bankrollGuard: DEFAULT_BANKROLL_GUARD
 };
 
 /**
@@ -202,19 +237,94 @@ export class StrategyDecisionEngine {
     confidenceScore: number,
     riskScore: number
   ): DecisionExecutionPlan {
-    if (action === 'BLOCKED' || action === 'NO_BET' || action === 'OBSERVE') return DEFAULT_EXECUTION;
+    if (action === 'BLOCKED' || action === 'NO_BET' || action === 'OBSERVE') {
+      return {
+        ...DEFAULT_EXECUTION,
+        bankrollGuard: this.bankrollGuard(context, 0, 0, 0.15, 0.25, action)
+      };
+    }
     const baseFraction = Math.min(0.005, Math.max(0, context.strategy.suggestedFraction));
     const confidenceMultiplier = action === 'MODERATE_ENTRY' ? 1.15 : 0.65;
     const riskThrottle = Math.max(0.15, 1 - riskScore);
     const paperStakeFraction = round(Math.min(0.006, baseFraction * confidenceMultiplier * riskThrottle * Math.max(0.5, confidenceScore)));
+    const maxSessionExposureFraction = round(Math.min(0.015, Math.max(paperStakeFraction, paperStakeFraction * 7)));
+    const stopLossFraction = 0.15;
+    const takeProfitFraction = 0.25;
     return {
       mode: 'RESEARCH_ONLY',
       paperStakeFraction,
       liveStakeFraction: 0,
-      maxSessionExposureFraction: round(Math.min(0.015, paperStakeFraction * 3)),
-      stopLossFraction: 0.15,
-      takeProfitFraction: 0.25,
-      validForSpins: action === 'MODERATE_ENTRY' ? 8 : 5
+      maxSessionExposureFraction,
+      stopLossFraction,
+      takeProfitFraction,
+      validForSpins: action === 'MODERATE_ENTRY' ? 8 : 5,
+      bankrollGuard: this.bankrollGuard(context, paperStakeFraction, maxSessionExposureFraction, stopLossFraction, takeProfitFraction, action)
+    };
+  }
+
+  private bankrollGuard(
+    context: StrategyDecisionContext,
+    paperStakeFraction: number,
+    maxSessionExposureFraction: number,
+    stopLossFraction: number,
+    takeProfitFraction: number,
+    action: OperationalDecisionAction
+  ): BankrollGuardPlan {
+    const bankroll = roundMoney(context.bankroll);
+    const stopLossAmount = roundMoney(bankroll * stopLossFraction);
+    const takeProfitAmount = roundMoney(bankroll * takeProfitFraction);
+    const baseStake = roundMoney(bankroll * paperStakeFraction);
+    const exposureBudget = roundMoney(Math.min(bankroll * maxSessionExposureFraction, stopLossAmount));
+
+    if (action === 'BLOCKED' || action === 'NO_BET' || action === 'OBSERVE' || paperStakeFraction <= 0) {
+      return {
+        ...DEFAULT_BANKROLL_GUARD,
+        bankroll,
+        stopLossAmount,
+        takeProfitAmount
+      };
+    }
+
+    if (bankroll <= 0 || baseStake <= 0 || exposureBudget <= 0) {
+      return {
+        status: 'BLOCKED',
+        bankroll,
+        baseStake,
+        baseStakeFraction: paperStakeFraction,
+        maxMartingaleLevels: 0,
+        martingaleMultiplier: 2,
+        martingaleStakeSequence: [],
+        totalPlannedExposure: 0,
+        totalExposureFraction: 0,
+        stopLossAmount,
+        takeProfitAmount,
+        reasons: ['Bankroll insuficiente ou não informado para calcular progressão segura.']
+      };
+    }
+
+    const sequence = boundedMartingaleSequence(baseStake, exposureBudget, 3, 2);
+    const totalPlannedExposure = roundMoney(sum(sequence));
+    const totalExposureFraction = bankroll > 0 ? round(totalPlannedExposure / bankroll) : 0;
+    const maxMartingaleLevels = Math.max(0, sequence.length - 1);
+    const reasons = [
+      `Stake base paper calculada em ${baseStake}.`,
+      `Exposição máxima planejada limitada a ${totalPlannedExposure}.`,
+      `Stop loss paper em ${stopLossAmount} e take profit paper em ${takeProfitAmount}.`
+    ];
+
+    return {
+      status: maxMartingaleLevels > 0 ? 'MARTINGALE_READY' : 'PROTECTED',
+      bankroll,
+      baseStake,
+      baseStakeFraction: paperStakeFraction,
+      maxMartingaleLevels,
+      martingaleMultiplier: 2,
+      martingaleStakeSequence: sequence,
+      totalPlannedExposure,
+      totalExposureFraction,
+      stopLossAmount,
+      takeProfitAmount,
+      reasons
     };
   }
 
@@ -313,6 +423,31 @@ class MonteCarloRobustnessRule implements DecisionRule {
   }
 }
 
+class BankrollGuardRule implements DecisionRule {
+  public readonly id: DecisionRuleId = 'BANKROLL_GUARD';
+
+  public evaluate(context: StrategyDecisionContext): DecisionRuleResult {
+    if (context.bankroll <= 0) return warning(this.id, 'Bankroll não informado; progressão Martingale fica indisponível.', 0.24, 0.58);
+    const suggestedFraction = Math.max(0, context.strategy.suggestedFraction);
+    const baseStake = context.bankroll * suggestedFraction;
+    if (suggestedFraction > 0 && baseStake < 1) {
+      return blocker(this.id, 'Stake sugerida não atinge o mínimo operacional de 1 unidade da banca.', 0.8);
+    }
+    const stopLossBudget = context.bankroll * 0.15;
+    const sequence = boundedMartingaleSequence(baseStake, stopLossBudget, 3, 2);
+    if (suggestedFraction > 0 && sequence.length === 0) {
+      return blocker(this.id, 'Stake sugerida não cabe no orçamento de stop loss da banca.', 0.84);
+    }
+    const totalExposure = sum(sequence);
+    const exposureFraction = context.bankroll > 0 ? totalExposure / context.bankroll : 0;
+    if (exposureFraction > 0.15) return blocker(this.id, 'Progressão excede 15% da banca.', 0.82);
+    if (suggestedFraction > 0 && sequence.length < 2) {
+      return warning(this.id, 'Banca comporta apenas entrada seca, sem Martingale seguro.', 0.48, 0.46);
+    }
+    return info(this.id, 'Bankroll guard calculou progressão paper dentro do orçamento de risco.', 0.68, Math.min(0.34, exposureFraction));
+  }
+}
+
 class GovernanceSafetyRule implements DecisionRule {
   public readonly id: DecisionRuleId = 'GOVERNANCE_SAFETY';
 
@@ -331,6 +466,7 @@ export class StrategyDecisionRuleFactory {
       new BenchmarkEdgeRule(),
       new CapitalSurvivalRule(),
       new MonteCarloRobustnessRule(),
+      new BankrollGuardRule(),
       new GovernanceSafetyRule()
     ];
   }
@@ -346,6 +482,23 @@ function warning(ruleId: DecisionRuleId, message: string, scoreContribution: num
 
 function blocker(ruleId: DecisionRuleId, message: string, riskContribution: number): DecisionRuleResult {
   return { ruleId, severity: 'BLOCKER', message, scoreContribution: 0, riskContribution: round(clamp(riskContribution)) };
+}
+
+function boundedMartingaleSequence(baseStake: number, exposureBudget: number, maxLevels: number, multiplier: number): readonly number[] {
+  if (baseStake <= 0 || exposureBudget <= 0) return [];
+  const sequence: number[] = [];
+  for (let level = 0; level <= maxLevels; level += 1) {
+    const nextStake = roundMoney(baseStake * multiplier ** level);
+    const nextTotal = roundMoney(sum([...sequence, nextStake]));
+    if (nextTotal > exposureBudget) break;
+    sequence.push(nextStake);
+  }
+  return sequence;
+}
+
+function roundMoney(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Number(value.toFixed(2));
 }
 
 function sum(values: readonly number[]): number {
