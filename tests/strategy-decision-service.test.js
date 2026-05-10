@@ -14,7 +14,8 @@ test('StrategyDecisionService returns blocked governance decision for clean sess
   assert.equal(report.service, 'StrategyDecisionService');
   assert.equal(report.schemaVersion, '2.8.0');
   assert.equal(report.sessionId, 'manual-session');
-  assert.equal(report.decision.operationalGate, 'BLOCKED');
+  assert.equal(report.decision.operationalGate, 'NO_GO');
+  assert.equal(report.decision.allowed, false);
   assert.equal(report.decision.execution.liveStakeFraction, 0);
   assert.ok(['REJECTED', 'WATCHLIST', 'RESEARCH_CANDIDATE'].includes(report.status));
 });
@@ -26,5 +27,6 @@ test('StrategyDecisionService rejects corrupted tiny sessions through decision b
   assert.equal(report.service, 'StrategyDecisionService');
   assert.equal(report.status, 'REJECTED');
   assert.equal(report.decision.action, 'BLOCKED');
-  assert.equal(report.decision.operationalGate, 'BLOCKED');
+  assert.equal(report.decision.operationalGate, 'NO_GO');
+  assert.equal(report.decision.allowed, false);
 });

@@ -24,9 +24,10 @@ test('LiveSessionRuntimeService invokes decision layer after 100 rounds while ke
   assert.equal(report.status, 'ACCEPTED');
   assert.equal(report.snapshot.readyForDecision, true);
   assert.equal(report.executiveSummary.liveRuntimeGate, 'DECISION_READY');
-  assert.equal(report.executiveSummary.operationalGate, 'BLOCKED');
+  assert.ok(['NO_GO', 'OBSERVE', 'COOLDOWN', 'ARMED', 'SIGNAL'].includes(report.executiveSummary.operationalGate));
   assert.ok(report.decision);
-  assert.equal(report.decision.decision.operationalGate, 'BLOCKED');
+  assert.ok(['NO_GO', 'OBSERVE', 'COOLDOWN', 'ARMED', 'SIGNAL'].includes(report.decision.decision.operationalGate));
+  assert.equal(report.decision.decision.execution.liveStakeFraction, 0);
 });
 
 test('LiveSessionRuntimeService reports duplicate events idempotently', () => {

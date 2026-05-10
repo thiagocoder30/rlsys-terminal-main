@@ -53,7 +53,8 @@ test('StrategyDecisionEngine returns research-only entry candidate for strong ev
   const report = engine.decide(baseContext());
 
   assert.equal(report.engineVersion, 'strategy-decision-v1');
-  assert.equal(report.operationalGate, 'BLOCKED');
+  assert.equal(report.operationalGate, 'SIGNAL');
+  assert.equal(report.allowed, true);
   assert.equal(report.execution.mode, 'RESEARCH_ONLY');
   assert.equal(report.execution.liveStakeFraction, 0);
   assert.ok(['CONSERVATIVE_ENTRY', 'MODERATE_ENTRY'].includes(report.action));

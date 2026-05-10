@@ -1,5 +1,6 @@
 import { LiveRoundCommand, LiveRoundIngestionReport, LiveSessionRuntime, LiveSessionSnapshot } from '../../domain/session/LiveSessionRuntime';
 import { StrategyDecisionService, StrategyDecisionServiceReport } from '../decision/StrategyDecisionService';
+import { OperationalGateState } from '../../domain/decision/StrategyDecisionEngine';
 
 export interface LiveSessionRuntimeServiceInput {
   readonly sessionId?: string;
@@ -20,7 +21,7 @@ export interface LiveSessionRuntimeServiceReport {
   readonly decision?: StrategyDecisionServiceReport;
   readonly executiveSummary: {
     readonly liveRuntimeGate: 'INITIALIZING' | 'DECISION_READY' | 'BLOCKED';
-    readonly operationalGate: 'BLOCKED';
+    readonly operationalGate: OperationalGateState | 'BLOCKED';
     readonly reason: string;
     readonly nextAction: 'COLLECT_MORE_ROUNDS' | 'REVIEW_DECISION_REPORT' | 'REJECT_EVENT';
   };
@@ -150,8 +151,10 @@ export class LiveSessionRuntimeService {
     }
     return {
       liveRuntimeGate: 'DECISION_READY',
-      operationalGate: 'BLOCKED',
-      reason: decision ? `Decision engine returned ${decision.decision.action} under research governance.` : 'Decision window ready for review.',
+      operationalGate: decision?.decision.operationalGate ?? 'OBSERVE',
+      reason: decision
+        ? `Decision engine returned ${decision.decision.action} with gate ${decision.decision.operationalGate} under research governance.`
+        : 'Decision window ready for review.',
       nextAction: 'REVIEW_DECISION_REPORT'
     };
   }

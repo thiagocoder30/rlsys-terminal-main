@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 
 export type OperationalDecisionAction = 'BLOCKED' | 'NO_BET' | 'OBSERVE' | 'CONSERVATIVE_ENTRY' | 'MODERATE_ENTRY';
+export type OperationalGateState = 'NO_GO' | 'OBSERVE' | 'ARMED' | 'SIGNAL' | 'COOLDOWN';
 export type ExecutionMode = 'RESEARCH_ONLY';
 export type DecisionSeverity = 'INFO' | 'WARNING' | 'BLOCKER';
 export type DecisionRuleId =
@@ -87,7 +88,8 @@ export interface StrategyDecisionReport {
   readonly reportId: string;
   readonly sessionId: string;
   readonly action: OperationalDecisionAction;
-  readonly operationalGate: 'BLOCKED';
+  readonly operationalGate: OperationalGateState;
+  readonly allowed: boolean;
   readonly confidenceScore: number;
   readonly riskScore: number;
   readonly evidenceScore: number;
@@ -138,6 +140,7 @@ export class StrategyDecisionEngine {
     const riskScore = round(clamp(sum(ruleResults.map(result => result.riskContribution)) / this.rules.length));
     const confidenceScore = round(clamp(evidenceScore * 0.68 + (1 - riskScore) * 0.32));
     const action = this.action(context, blockers, warnings, confidenceScore, riskScore);
+    const operationalGate = this.operationalGate(context, action, blockers, warnings, confidenceScore, riskScore);
     const execution = this.executionPlan(context, action, confidenceScore, riskScore);
 
     return {
@@ -145,7 +148,8 @@ export class StrategyDecisionEngine {
       reportId: this.reportId(context, ruleResults),
       sessionId: context.sessionId,
       action,
-      operationalGate: 'BLOCKED',
+      operationalGate,
+      allowed: operationalGate === 'SIGNAL',
       confidenceScore,
       riskScore,
       evidenceScore,
@@ -175,6 +179,21 @@ export class StrategyDecisionEngine {
     if (confidenceScore < 0.58 || riskScore > 0.48 || warnings.length >= 3) return 'OBSERVE';
     if (confidenceScore >= 0.78 && riskScore <= 0.24 && context.benchmark.verdict === 'BENCHMARK_CANDIDATE') return 'MODERATE_ENTRY';
     return 'CONSERVATIVE_ENTRY';
+  }
+
+  private operationalGate(
+    context: StrategyDecisionContext,
+    action: OperationalDecisionAction,
+    blockers: readonly string[],
+    warnings: readonly string[],
+    confidenceScore: number,
+    riskScore: number
+  ): OperationalGateState {
+    if (blockers.length > 0 || context.warmup.tableGate === 'NO_GO' || action === 'BLOCKED') return 'NO_GO';
+    if (warnings.length >= 3 || riskScore > 0.48) return 'COOLDOWN';
+    if (action === 'NO_BET' || action === 'OBSERVE' || confidenceScore < 0.58) return 'OBSERVE';
+    if (action === 'CONSERVATIVE_ENTRY' || action === 'MODERATE_ENTRY') return 'SIGNAL';
+    return 'ARMED';
   }
 
   private executionPlan(
@@ -300,7 +319,7 @@ class GovernanceSafetyRule implements DecisionRule {
   public evaluate(context: StrategyDecisionContext): DecisionRuleResult {
     if (context.bankroll === 0) return warning(this.id, 'Bankroll não informado; decisão limitada a modo pesquisa.', 0.42, 0.48);
     if (context.strategy.suggestedFraction > 0.01) return blocker(this.id, 'Sizing sugerido excede limite conservador institucional.', 0.76);
-    return info(this.id, 'Governança mantém execução real bloqueada e sizing em modo paper.', 0.72, 0.18);
+    return info(this.id, 'Governança mantém execução em modo paper e exige liberação explícita do gate.', 0.72, 0.18);
   }
 }
 
