@@ -28,6 +28,7 @@ import { AdvancedWalkForwardService } from '../../application/backtesting/Advanc
 import { StressScenarioService } from '../../application/backtesting/StressScenarioService';
 import { CapitalExposureService } from '../../application/backtesting/CapitalExposureService';
 import { MonteCarloV2Service } from '../../application/backtesting/MonteCarloV2Service';
+import { BenchmarkComparisonService } from '../../application/backtesting/BenchmarkComparisonService';
 import { config } from '../../config';
 
 interface AnalyzePayload {
@@ -64,6 +65,7 @@ export class Server {
   private readonly stressScenarioService = new StressScenarioService();
   private readonly capitalExposureService = new CapitalExposureService();
   private readonly monteCarloV2Service = new MonteCarloV2Service();
+  private readonly benchmarkComparisonService = new BenchmarkComparisonService();
   private httpServer?: ReturnType<Express['listen']>;
 
   constructor(
@@ -173,7 +175,11 @@ export class Server {
           'bootstrap-resampling',
           'confidence-bands',
           'sequence-dependency-risk',
-          'tail-risk-bootstrap-analysis'
+          'tail-risk-bootstrap-analysis',
+          'strategy-benchmarking',
+          'random-baseline-validation',
+          'relative-edge-scoring',
+          'baseline-dominance-risk'
         ],
         gates: {
           minSampleSize: 120,
@@ -291,6 +297,13 @@ export class Server {
       const dataset = req.body?.dataset ?? req.body?.records ?? req.body?.history ?? req.body;
       const report = this.monteCarloV2Service.evaluate(dataset);
       this.metrics.increment(`backtest.monte_carlo_v2.${report.status.toLowerCase()}`);
+      res.status(report.status === 'REJECTED' ? 422 : 200).json(report);
+    });
+
+    this.app.post('/api/backtest/benchmark/evaluate', (req, res) => {
+      const dataset = req.body?.dataset ?? req.body?.records ?? req.body?.history ?? req.body;
+      const report = this.benchmarkComparisonService.evaluate(dataset);
+      this.metrics.increment(`backtest.benchmark.${report.status.toLowerCase()}`);
       res.status(report.status === 'REJECTED' ? 422 : 200).json(report);
     });
 
