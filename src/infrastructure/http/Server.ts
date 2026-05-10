@@ -29,6 +29,7 @@ import { StressScenarioService } from '../../application/backtesting/StressScena
 import { CapitalExposureService } from '../../application/backtesting/CapitalExposureService';
 import { MonteCarloV2Service } from '../../application/backtesting/MonteCarloV2Service';
 import { BenchmarkComparisonService } from '../../application/backtesting/BenchmarkComparisonService';
+import { WarmupSessionService } from '../../application/session/WarmupSessionService';
 import { config } from '../../config';
 
 interface AnalyzePayload {
@@ -66,6 +67,7 @@ export class Server {
   private readonly capitalExposureService = new CapitalExposureService();
   private readonly monteCarloV2Service = new MonteCarloV2Service();
   private readonly benchmarkComparisonService = new BenchmarkComparisonService();
+  private readonly warmupSessionService = new WarmupSessionService();
   private httpServer?: ReturnType<Express['listen']>;
 
   constructor(
@@ -179,7 +181,10 @@ export class Server {
           'strategy-benchmarking',
           'random-baseline-validation',
           'relative-edge-scoring',
-          'baseline-dominance-risk'
+          'baseline-dominance-risk',
+          'warmup-session-analysis',
+          'vision-warmup-normalization',
+          'one-hundred-round-table-gating'
         ],
         gates: {
           minSampleSize: 120,
@@ -305,6 +310,38 @@ export class Server {
       const report = this.benchmarkComparisonService.evaluate(dataset);
       this.metrics.increment(`backtest.benchmark.${report.status.toLowerCase()}`);
       res.status(report.status === 'REJECTED' ? 422 : 200).json(report);
+    });
+
+
+    this.app.post('/api/session/warmup/evaluate', (req, res) => {
+      const report = this.warmupSessionService.evaluate({
+        source: req.body?.source ?? 'dataset',
+        dataset: req.body?.dataset ?? req.body?.records ?? req.body?.history ?? req.body?.values ?? req.body,
+        values: Array.isArray(req.body?.values) ? req.body.values : undefined,
+        visionRaw: req.body?.visionRaw ?? req.body?.vision ?? req.body?.ocr
+      });
+      this.metrics.increment(`session.warmup.${report.status.toLowerCase()}`);
+      res.status(report.status === 'REJECTED' ? 422 : 200).json(report);
+    });
+
+    this.app.post('/api/vision/warmup/analyze', upload.single('image'), async (req: Request, res: Response) => {
+      try {
+        const prompt = req.body.prompt || this.defaultWarmupVisionPrompt();
+        const base64 = req.file?.buffer.toString('base64') || req.body.image;
+        const mimeType = req.file?.mimetype || req.body.mimeType || 'image/jpeg';
+
+        if (!base64) {
+          return res.status(400).json({ status: 'REJECTED', reason: 'Imagem não enviada para warm-up.' });
+        }
+
+        const raw = await this.gemini.analyzeImage(base64, mimeType, prompt);
+        const report = this.warmupSessionService.evaluate({ source: 'vision', visionRaw: raw });
+        this.metrics.increment(`vision.warmup.${report.status.toLowerCase()}`);
+        return res.status(report.status === 'REJECTED' ? 422 : 200).json({ ...report, rawVision: raw });
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Falha na análise de warm-up por imagem.';
+        return res.status(500).json({ status: 'ERROR', reason: message });
+      }
     });
 
     this.app.post('/api/strategy/analyze', async (req, res) => this.analyzeHistory(req, res));
@@ -441,5 +478,9 @@ export class Server {
 
   private defaultVisionPrompt(): string {
     return 'Extraia somente números de roleta europeia de 0 a 36. Responda JSON puro no formato {"sequencia":[number],"total":number}. Não invente números ilegíveis.';
+  }
+
+  private defaultWarmupVisionPrompt(): string {
+    return 'Extraia as últimas 100 rodadas visíveis da roleta europeia, preservando a ordem temporal do mais antigo para o mais recente quando possível. Responda apenas JSON puro no formato {"total":number,"sequencia":[number]}. Aceite somente inteiros 0-36 e não invente números ilegíveis.';
   }
 }
