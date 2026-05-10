@@ -15,6 +15,7 @@ import {
   type StrategyRankingReport
 } from '../strategy/StrategyRankingEngine';
 import type { LiveSessionControlFrame } from '../session/LiveSessionStateMachine';
+import type { RegimeClassificationReport } from '../regime/RegimeClassificationEngine';
 
 export type DecisionOrchestratorStatus = 'REJECTED' | 'OBSERVE' | 'READY_FOR_RESEARCH_SIGNAL';
 
@@ -22,6 +23,7 @@ export interface DecisionOrchestratorInput {
   readonly decisionContext: StrategyDecisionContext;
   readonly strategyCandidates: readonly StrategyRankingCandidate[];
   readonly sessionControl?: LiveSessionControlFrame;
+  readonly regimeClassification?: RegimeClassificationReport;
 }
 
 export interface RecommendedStrategySnapshot {
@@ -52,6 +54,7 @@ export interface DecisionOrchestratorReport {
   readonly recommendedStrategy: RecommendedStrategySnapshot | null;
   readonly ranking: StrategyRankingReport;
   readonly decision: StrategyDecisionReport;
+  readonly regimeClassification: RegimeClassificationReport | null;
   readonly governance: DecisionOrchestratorGovernance;
   readonly blockers: readonly string[];
   readonly warnings: readonly string[];
@@ -83,10 +86,12 @@ export class DecisionOrchestrator {
       const enrichedContext = this.withRankedStrategy(input.decisionContext, ranking.topCandidate);
       const decision = this.decisionEngine.decide(enrichedContext);
       const sessionBlockers = this.sessionBlockers(input.sessionControl);
-      const operationalGate = this.resolveGate(decision.operationalGate, sessionBlockers);
-      const action = this.resolveAction(decision.action, sessionBlockers);
-      const blockers = [...decision.blockers, ...sessionBlockers];
-      const warnings = this.warnings(decision, ranking, input.sessionControl);
+      const regimeBlockers = this.regimeBlockers(input.regimeClassification);
+      const externalBlockers = [...sessionBlockers, ...regimeBlockers];
+      const operationalGate = this.resolveGate(decision.operationalGate, externalBlockers);
+      const action = this.resolveAction(decision.action, externalBlockers);
+      const blockers = [...decision.blockers, ...externalBlockers];
+      const warnings = this.warnings(decision, ranking, input.sessionControl, input.regimeClassification);
       const recommendedStrategy = ranking.topCandidate ? this.recommendedStrategy(ranking.topCandidate) : null;
       const status = this.status(operationalGate, blockers.length, recommendedStrategy);
       const governance = this.governance(decision, sessionBlockers);
@@ -94,7 +99,7 @@ export class DecisionOrchestrator {
 
       return ok({
         engineVersion: 'decision-orchestrator-v1',
-        orchestratorId: this.orchestratorId(enrichedContext.sessionId, ranking, decision, sessionBlockers),
+        orchestratorId: this.orchestratorId(enrichedContext.sessionId, ranking, decision, externalBlockers),
         sessionId: enrichedContext.sessionId,
         status,
         action,
@@ -102,6 +107,7 @@ export class DecisionOrchestrator {
         recommendedStrategy,
         ranking,
         decision,
+        regimeClassification: input.regimeClassification ?? null,
         governance,
         blockers,
         warnings,
@@ -153,25 +159,37 @@ export class DecisionOrchestrator {
     return [`Sessão live ainda não está pronta para decisão: ${control.reason}`];
   }
 
-  private resolveGate(current: OperationalGateState, sessionBlockers: readonly string[]): OperationalGateState {
-    if (sessionBlockers.length === 0) return current;
-    if (sessionBlockers.some(message => message.includes('cooldown'))) return 'COOLDOWN';
+  private regimeBlockers(regime?: RegimeClassificationReport): readonly string[] {
+    if (!regime) return [];
+    if (regime.signalPolicy === 'BLOCK_SIGNALS') {
+      return [`Regime ${regime.regime} bloqueia sinais: ${regime.rationale}`];
+    }
+    return [];
+  }
+
+  private resolveGate(current: OperationalGateState, externalBlockers: readonly string[]): OperationalGateState {
+    if (externalBlockers.length === 0) return current;
+    if (externalBlockers.some(message => message.includes('cooldown'))) return 'COOLDOWN';
+    if (externalBlockers.some(message => message.includes('bloqueia sinais'))) return 'NO_GO';
     return 'OBSERVE';
   }
 
-  private resolveAction(current: OperationalDecisionAction, sessionBlockers: readonly string[]): OperationalDecisionAction {
-    if (sessionBlockers.length === 0) return current;
+  private resolveAction(current: OperationalDecisionAction, externalBlockers: readonly string[]): OperationalDecisionAction {
+    if (externalBlockers.length === 0) return current;
+    if (externalBlockers.some(message => message.includes('bloqueia sinais'))) return 'BLOCKED';
     return current === 'BLOCKED' ? 'BLOCKED' : 'OBSERVE';
   }
 
   private warnings(
     decision: StrategyDecisionReport,
     ranking: StrategyRankingReport,
-    control?: LiveSessionControlFrame
+    control?: LiveSessionControlFrame,
+    regime?: RegimeClassificationReport
   ): readonly string[] {
     const warnings: string[] = [...decision.warnings];
     if (ranking.eligibleCount === 0) warnings.push('Nenhuma estratégia elegível no ranking bayesiano.');
     if (control && control.nextAction !== 'EVALUATE_DECISION') warnings.push('Snapshot live usado apenas para observação; janela ainda não pronta para sinal.');
+    if (regime?.signalPolicy === 'OBSERVE_ONLY') warnings.push(`Regime ${regime.regime} limita decisão para observação: ${regime.rationale}`);
     return warnings;
   }
 
@@ -201,7 +219,7 @@ export class DecisionOrchestrator {
 
   private governance(decision: StrategyDecisionReport, sessionBlockers: readonly string[]): DecisionOrchestratorGovernance {
     const reason = sessionBlockers.length > 0
-      ? 'Governança mantém execução real bloqueada porque a sessão live ainda não autorizou avaliação.'
+      ? 'Governança mantém execução real bloqueada porque sessão/regime ainda não autorizam avaliação.'
       : 'Governança mantém execução real bloqueada: etapa atual é exclusivamente RESEARCH_ONLY.';
 
     return {
@@ -227,9 +245,9 @@ export class DecisionOrchestrator {
     sessionId: string,
     ranking: StrategyRankingReport,
     decision: StrategyDecisionReport,
-    sessionBlockers: readonly string[]
+    externalBlockers: readonly string[]
   ): string {
-    const payload = JSON.stringify({ sessionId, ranking, decisionId: decision.reportId, sessionBlockers });
+    const payload = JSON.stringify({ sessionId, ranking, decisionId: decision.reportId, externalBlockers });
     return crypto.createHash('sha256').update(payload).digest('hex').slice(0, 24);
   }
 }

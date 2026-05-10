@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { DecisionOrchestrator } = require('../dist/domain/decision/DecisionOrchestrator');
+const { RegimeClassificationEngine } = require('../dist/domain/regime/RegimeClassificationEngine');
 
 function baseDecisionContext(overrides = {}) {
   return {
@@ -131,4 +132,25 @@ test('DecisionOrchestrator returns typed Result error for malformed input', () =
   assert.equal(result.success, false);
   assert.equal(result.error.code, 'DECISION_ORCHESTRATOR_FAILED');
   assert.match(result.error.message, /invalid_decision_bankroll/);
+});
+
+
+test('DecisionOrchestrator blocks research signal when regime policy blocks signals', () => {
+  const orchestrator = new DecisionOrchestrator();
+  const regimeResult = new RegimeClassificationEngine().classify(Array.from({ length: 140 }, (_, index) => (index < 120 ? 7 : index % 3)));
+  assert.equal(regimeResult.success, true);
+
+  const result = orchestrator.orchestrate({
+    decisionContext: baseDecisionContext(),
+    strategyCandidates: [strongCandidate()],
+    sessionControl: readyControl(),
+    regimeClassification: regimeResult.value
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.value.status, 'REJECTED');
+  assert.equal(result.value.action, 'BLOCKED');
+  assert.equal(result.value.operationalGate, 'NO_GO');
+  assert.equal(result.value.regimeClassification.regime, 'CHAOTIC');
+  assert.ok(result.value.blockers.some((blocker) => blocker.includes('bloqueia sinais')));
 });
