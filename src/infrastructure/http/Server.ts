@@ -31,6 +31,7 @@ import { MonteCarloV2Service } from '../../application/backtesting/MonteCarloV2S
 import { BenchmarkComparisonService } from '../../application/backtesting/BenchmarkComparisonService';
 import { WarmupSessionService } from '../../application/session/WarmupSessionService';
 import { StrategyDecisionService } from '../../application/decision/StrategyDecisionService';
+import { LiveSessionRuntimeService } from '../../application/session/LiveSessionRuntimeService';
 import { config } from '../../config';
 
 interface AnalyzePayload {
@@ -70,6 +71,7 @@ export class Server {
   private readonly benchmarkComparisonService = new BenchmarkComparisonService();
   private readonly warmupSessionService = new WarmupSessionService();
   private readonly strategyDecisionService = new StrategyDecisionService();
+  private readonly liveSessionRuntimeService = new LiveSessionRuntimeService();
   private httpServer?: ReturnType<Express['listen']>;
 
   constructor(
@@ -189,7 +191,11 @@ export class Server {
           'one-hundred-round-table-gating',
           'strategy-decision-engine',
           'paper-trading-execution-plan',
-          'operational-decision-governance'
+          'operational-decision-governance',
+          'live-session-runtime',
+          'incremental-round-ingestion',
+          'idempotent-live-event-processing',
+          'bounded-memory-session-state'
         ],
         gates: {
           minSampleSize: 120,
@@ -347,6 +353,26 @@ export class Server {
         const message = error instanceof Error ? error.message : 'Falha na análise de warm-up por imagem.';
         return res.status(500).json({ status: 'ERROR', reason: message });
       }
+    });
+
+
+    this.app.post('/api/session/live/round', (req, res) => {
+      const report = this.liveSessionRuntimeService.ingest({
+        sessionId: typeof req.body?.sessionId === 'string' ? req.body.sessionId : undefined,
+        value: Number(req.body?.value),
+        eventId: typeof req.body?.eventId === 'string' ? req.body.eventId : undefined,
+        sequence: Number.isInteger(req.body?.sequence) ? req.body.sequence : undefined,
+        occurredAt: typeof req.body?.occurredAt === 'string' ? req.body.occurredAt : undefined,
+        bankroll: Number(req.body?.bankroll ?? 0)
+      });
+      this.metrics.increment(`session.live.${report.status.toLowerCase()}`);
+      res.status(report.status === 'REJECTED' ? 422 : 200).json(report);
+    });
+
+    this.app.get('/api/session/live/:sessionId', (req, res) => {
+      const report = this.liveSessionRuntimeService.snapshot(req.params.sessionId);
+      this.metrics.increment(`session.live.snapshot.${report.status.toLowerCase()}`);
+      res.status(report.status === 'REJECTED' ? 404 : 200).json(report);
     });
 
     this.app.post('/api/strategy/decision/evaluate', (req, res) => {
