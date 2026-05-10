@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { DomainError, err, ok, Result } from '../shared/Result';
+import { LiveSessionControlFrame, LiveSessionStateMachine } from './LiveSessionStateMachine';
 
 export type LiveSessionStatus = 'INITIALIZING' | 'WARMED_UP' | 'LIVE_READY' | 'BLOCKED';
 export type LiveRoundIngestionStatus = 'ACCEPTED' | 'DUPLICATE_IGNORED' | 'REJECTED';
@@ -41,6 +42,7 @@ export interface LiveSessionSnapshot {
     readonly maxNumberConcentration: number;
     readonly alternationRate: number;
   };
+  readonly control: LiveSessionControlFrame;
   readonly checksum: string;
   readonly updatedAt: string;
 }
@@ -80,6 +82,7 @@ export class LiveSessionRuntime {
   private readonly maxHistorySize: number;
   private readonly maxEventIdCacheSize: number;
   private readonly decisionWindowSize: number;
+  private readonly stateMachine: LiveSessionStateMachine;
   private readonly sessions = new Map<string, MutableSessionState>();
 
   constructor(options: LiveSessionRuntimeOptions = {}) {
@@ -87,6 +90,7 @@ export class LiveSessionRuntime {
     this.maxHistorySize = Math.max(this.warmupSize, Math.trunc(options.maxHistorySize ?? 240));
     this.maxEventIdCacheSize = Math.max(this.maxHistorySize, Math.trunc(options.maxEventIdCacheSize ?? 512));
     this.decisionWindowSize = Math.max(this.warmupSize, Math.min(this.maxHistorySize, Math.trunc(options.decisionWindowSize ?? 120)));
+    this.stateMachine = new LiveSessionStateMachine({ warmupSize: this.warmupSize, decisionWindowSize: this.warmupSize });
   }
 
   public ingest(command: LiveRoundCommand): Result<LiveRoundIngestionReport, DomainError> {
@@ -199,6 +203,7 @@ export class LiveSessionRuntime {
     const warmupWindow = state.values.slice(-this.warmupSize);
     const rollingWindow = state.values.slice(-Math.min(32, state.values.length));
     const rolling = this.rollingMetrics(rollingWindow);
+    const control = this.stateMachine.evaluate({ status: state.status, roundCount: state.values.length, rolling });
     const checksum = crypto.createHash('sha256').update(historyWindow.join(',')).digest('hex');
 
     return {
@@ -216,6 +221,7 @@ export class LiveSessionRuntime {
       historyWindow,
       warmupWindow,
       rolling,
+      control,
       checksum,
       updatedAt: state.updatedAt
     };

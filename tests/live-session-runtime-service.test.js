@@ -46,3 +46,15 @@ test('LiveSessionRuntimeService rejects malformed round input', () => {
   assert.equal(report.status, 'REJECTED');
   assert.equal(report.executiveSummary.liveRuntimeGate, 'BLOCKED');
 });
+
+test('LiveSessionRuntimeService surfaces cooldown without invoking live stake', () => {
+  const service = new LiveSessionRuntimeService();
+  let report;
+  for (let index = 0; index < 100; index += 1) {
+    report = service.ingest({ sessionId: 'live-cooldown', value: index < 90 ? 11 : index % 37, eventId: `cool-${index}`, sequence: index, bankroll: 1000 });
+  }
+
+  assert.equal(report.executiveSummary.liveRuntimeGate, 'COOLDOWN');
+  assert.equal(report.executiveSummary.operationalGate, 'COOLDOWN');
+  assert.equal(report.executiveSummary.nextAction, 'WAIT_COOLDOWN');
+});

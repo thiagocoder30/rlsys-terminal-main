@@ -37,3 +37,31 @@ test('LiveSessionRuntime rejects invalid roulette values without silent failure'
   assert.equal(result.success, false);
   assert.equal(result.error.code, 'LIVE_SESSION_INVALID_ROUND');
 });
+
+test('LiveSessionRuntime exposes deterministic control frame for decision readiness', () => {
+  const runtime = new LiveSessionRuntime({ warmupSize: 20, maxHistorySize: 24, decisionWindowSize: 20 });
+  let report;
+  for (let index = 0; index < 20; index += 1) {
+    const result = runtime.ingest({ sessionId: 's4', value: index % 37, eventId: `s4-${index}`, sequence: index });
+    assert.equal(result.success, true);
+    report = result.value;
+  }
+
+  assert.equal(report.snapshot.control.phase, 'DECISION_READY');
+  assert.equal(report.snapshot.control.nextAction, 'EVALUATE_DECISION');
+  assert.equal(report.snapshot.control.spinsUntilDecision, 0);
+});
+
+test('LiveSessionRuntime enters cooldown on concentrated rolling window', () => {
+  const runtime = new LiveSessionRuntime({ warmupSize: 20, maxHistorySize: 40, decisionWindowSize: 20 });
+  let report;
+  for (let index = 0; index < 20; index += 1) {
+    const result = runtime.ingest({ sessionId: 's5', value: index < 18 ? 7 : index, eventId: `s5-${index}`, sequence: index });
+    assert.equal(result.success, true);
+    report = result.value;
+  }
+
+  assert.equal(report.snapshot.control.phase, 'COOLDOWN');
+  assert.equal(report.snapshot.control.nextAction, 'WAIT_COOLDOWN');
+  assert.equal(report.snapshot.readyForDecision, true);
+});

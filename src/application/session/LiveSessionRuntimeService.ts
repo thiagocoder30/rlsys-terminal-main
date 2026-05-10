@@ -20,10 +20,10 @@ export interface LiveSessionRuntimeServiceReport {
   readonly snapshot: LiveSessionSnapshot;
   readonly decision?: StrategyDecisionServiceReport;
   readonly executiveSummary: {
-    readonly liveRuntimeGate: 'INITIALIZING' | 'DECISION_READY' | 'BLOCKED';
+    readonly liveRuntimeGate: 'INITIALIZING' | 'WARMUP_COMPLETE' | 'DECISION_READY' | 'COOLDOWN' | 'BLOCKED';
     readonly operationalGate: OperationalGateState | 'BLOCKED';
     readonly reason: string;
-    readonly nextAction: 'COLLECT_MORE_ROUNDS' | 'REVIEW_DECISION_REPORT' | 'REJECT_EVENT';
+    readonly nextAction: 'COLLECT_MORE_ROUNDS' | 'REVIEW_DECISION_REPORT' | 'WAIT_COOLDOWN' | 'REJECT_EVENT';
   };
   readonly generatedAt: string;
 }
@@ -143,8 +143,14 @@ export class LiveSessionRuntimeService {
     if (snapshot.status === 'BLOCKED') {
       return { liveRuntimeGate: 'BLOCKED', operationalGate: 'BLOCKED', reason: 'Live runtime is blocked by validation or governance.', nextAction: 'REJECT_EVENT' };
     }
-    if (!snapshot.readyForDecision) {
-      return { liveRuntimeGate: 'INITIALIZING', operationalGate: 'BLOCKED', reason: `Warm-up progress ${(snapshot.warmupProgress * 100).toFixed(1)}%. Collect 100 rounds before decision.`, nextAction: 'COLLECT_MORE_ROUNDS' };
+    if (snapshot.control.phase === 'COOLDOWN') {
+      return { liveRuntimeGate: 'COOLDOWN', operationalGate: 'COOLDOWN', reason: snapshot.control.reason, nextAction: 'WAIT_COOLDOWN' };
+    }
+    if (!snapshot.readyForDecision || snapshot.control.phase === 'COLLECTING_WARMUP') {
+      return { liveRuntimeGate: 'INITIALIZING', operationalGate: 'BLOCKED', reason: snapshot.control.reason, nextAction: 'COLLECT_MORE_ROUNDS' };
+    }
+    if (snapshot.control.phase === 'WARMUP_COMPLETE') {
+      return { liveRuntimeGate: 'WARMUP_COMPLETE', operationalGate: 'OBSERVE', reason: snapshot.control.reason, nextAction: 'COLLECT_MORE_ROUNDS' };
     }
     if (ingestionStatus === 'DUPLICATE_IGNORED') {
       return { liveRuntimeGate: 'DECISION_READY', operationalGate: 'BLOCKED', reason: 'Duplicate event ignored; last valid decision state preserved.', nextAction: 'REVIEW_DECISION_REPORT' };
@@ -173,6 +179,7 @@ export class LiveSessionRuntimeService {
       historyWindow: [],
       warmupWindow: [],
       rolling: { windowSize: 0, uniqueNumbers: 0, normalizedEntropy: 0, repeatRate: 0, maxNumberConcentration: 0, alternationRate: 0 },
+      control: { phase: 'BLOCKED', nextAction: 'REJECT_EVENT', spinsUntilWarmup: 100, spinsUntilDecision: 100, cooldownRemainingSpins: 0, decisionWindowSize: 100, reason: 'Snapshot vazio criado para evento rejeitado.' },
       checksum: '',
       updatedAt: new Date().toISOString()
     };
