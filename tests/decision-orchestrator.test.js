@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { DecisionOrchestrator } = require('../dist/domain/decision/DecisionOrchestrator');
 const { RegimeClassificationEngine } = require('../dist/domain/regime/RegimeClassificationEngine');
+const { StrategyEnsembleEngine } = require('../dist/domain/strategy/StrategyEnsembleEngine');
 
 function baseDecisionContext(overrides = {}) {
   return {
@@ -153,4 +154,75 @@ test('DecisionOrchestrator blocks research signal when regime policy blocks sign
   assert.equal(result.value.operationalGate, 'NO_GO');
   assert.equal(result.value.regimeClassification.regime, 'CHAOTIC');
   assert.ok(result.value.blockers.some((blocker) => blocker.includes('bloqueia sinais')));
+});
+
+
+test('DecisionOrchestrator blocks research signal when ensemble reports strategic conflict', () => {
+  const orchestrator = new DecisionOrchestrator();
+  const ensembleResult = new StrategyEnsembleEngine().evaluate([
+    {
+      strategyId: 'alpha',
+      label: 'Alpha',
+      status: 'SUPPORT',
+      targetId: 'sector-voisins',
+      targetLabel: 'Voisins',
+      confidence: 0.82,
+      evidenceScore: 0.78,
+      riskPenalty: 0.18,
+      recencyWeight: 0.94,
+      weight: 0.8
+    },
+    {
+      strategyId: 'beta',
+      label: 'Beta',
+      status: 'SUPPORT',
+      targetId: 'sector-voisins',
+      targetLabel: 'Voisins',
+      confidence: 0.8,
+      evidenceScore: 0.76,
+      riskPenalty: 0.2,
+      recencyWeight: 0.92,
+      weight: 0.78
+    },
+    {
+      strategyId: 'delta',
+      label: 'Delta',
+      status: 'OPPOSE',
+      targetId: 'sector-voisins',
+      targetLabel: 'Voisins',
+      confidence: 0.81,
+      evidenceScore: 0.75,
+      riskPenalty: 0.22,
+      recencyWeight: 0.9,
+      weight: 0.95
+    },
+    {
+      strategyId: 'epsilon',
+      label: 'Epsilon',
+      status: 'OPPOSE',
+      targetId: 'sector-voisins',
+      targetLabel: 'Voisins',
+      confidence: 0.79,
+      evidenceScore: 0.72,
+      riskPenalty: 0.24,
+      recencyWeight: 0.9,
+      weight: 0.9
+    }
+  ]);
+  assert.equal(ensembleResult.success, true);
+  assert.equal(ensembleResult.value.decision, 'CONFLICT');
+
+  const result = orchestrator.orchestrate({
+    decisionContext: baseDecisionContext(),
+    strategyCandidates: [strongCandidate()],
+    sessionControl: readyControl(),
+    strategyEnsemble: ensembleResult.value
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.value.status, 'REJECTED');
+  assert.equal(result.value.action, 'BLOCKED');
+  assert.equal(result.value.operationalGate, 'NO_GO');
+  assert.equal(result.value.strategyEnsemble.decision, 'CONFLICT');
+  assert.ok(result.value.blockers.some((blocker) => blocker.includes('Ensemble bloqueia')));
 });

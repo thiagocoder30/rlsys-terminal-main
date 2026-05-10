@@ -16,6 +16,7 @@ import {
 } from '../strategy/StrategyRankingEngine';
 import type { LiveSessionControlFrame } from '../session/LiveSessionStateMachine';
 import type { RegimeClassificationReport } from '../regime/RegimeClassificationEngine';
+import type { StrategyEnsembleReport } from '../strategy/StrategyEnsembleEngine';
 
 export type DecisionOrchestratorStatus = 'REJECTED' | 'OBSERVE' | 'READY_FOR_RESEARCH_SIGNAL';
 
@@ -24,6 +25,7 @@ export interface DecisionOrchestratorInput {
   readonly strategyCandidates: readonly StrategyRankingCandidate[];
   readonly sessionControl?: LiveSessionControlFrame;
   readonly regimeClassification?: RegimeClassificationReport;
+  readonly strategyEnsemble?: StrategyEnsembleReport;
 }
 
 export interface RecommendedStrategySnapshot {
@@ -55,6 +57,7 @@ export interface DecisionOrchestratorReport {
   readonly ranking: StrategyRankingReport;
   readonly decision: StrategyDecisionReport;
   readonly regimeClassification: RegimeClassificationReport | null;
+  readonly strategyEnsemble: StrategyEnsembleReport | null;
   readonly governance: DecisionOrchestratorGovernance;
   readonly blockers: readonly string[];
   readonly warnings: readonly string[];
@@ -87,11 +90,12 @@ export class DecisionOrchestrator {
       const decision = this.decisionEngine.decide(enrichedContext);
       const sessionBlockers = this.sessionBlockers(input.sessionControl);
       const regimeBlockers = this.regimeBlockers(input.regimeClassification);
-      const externalBlockers = [...sessionBlockers, ...regimeBlockers];
+      const ensembleBlockers = this.ensembleBlockers(input.strategyEnsemble);
+      const externalBlockers = [...sessionBlockers, ...regimeBlockers, ...ensembleBlockers];
       const operationalGate = this.resolveGate(decision.operationalGate, externalBlockers);
       const action = this.resolveAction(decision.action, externalBlockers);
       const blockers = [...decision.blockers, ...externalBlockers];
-      const warnings = this.warnings(decision, ranking, input.sessionControl, input.regimeClassification);
+      const warnings = this.warnings(decision, ranking, input.sessionControl, input.regimeClassification, input.strategyEnsemble);
       const recommendedStrategy = ranking.topCandidate ? this.recommendedStrategy(ranking.topCandidate) : null;
       const status = this.status(operationalGate, blockers.length, recommendedStrategy);
       const governance = this.governance(decision, sessionBlockers);
@@ -108,6 +112,7 @@ export class DecisionOrchestrator {
         ranking,
         decision,
         regimeClassification: input.regimeClassification ?? null,
+        strategyEnsemble: input.strategyEnsemble ?? null,
         governance,
         blockers,
         warnings,
@@ -167,16 +172,24 @@ export class DecisionOrchestrator {
     return [];
   }
 
+  private ensembleBlockers(ensemble?: StrategyEnsembleReport): readonly string[] {
+    if (!ensemble) return [];
+    if (ensemble.decision === 'CONSENSUS') return [];
+    if (ensemble.decision === 'CONFLICT') return [`Ensemble bloqueia sinal por conflito estratégico: ${ensemble.blockers.slice(0, 2).join('; ')}`];
+    if (ensemble.decision === 'BLOCKED') return [`Ensemble bloqueia sinal por veto estratégico: ${ensemble.blockers.slice(0, 2).join('; ')}`];
+    return [`Ensemble sem suporte suficiente: ${ensemble.blockers.slice(0, 2).join('; ')}`];
+  }
+
   private resolveGate(current: OperationalGateState, externalBlockers: readonly string[]): OperationalGateState {
     if (externalBlockers.length === 0) return current;
     if (externalBlockers.some(message => message.includes('cooldown'))) return 'COOLDOWN';
-    if (externalBlockers.some(message => message.includes('bloqueia sinais'))) return 'NO_GO';
+    if (externalBlockers.some(message => message.includes('bloqueia sinais') || message.includes('Ensemble bloqueia'))) return 'NO_GO';
     return 'OBSERVE';
   }
 
   private resolveAction(current: OperationalDecisionAction, externalBlockers: readonly string[]): OperationalDecisionAction {
     if (externalBlockers.length === 0) return current;
-    if (externalBlockers.some(message => message.includes('bloqueia sinais'))) return 'BLOCKED';
+    if (externalBlockers.some(message => message.includes('bloqueia sinais') || message.includes('Ensemble bloqueia'))) return 'BLOCKED';
     return current === 'BLOCKED' ? 'BLOCKED' : 'OBSERVE';
   }
 
@@ -184,12 +197,15 @@ export class DecisionOrchestrator {
     decision: StrategyDecisionReport,
     ranking: StrategyRankingReport,
     control?: LiveSessionControlFrame,
-    regime?: RegimeClassificationReport
+    regime?: RegimeClassificationReport,
+    ensemble?: StrategyEnsembleReport
   ): readonly string[] {
     const warnings: string[] = [...decision.warnings];
     if (ranking.eligibleCount === 0) warnings.push('Nenhuma estratégia elegível no ranking bayesiano.');
     if (control && control.nextAction !== 'EVALUATE_DECISION') warnings.push('Snapshot live usado apenas para observação; janela ainda não pronta para sinal.');
     if (regime?.signalPolicy === 'OBSERVE_ONLY') warnings.push(`Regime ${regime.regime} limita decisão para observação: ${regime.rationale}`);
+    if (ensemble?.decision === 'INSUFFICIENT_SUPPORT') warnings.push('Ensemble não alcançou suporte suficiente para consenso institucional.');
+    if (ensemble?.warnings.length) warnings.push(...ensemble.warnings);
     return warnings;
   }
 
