@@ -1,0 +1,134 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { DecisionOrchestrator } = require('../dist/domain/decision/DecisionOrchestrator');
+
+function baseDecisionContext(overrides = {}) {
+  return {
+    sessionId: 'session-orchestrator',
+    bankroll: 1000,
+    warmup: {
+      tableGate: 'GO_RESEARCH',
+      riskLabel: 'LOW',
+      completeness: 1,
+      normalizedEntropy: 0.92,
+      thirdLawDeviation: 0.08,
+      maxNumberConcentration: 0.08
+    },
+    strategy: {
+      status: 'LOCKED',
+      sampleSize: 240,
+      signalCount: 0,
+      maxSignalConfidence: 0,
+      suggestedFraction: 0,
+      riskLevel: 'LOW'
+    },
+    benchmark: {
+      verdict: 'BENCHMARK_CANDIDATE',
+      benchmarkScore: 0.82,
+      relativeEdge: 0.06,
+      baselineDominanceRisk: 0.18,
+      beatRateByCandidate: 0.78
+    },
+    capital: {
+      reviewStatus: 'CAPITAL_RESILIENT_CANDIDATE',
+      ruinProbability: 0.06,
+      worstDrawdown: 0.18,
+      exposureSaturation: 0.32,
+      circuitBreakerCount: 0
+    },
+    monteCarlo: {
+      reviewStatus: 'ROBUSTNESS_CANDIDATE',
+      robustnessScore: 0.78,
+      ruinProbability: 0.08,
+      p95MaxDrawdown: 0.24,
+      sequenceDependencyRisk: 0.22,
+      tailRisk: 'MODERATE'
+    },
+    ...overrides
+  };
+}
+
+function strongCandidate(strategyId = 'sector-alpha') {
+  return {
+    strategyId,
+    label: 'Sector Alpha',
+    status: 'ACTIVE',
+    sampleSize: 180,
+    wins: 112,
+    losses: 58,
+    pushes: 10,
+    signalConfidence: 0.84,
+    expectedValue: 0.035,
+    maxDrawdown: 0.12,
+    volatility: 0.18,
+    recencyWeight: 0.92,
+    riskLevel: 'LOW'
+  };
+}
+
+function readyControl() {
+  return {
+    phase: 'DECISION_READY',
+    nextAction: 'EVALUATE_DECISION',
+    spinsUntilWarmup: 0,
+    spinsUntilDecision: 0,
+    cooldownRemainingSpins: 0,
+    decisionWindowSize: 100,
+    reason: 'Janela live pronta para avaliação determinística.'
+  };
+}
+
+test('DecisionOrchestrator connects ranking to research-only live decision', () => {
+  const orchestrator = new DecisionOrchestrator();
+  const result = orchestrator.orchestrate({
+    decisionContext: baseDecisionContext(),
+    strategyCandidates: [strongCandidate()],
+    sessionControl: readyControl()
+  });
+
+  assert.equal(result.success, true);
+  const report = result.value;
+  assert.equal(report.engineVersion, 'decision-orchestrator-v1');
+  assert.equal(report.recommendedStrategy.strategyId, 'sector-alpha');
+  assert.equal(report.status, 'READY_FOR_RESEARCH_SIGNAL');
+  assert.equal(report.operationalGate, 'SIGNAL');
+  assert.equal(report.governance.liveStakeAllowed, false);
+  assert.equal(report.decision.execution.mode, 'RESEARCH_ONLY');
+  assert.equal(report.decision.execution.liveStakeFraction, 0);
+  assert.equal(report.ranking.eligibleCount, 1);
+});
+
+test('DecisionOrchestrator keeps observation state when live session is not ready', () => {
+  const orchestrator = new DecisionOrchestrator();
+  const result = orchestrator.orchestrate({
+    decisionContext: baseDecisionContext(),
+    strategyCandidates: [strongCandidate()],
+    sessionControl: {
+      ...readyControl(),
+      phase: 'COLLECTING_WARMUP',
+      nextAction: 'INGEST_ROUND',
+      spinsUntilWarmup: 12,
+      reason: 'Coletar mais 12 rodada(s) para completar o warm-up.'
+    }
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.value.status, 'REJECTED');
+  assert.equal(result.value.action, 'OBSERVE');
+  assert.equal(result.value.operationalGate, 'OBSERVE');
+  assert.ok(result.value.blockers.some((blocker) => blocker.includes('ainda não está pronta')));
+  assert.equal(result.value.governance.liveStakeAllowed, false);
+});
+
+test('DecisionOrchestrator returns typed Result error for malformed input', () => {
+  const orchestrator = new DecisionOrchestrator();
+  const result = orchestrator.orchestrate({
+    decisionContext: baseDecisionContext({ bankroll: -1 }),
+    strategyCandidates: [strongCandidate()],
+    sessionControl: readyControl()
+  });
+
+  assert.equal(result.success, false);
+  assert.equal(result.error.code, 'DECISION_ORCHESTRATOR_FAILED');
+  assert.match(result.error.message, /invalid_decision_bankroll/);
+});
