@@ -1,0 +1,157 @@
+diff --git a/src/application/session/LiveSessionRuntimeService.ts b/src/application/session/LiveSessionRuntimeService.ts
+index 01a0984..8f84737 100644
+--- a/src/application/session/LiveSessionRuntimeService.ts
++++ b/src/application/session/LiveSessionRuntimeService.ts
+@@ -1,5 +1,6 @@
+ import { LiveRoundCommand, LiveRoundIngestionReport, LiveSessionRuntime, LiveSessionSnapshot } from '../../domain/session/LiveSessionRuntime';
+ import { StrategyDecisionService, StrategyDecisionServiceReport } from '../decision/StrategyDecisionService';
++import { OperationalGateState } from '../../domain/decision/StrategyDecisionEngine';
+ 
+ export interface LiveSessionRuntimeServiceInput {
+   readonly sessionId?: string;
+@@ -20,7 +21,7 @@ export interface LiveSessionRuntimeServiceReport {
+   readonly decision?: StrategyDecisionServiceReport;
+   readonly executiveSummary: {
+     readonly liveRuntimeGate: 'INITIALIZING' | 'DECISION_READY' | 'BLOCKED';
+-    readonly operationalGate: 'BLOCKED';
++    readonly operationalGate: OperationalGateState | 'BLOCKED';
+     readonly reason: string;
+     readonly nextAction: 'COLLECT_MORE_ROUNDS' | 'REVIEW_DECISION_REPORT' | 'REJECT_EVENT';
+   };
+@@ -150,8 +151,10 @@ export class LiveSessionRuntimeService {
+     }
+     return {
+       liveRuntimeGate: 'DECISION_READY',
+-      operationalGate: 'BLOCKED',
+-      reason: decision ? `Decision engine returned ${decision.decision.action} under research governance.` : 'Decision window ready for review.',
++      operationalGate: decision?.decision.operationalGate ?? 'OBSERVE',
++      reason: decision
++        ? `Decision engine returned ${decision.decision.action} with gate ${decision.decision.operationalGate} under research governance.`
++        : 'Decision window ready for review.',
+       nextAction: 'REVIEW_DECISION_REPORT'
+     };
+   }
+diff --git a/src/domain/decision/StrategyDecisionEngine.ts b/src/domain/decision/StrategyDecisionEngine.ts
+index 6b618b0..63178b1 100644
+--- a/src/domain/decision/StrategyDecisionEngine.ts
++++ b/src/domain/decision/StrategyDecisionEngine.ts
+@@ -1,6 +1,7 @@
+ import crypto from 'crypto';
+ 
+ export type OperationalDecisionAction = 'BLOCKED' | 'NO_BET' | 'OBSERVE' | 'CONSERVATIVE_ENTRY' | 'MODERATE_ENTRY';
++export type OperationalGateState = 'NO_GO' | 'OBSERVE' | 'ARMED' | 'SIGNAL' | 'COOLDOWN';
+ export type ExecutionMode = 'RESEARCH_ONLY';
+ export type DecisionSeverity = 'INFO' | 'WARNING' | 'BLOCKER';
+ export type DecisionRuleId =
+@@ -87,7 +88,8 @@ export interface StrategyDecisionReport {
+   readonly reportId: string;
+   readonly sessionId: string;
+   readonly action: OperationalDecisionAction;
+-  readonly operationalGate: 'BLOCKED';
++  readonly operationalGate: OperationalGateState;
++  readonly allowed: boolean;
+   readonly confidenceScore: number;
+   readonly riskScore: number;
+   readonly evidenceScore: number;
+@@ -138,6 +140,7 @@ export class StrategyDecisionEngine {
+     const riskScore = round(clamp(sum(ruleResults.map(result => result.riskContribution)) / this.rules.length));
+     const confidenceScore = round(clamp(evidenceScore * 0.68 + (1 - riskScore) * 0.32));
+     const action = this.action(context, blockers, warnings, confidenceScore, riskScore);
++    const operationalGate = this.operationalGate(context, action, blockers, warnings, confidenceScore, riskScore);
+     const execution = this.executionPlan(context, action, confidenceScore, riskScore);
+ 
+     return {
+@@ -145,7 +148,8 @@ export class StrategyDecisionEngine {
+       reportId: this.reportId(context, ruleResults),
+       sessionId: context.sessionId,
+       action,
+-      operationalGate: 'BLOCKED',
++      operationalGate,
++      allowed: operationalGate === 'SIGNAL',
+       confidenceScore,
+       riskScore,
+       evidenceScore,
+@@ -177,6 +181,21 @@ export class StrategyDecisionEngine {
+     return 'CONSERVATIVE_ENTRY';
+   }
+ 
++  private operationalGate(
++    context: StrategyDecisionContext,
++    action: OperationalDecisionAction,
++    blockers: readonly string[],
++    warnings: readonly string[],
++    confidenceScore: number,
++    riskScore: number
++  ): OperationalGateState {
++    if (blockers.length > 0 || context.warmup.tableGate === 'NO_GO' || action === 'BLOCKED') return 'NO_GO';
++    if (warnings.length >= 3 || riskScore > 0.48) return 'COOLDOWN';
++    if (action === 'NO_BET' || action === 'OBSERVE' || confidenceScore < 0.58) return 'OBSERVE';
++    if (action === 'CONSERVATIVE_ENTRY' || action === 'MODERATE_ENTRY') return 'SIGNAL';
++    return 'ARMED';
++  }
++
+   private executionPlan(
+     context: StrategyDecisionContext,
+     action: OperationalDecisionAction,
+@@ -300,7 +319,7 @@ class GovernanceSafetyRule implements DecisionRule {
+   public evaluate(context: StrategyDecisionContext): DecisionRuleResult {
+     if (context.bankroll === 0) return warning(this.id, 'Bankroll não informado; decisão limitada a modo pesquisa.', 0.42, 0.48);
+     if (context.strategy.suggestedFraction > 0.01) return blocker(this.id, 'Sizing sugerido excede limite conservador institucional.', 0.76);
+-    return info(this.id, 'Governança mantém execução real bloqueada e sizing em modo paper.', 0.72, 0.18);
++    return info(this.id, 'Governança mantém execução em modo paper e exige liberação explícita do gate.', 0.72, 0.18);
+   }
+ }
+ 
+diff --git a/tests/live-session-runtime-service.test.js b/tests/live-session-runtime-service.test.js
+index cec747f..70ad8f8 100644
+--- a/tests/live-session-runtime-service.test.js
++++ b/tests/live-session-runtime-service.test.js
+@@ -24,9 +24,10 @@ test('LiveSessionRuntimeService invokes decision layer after 100 rounds while ke
+   assert.equal(report.status, 'ACCEPTED');
+   assert.equal(report.snapshot.readyForDecision, true);
+   assert.equal(report.executiveSummary.liveRuntimeGate, 'DECISION_READY');
+-  assert.equal(report.executiveSummary.operationalGate, 'BLOCKED');
++  assert.ok(['NO_GO', 'OBSERVE', 'COOLDOWN', 'ARMED', 'SIGNAL'].includes(report.executiveSummary.operationalGate));
+   assert.ok(report.decision);
+-  assert.equal(report.decision.decision.operationalGate, 'BLOCKED');
++  assert.ok(['NO_GO', 'OBSERVE', 'COOLDOWN', 'ARMED', 'SIGNAL'].includes(report.decision.decision.operationalGate));
++  assert.equal(report.decision.decision.execution.liveStakeFraction, 0);
+ });
+ 
+ test('LiveSessionRuntimeService reports duplicate events idempotently', () => {
+diff --git a/tests/strategy-decision-engine.test.js b/tests/strategy-decision-engine.test.js
+index 9ab4bd6..9efef46 100644
+--- a/tests/strategy-decision-engine.test.js
++++ b/tests/strategy-decision-engine.test.js
+@@ -53,7 +53,8 @@ test('StrategyDecisionEngine returns research-only entry candidate for strong ev
+   const report = engine.decide(baseContext());
+ 
+   assert.equal(report.engineVersion, 'strategy-decision-v1');
+-  assert.equal(report.operationalGate, 'BLOCKED');
++  assert.equal(report.operationalGate, 'SIGNAL');
++  assert.equal(report.allowed, true);
+   assert.equal(report.execution.mode, 'RESEARCH_ONLY');
+   assert.equal(report.execution.liveStakeFraction, 0);
+   assert.ok(['CONSERVATIVE_ENTRY', 'MODERATE_ENTRY'].includes(report.action));
+diff --git a/tests/strategy-decision-service.test.js b/tests/strategy-decision-service.test.js
+index a3afbab..80e93c3 100644
+--- a/tests/strategy-decision-service.test.js
++++ b/tests/strategy-decision-service.test.js
+@@ -14,7 +14,8 @@ test('StrategyDecisionService returns blocked governance decision for clean sess
+   assert.equal(report.service, 'StrategyDecisionService');
+   assert.equal(report.schemaVersion, '2.8.0');
+   assert.equal(report.sessionId, 'manual-session');
+-  assert.equal(report.decision.operationalGate, 'BLOCKED');
++  assert.equal(report.decision.operationalGate, 'NO_GO');
++  assert.equal(report.decision.allowed, false);
+   assert.equal(report.decision.execution.liveStakeFraction, 0);
+   assert.ok(['REJECTED', 'WATCHLIST', 'RESEARCH_CANDIDATE'].includes(report.status));
+ });
+@@ -26,5 +27,6 @@ test('StrategyDecisionService rejects corrupted tiny sessions through decision b
+   assert.equal(report.service, 'StrategyDecisionService');
+   assert.equal(report.status, 'REJECTED');
+   assert.equal(report.decision.action, 'BLOCKED');
+-  assert.equal(report.decision.operationalGate, 'BLOCKED');
++  assert.equal(report.decision.operationalGate, 'NO_GO');
++  assert.equal(report.decision.allowed, false);
+ });
