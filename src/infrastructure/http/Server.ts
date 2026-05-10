@@ -30,6 +30,7 @@ import { CapitalExposureService } from '../../application/backtesting/CapitalExp
 import { MonteCarloV2Service } from '../../application/backtesting/MonteCarloV2Service';
 import { BenchmarkComparisonService } from '../../application/backtesting/BenchmarkComparisonService';
 import { WarmupSessionService } from '../../application/session/WarmupSessionService';
+import { StrategyDecisionService } from '../../application/decision/StrategyDecisionService';
 import { config } from '../../config';
 
 interface AnalyzePayload {
@@ -68,6 +69,7 @@ export class Server {
   private readonly monteCarloV2Service = new MonteCarloV2Service();
   private readonly benchmarkComparisonService = new BenchmarkComparisonService();
   private readonly warmupSessionService = new WarmupSessionService();
+  private readonly strategyDecisionService = new StrategyDecisionService();
   private httpServer?: ReturnType<Express['listen']>;
 
   constructor(
@@ -184,7 +186,10 @@ export class Server {
           'baseline-dominance-risk',
           'warmup-session-analysis',
           'vision-warmup-normalization',
-          'one-hundred-round-table-gating'
+          'one-hundred-round-table-gating',
+          'strategy-decision-engine',
+          'paper-trading-execution-plan',
+          'operational-decision-governance'
         ],
         gates: {
           minSampleSize: 120,
@@ -342,6 +347,21 @@ export class Server {
         const message = error instanceof Error ? error.message : 'Falha na análise de warm-up por imagem.';
         return res.status(500).json({ status: 'ERROR', reason: message });
       }
+    });
+
+    this.app.post('/api/strategy/decision/evaluate', (req, res) => {
+      const report = this.strategyDecisionService.evaluate({
+        source: req.body?.source,
+        dataset: req.body?.dataset ?? req.body?.records ?? req.body?.history ?? req.body?.values ?? req.body,
+        history: req.body?.history,
+        records: req.body?.records,
+        values: Array.isArray(req.body?.values) ? req.body.values : undefined,
+        visionRaw: req.body?.visionRaw ?? req.body?.vision ?? req.body?.ocr,
+        bankroll: Number(req.body?.bankroll ?? 0),
+        sessionId: typeof req.body?.sessionId === 'string' ? req.body.sessionId : undefined
+      });
+      this.metrics.increment(`strategy.decision.${report.status.toLowerCase()}`);
+      res.status(report.status === 'REJECTED' ? 422 : 200).json(report);
     });
 
     this.app.post('/api/strategy/analyze', async (req, res) => this.analyzeHistory(req, res));
