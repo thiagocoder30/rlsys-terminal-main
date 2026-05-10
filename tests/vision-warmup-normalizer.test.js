@@ -29,3 +29,18 @@ test('VisionWarmupNormalizer rejects payload without sequence', () => {
   assert.equal(result.success, false);
   assert.equal(result.error.code, 'VISION_SEQUENCE_MISSING');
 });
+
+
+test('VisionWarmupNormalizer reads object values and exposes reliability review', () => {
+  const normalizer = new VisionWarmupNormalizer();
+  const payload = {
+    total: 100,
+    sequencia: Array.from({ length: 100 }, (_, index) => ({ value: index % 37, confidence: 0.61 }))
+  };
+  const result = normalizer.normalize(payload);
+
+  assert.equal(result.success, true);
+  assert.equal(result.value.values.length, 100);
+  assert.equal(result.value.reliability.status, 'REVIEW');
+  assert.ok(result.value.warnings.includes('OCR_LOW_ITEM_CONFIDENCE'));
+});

@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { DomainError, Result, err, ok } from '../shared/Result';
+import { VisionReliabilityInspector, VisionReliabilityReport } from './VisionReliabilityInspector';
 
 export interface VisionWarmupExtraction {
   readonly values: number[];
@@ -9,6 +10,7 @@ export interface VisionWarmupExtraction {
   readonly confidence: number;
   readonly checksum: string;
   readonly warnings: string[];
+  readonly reliability: VisionReliabilityReport;
 }
 
 /**
@@ -16,6 +18,8 @@ export interface VisionWarmupExtraction {
  * It is deliberately conservative: invalid values are rejected and surfaced as warnings instead of being guessed.
  */
 export class VisionWarmupNormalizer {
+  private readonly reliabilityInspector = new VisionReliabilityInspector();
+
   public normalize(raw: string | unknown): Result<VisionWarmupExtraction, DomainError> {
     const parsed = typeof raw === 'string' ? this.parseString(raw) : raw;
     if (!parsed || typeof parsed !== 'object') return err(new DomainError('Vision payload is not an object.', 'VISION_PAYLOAD_INVALID'));
@@ -25,11 +29,16 @@ export class VisionWarmupNormalizer {
     if (!sequence) return err(new DomainError('Vision payload does not contain a sequence array.', 'VISION_SEQUENCE_MISSING'));
 
     const values: number[] = [];
+    const itemConfidences: number[] = [];
     let rejected = 0;
     sequence.forEach(item => {
       const value = this.toRouletteValue(item);
+      const confidence = this.toItemConfidence(item);
       if (value === undefined) rejected += 1;
-      else values.push(value);
+      else {
+        values.push(value);
+        if (confidence !== undefined) itemConfidences.push(confidence);
+      }
     });
 
     if (values.length === 0) return err(new DomainError('Vision payload did not contain valid roulette numbers.', 'VISION_NO_VALID_VALUES'));
@@ -40,7 +49,12 @@ export class VisionWarmupNormalizer {
     if (rejected > 0) warnings.push(`REJECTED_VALUES:${rejected}`);
     if (values.length < 100) warnings.push('LESS_THAN_100_VALUES_EXTRACTED');
 
-    const confidence = Math.max(0, Math.min(1, 1 - rejected / Math.max(1, values.length + rejected) - warnings.length * 0.08));
+    const reliability = this.reliabilityInspector.inspect({ values, rejected, declaredTotal, itemConfidences });
+    reliability.issues.forEach(issue => {
+      if (!warnings.includes(issue.code)) warnings.push(issue.code);
+    });
+
+    const confidence = Math.min(reliability.score, Math.max(0, Math.min(1, 1 - rejected / Math.max(1, values.length + rejected) - warnings.length * 0.08)));
     return ok({
       values,
       declaredTotal,
@@ -48,7 +62,8 @@ export class VisionWarmupNormalizer {
       rejected,
       confidence: Number(confidence.toFixed(6)),
       checksum: crypto.createHash('sha256').update(JSON.stringify(values)).digest('hex'),
-      warnings
+      warnings,
+      reliability
     });
   }
 
@@ -67,8 +82,24 @@ export class VisionWarmupNormalizer {
   }
 
   private toRouletteValue(value: unknown): number | undefined {
-    const numeric = typeof value === 'number' ? value : Number(String(value).trim());
+    const candidate = this.extractValueCandidate(value);
+    const numeric = typeof candidate === 'number' ? candidate : Number(String(candidate).trim());
     if (!Number.isInteger(numeric) || numeric < 0 || numeric > 36) return undefined;
+    return numeric;
+  }
+
+  private extractValueCandidate(value: unknown): unknown {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+    const record = value as Record<string, unknown>;
+    return record.value ?? record.numero ?? record.number ?? record.result ?? record.resultado;
+  }
+
+  private toItemConfidence(value: unknown): number | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    const record = value as Record<string, unknown>;
+    const candidate = record.confidence ?? record.confianca ?? record.score;
+    const numeric = typeof candidate === 'number' ? candidate : Number(String(candidate).trim());
+    if (!Number.isFinite(numeric) || numeric < 0 || numeric > 1) return undefined;
     return numeric;
   }
 
