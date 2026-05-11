@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const { DecisionOrchestrator } = require('../dist/domain/decision/DecisionOrchestrator');
 const { RegimeClassificationEngine } = require('../dist/domain/regime/RegimeClassificationEngine');
 const { StrategyEnsembleEngine } = require('../dist/domain/strategy/StrategyEnsembleEngine');
+const { TemporalDecayEngine } = require('../dist/domain/temporal/TemporalDecayEngine');
 
 function baseDecisionContext(overrides = {}) {
   return {
@@ -225,4 +226,47 @@ test('DecisionOrchestrator blocks research signal when ensemble reports strategi
   assert.equal(result.value.operationalGate, 'NO_GO');
   assert.equal(result.value.strategyEnsemble.decision, 'CONFLICT');
   assert.ok(result.value.blockers.some((blocker) => blocker.includes('Ensemble bloqueia')));
+});
+
+
+test('DecisionOrchestrator blocks research signal when temporal decay expires evidence', () => {
+  const orchestrator = new DecisionOrchestrator();
+  const temporalResult = new TemporalDecayEngine().evaluate([
+    {
+      signalId: 'old-alpha',
+      label: 'Old Alpha',
+      observedAtSpin: 5,
+      currentSpin: 100,
+      baseConfidence: 0.86,
+      halfLifeSpins: 24,
+      hardTtlSpins: 70,
+      sourceWeight: 0.9
+    },
+    {
+      signalId: 'old-beta',
+      label: 'Old Beta',
+      observedAtSpin: 8,
+      currentSpin: 100,
+      baseConfidence: 0.83,
+      halfLifeSpins: 24,
+      hardTtlSpins: 70,
+      sourceWeight: 0.82
+    }
+  ]);
+  assert.equal(temporalResult.success, true);
+  assert.equal(temporalResult.value.decision, 'BLOCK_EXPIRED');
+
+  const result = orchestrator.orchestrate({
+    decisionContext: baseDecisionContext(),
+    strategyCandidates: [strongCandidate()],
+    sessionControl: readyControl(),
+    temporalDecay: temporalResult.value
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.value.status, 'REJECTED');
+  assert.equal(result.value.action, 'BLOCKED');
+  assert.equal(result.value.operationalGate, 'NO_GO');
+  assert.equal(result.value.temporalDecay.decision, 'BLOCK_EXPIRED');
+  assert.ok(result.value.blockers.some((blocker) => blocker.includes('Decaimento temporal bloqueia')));
 });

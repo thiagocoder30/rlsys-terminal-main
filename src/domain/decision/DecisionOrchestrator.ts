@@ -17,6 +17,7 @@ import {
 import type { LiveSessionControlFrame } from '../session/LiveSessionStateMachine';
 import type { RegimeClassificationReport } from '../regime/RegimeClassificationEngine';
 import type { StrategyEnsembleReport } from '../strategy/StrategyEnsembleEngine';
+import type { TemporalDecayReport } from '../temporal/TemporalDecayEngine';
 
 export type DecisionOrchestratorStatus = 'REJECTED' | 'OBSERVE' | 'READY_FOR_RESEARCH_SIGNAL';
 
@@ -26,6 +27,7 @@ export interface DecisionOrchestratorInput {
   readonly sessionControl?: LiveSessionControlFrame;
   readonly regimeClassification?: RegimeClassificationReport;
   readonly strategyEnsemble?: StrategyEnsembleReport;
+  readonly temporalDecay?: TemporalDecayReport;
 }
 
 export interface RecommendedStrategySnapshot {
@@ -58,6 +60,7 @@ export interface DecisionOrchestratorReport {
   readonly decision: StrategyDecisionReport;
   readonly regimeClassification: RegimeClassificationReport | null;
   readonly strategyEnsemble: StrategyEnsembleReport | null;
+  readonly temporalDecay: TemporalDecayReport | null;
   readonly governance: DecisionOrchestratorGovernance;
   readonly blockers: readonly string[];
   readonly warnings: readonly string[];
@@ -91,11 +94,12 @@ export class DecisionOrchestrator {
       const sessionBlockers = this.sessionBlockers(input.sessionControl);
       const regimeBlockers = this.regimeBlockers(input.regimeClassification);
       const ensembleBlockers = this.ensembleBlockers(input.strategyEnsemble);
-      const externalBlockers = [...sessionBlockers, ...regimeBlockers, ...ensembleBlockers];
+      const temporalBlockers = this.temporalBlockers(input.temporalDecay);
+      const externalBlockers = [...sessionBlockers, ...regimeBlockers, ...ensembleBlockers, ...temporalBlockers];
       const operationalGate = this.resolveGate(decision.operationalGate, externalBlockers);
       const action = this.resolveAction(decision.action, externalBlockers);
       const blockers = [...decision.blockers, ...externalBlockers];
-      const warnings = this.warnings(decision, ranking, input.sessionControl, input.regimeClassification, input.strategyEnsemble);
+      const warnings = this.warnings(decision, ranking, input.sessionControl, input.regimeClassification, input.strategyEnsemble, input.temporalDecay);
       const recommendedStrategy = ranking.topCandidate ? this.recommendedStrategy(ranking.topCandidate) : null;
       const status = this.status(operationalGate, blockers.length, recommendedStrategy);
       const governance = this.governance(decision, sessionBlockers);
@@ -113,6 +117,7 @@ export class DecisionOrchestrator {
         decision,
         regimeClassification: input.regimeClassification ?? null,
         strategyEnsemble: input.strategyEnsemble ?? null,
+        temporalDecay: input.temporalDecay ?? null,
         governance,
         blockers,
         warnings,
@@ -180,16 +185,25 @@ export class DecisionOrchestrator {
     return [`Ensemble sem suporte suficiente: ${ensemble.blockers.slice(0, 2).join('; ')}`];
   }
 
+  private temporalBlockers(temporal?: TemporalDecayReport): readonly string[] {
+    if (!temporal) return [];
+    if (temporal.decision === 'ALLOW') return [];
+    if (temporal.decision === 'BLOCK_EXPIRED') {
+      return [`Decaimento temporal bloqueia sinal: ${temporal.blockers.slice(0, 2).join('; ')}`];
+    }
+    return [];
+  }
+
   private resolveGate(current: OperationalGateState, externalBlockers: readonly string[]): OperationalGateState {
     if (externalBlockers.length === 0) return current;
     if (externalBlockers.some(message => message.includes('cooldown'))) return 'COOLDOWN';
-    if (externalBlockers.some(message => message.includes('bloqueia sinais') || message.includes('Ensemble bloqueia'))) return 'NO_GO';
+    if (externalBlockers.some(message => message.includes('bloqueia sinais') || message.includes('Ensemble bloqueia') || message.includes('Decaimento temporal bloqueia'))) return 'NO_GO';
     return 'OBSERVE';
   }
 
   private resolveAction(current: OperationalDecisionAction, externalBlockers: readonly string[]): OperationalDecisionAction {
     if (externalBlockers.length === 0) return current;
-    if (externalBlockers.some(message => message.includes('bloqueia sinais') || message.includes('Ensemble bloqueia'))) return 'BLOCKED';
+    if (externalBlockers.some(message => message.includes('bloqueia sinais') || message.includes('Ensemble bloqueia') || message.includes('Decaimento temporal bloqueia'))) return 'BLOCKED';
     return current === 'BLOCKED' ? 'BLOCKED' : 'OBSERVE';
   }
 
@@ -198,7 +212,8 @@ export class DecisionOrchestrator {
     ranking: StrategyRankingReport,
     control?: LiveSessionControlFrame,
     regime?: RegimeClassificationReport,
-    ensemble?: StrategyEnsembleReport
+    ensemble?: StrategyEnsembleReport,
+    temporal?: TemporalDecayReport
   ): readonly string[] {
     const warnings: string[] = [...decision.warnings];
     if (ranking.eligibleCount === 0) warnings.push('Nenhuma estratégia elegível no ranking bayesiano.');
@@ -206,6 +221,8 @@ export class DecisionOrchestrator {
     if (regime?.signalPolicy === 'OBSERVE_ONLY') warnings.push(`Regime ${regime.regime} limita decisão para observação: ${regime.rationale}`);
     if (ensemble?.decision === 'INSUFFICIENT_SUPPORT') warnings.push('Ensemble não alcançou suporte suficiente para consenso institucional.');
     if (ensemble?.warnings.length) warnings.push(...ensemble.warnings);
+    if (temporal?.decision === 'OBSERVE') warnings.push('Decaimento temporal exige observação: sinal ainda ativo, mas com frescor reduzido.');
+    if (temporal?.warnings.length) warnings.push(...temporal.warnings);
     return warnings;
   }
 
