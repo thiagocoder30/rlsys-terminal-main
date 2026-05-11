@@ -4,6 +4,7 @@ const { DecisionOrchestrator } = require('../dist/domain/decision/DecisionOrches
 const { RegimeClassificationEngine } = require('../dist/domain/regime/RegimeClassificationEngine');
 const { StrategyEnsembleEngine } = require('../dist/domain/strategy/StrategyEnsembleEngine');
 const { TemporalDecayEngine } = require('../dist/domain/temporal/TemporalDecayEngine');
+const { AdaptiveConfidenceEngine } = require('../dist/domain/confidence/AdaptiveConfidenceEngine');
 
 function baseDecisionContext(overrides = {}) {
   return {
@@ -269,4 +270,35 @@ test('DecisionOrchestrator blocks research signal when temporal decay expires ev
   assert.equal(result.value.operationalGate, 'NO_GO');
   assert.equal(result.value.temporalDecay.decision, 'BLOCK_EXPIRED');
   assert.ok(result.value.blockers.some((blocker) => blocker.includes('Decaimento temporal bloqueia')));
+});
+
+
+test('DecisionOrchestrator blocks research signal when adaptive confidence is too low', () => {
+  const orchestrator = new DecisionOrchestrator();
+  const adaptiveResult = new AdaptiveConfidenceEngine().calibrate({
+    baseConfidence: 0.5,
+    evidenceScore: 0.45,
+    regimeConfidence: 0.55,
+    ensembleConsensusScore: 0.52,
+    temporalFreshnessWeight: 0.5,
+    dataQualityScore: 0.42,
+    riskPenalty: 0.68,
+    noisePenalty: 0.84,
+    sampleSize: 72
+  });
+  assert.equal(adaptiveResult.success, true);
+
+  const result = orchestrator.orchestrate({
+    decisionContext: baseDecisionContext(),
+    strategyCandidates: [strongCandidate()],
+    sessionControl: readyControl(),
+    adaptiveConfidence: adaptiveResult.value
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.value.status, 'REJECTED');
+  assert.equal(result.value.action, 'BLOCKED');
+  assert.equal(result.value.operationalGate, 'NO_GO');
+  assert.equal(result.value.adaptiveConfidence.decision, 'BLOCK_LOW_CONFIDENCE');
+  assert.ok(result.value.blockers.some((blocker) => blocker.includes('Confiança adaptativa bloqueia')));
 });
