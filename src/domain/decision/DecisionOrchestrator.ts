@@ -19,6 +19,7 @@ import type { RegimeClassificationReport } from '../regime/RegimeClassificationE
 import type { StrategyEnsembleReport } from '../strategy/StrategyEnsembleEngine';
 import type { TemporalDecayReport } from '../temporal/TemporalDecayEngine';
 import type { AdaptiveConfidenceReport } from '../confidence/AdaptiveConfidenceEngine';
+import type { RuntimePerformanceBudgetReport } from '../performance/RuntimePerformanceBudgetEngine';
 
 export type DecisionOrchestratorStatus = 'REJECTED' | 'OBSERVE' | 'READY_FOR_RESEARCH_SIGNAL';
 
@@ -30,6 +31,7 @@ export interface DecisionOrchestratorInput {
   readonly strategyEnsemble?: StrategyEnsembleReport;
   readonly temporalDecay?: TemporalDecayReport;
   readonly adaptiveConfidence?: AdaptiveConfidenceReport;
+  readonly runtimePerformanceBudget?: RuntimePerformanceBudgetReport;
 }
 
 export interface RecommendedStrategySnapshot {
@@ -64,6 +66,7 @@ export interface DecisionOrchestratorReport {
   readonly strategyEnsemble: StrategyEnsembleReport | null;
   readonly temporalDecay: TemporalDecayReport | null;
   readonly adaptiveConfidence: AdaptiveConfidenceReport | null;
+  readonly runtimePerformanceBudget: RuntimePerformanceBudgetReport | null;
   readonly governance: DecisionOrchestratorGovernance;
   readonly blockers: readonly string[];
   readonly warnings: readonly string[];
@@ -99,11 +102,12 @@ export class DecisionOrchestrator {
       const ensembleBlockers = this.ensembleBlockers(input.strategyEnsemble);
       const temporalBlockers = this.temporalBlockers(input.temporalDecay);
       const adaptiveConfidenceBlockers = this.adaptiveConfidenceBlockers(input.adaptiveConfidence);
-      const externalBlockers = [...sessionBlockers, ...regimeBlockers, ...ensembleBlockers, ...temporalBlockers, ...adaptiveConfidenceBlockers];
+      const runtimeBudgetBlockers = this.runtimeBudgetBlockers(input.runtimePerformanceBudget);
+      const externalBlockers = [...sessionBlockers, ...regimeBlockers, ...ensembleBlockers, ...temporalBlockers, ...adaptiveConfidenceBlockers, ...runtimeBudgetBlockers];
       const operationalGate = this.resolveGate(decision.operationalGate, externalBlockers);
       const action = this.resolveAction(decision.action, externalBlockers);
       const blockers = [...decision.blockers, ...externalBlockers];
-      const warnings = this.warnings(decision, ranking, input.sessionControl, input.regimeClassification, input.strategyEnsemble, input.temporalDecay, input.adaptiveConfidence);
+      const warnings = this.warnings(decision, ranking, input.sessionControl, input.regimeClassification, input.strategyEnsemble, input.temporalDecay, input.adaptiveConfidence, input.runtimePerformanceBudget);
       const recommendedStrategy = ranking.topCandidate ? this.recommendedStrategy(ranking.topCandidate) : null;
       const status = this.status(operationalGate, blockers.length, recommendedStrategy);
       const governance = this.governance(decision, sessionBlockers);
@@ -123,6 +127,7 @@ export class DecisionOrchestrator {
         strategyEnsemble: input.strategyEnsemble ?? null,
         temporalDecay: input.temporalDecay ?? null,
         adaptiveConfidence: input.adaptiveConfidence ?? null,
+        runtimePerformanceBudget: input.runtimePerformanceBudget ?? null,
         governance,
         blockers,
         warnings,
@@ -209,6 +214,16 @@ export class DecisionOrchestrator {
     return [];
   }
 
+
+  private runtimeBudgetBlockers(budget?: RuntimePerformanceBudgetReport): readonly string[] {
+    if (!budget) return [];
+    if (budget.status === 'WITHIN_BUDGET' || budget.status === 'THROTTLE') return [];
+    if (budget.status === 'BLOCKED') {
+      return [`Orçamento de performance bloqueia avaliação live: ${budget.recommendations.slice(0, 2).join('; ')}`];
+    }
+    return [`Orçamento de performance degradado exige bloqueio preventivo: ${budget.violations.slice(0, 2).map(violation => violation.message).join('; ')}`];
+  }
+
   private resolveGate(current: OperationalGateState, externalBlockers: readonly string[]): OperationalGateState {
     if (externalBlockers.length === 0) return current;
     if (externalBlockers.some(message => message.includes('cooldown'))) return 'COOLDOWN';
@@ -218,7 +233,7 @@ export class DecisionOrchestrator {
 
   private resolveAction(current: OperationalDecisionAction, externalBlockers: readonly string[]): OperationalDecisionAction {
     if (externalBlockers.length === 0) return current;
-    if (externalBlockers.some(message => message.includes('bloqueia sinais') || message.includes('Ensemble bloqueia') || message.includes('Decaimento temporal bloqueia') || message.includes('Confiança adaptativa bloqueia') || message.includes('Confiança adaptativa bloqueia'))) return 'BLOCKED';
+    if (externalBlockers.some(message => message.includes('bloqueia sinais') || message.includes('Ensemble bloqueia') || message.includes('Decaimento temporal bloqueia') || message.includes('Confiança adaptativa bloqueia') || message.includes('Orçamento de performance'))) return 'BLOCKED';
     return current === 'BLOCKED' ? 'BLOCKED' : 'OBSERVE';
   }
 
@@ -229,7 +244,8 @@ export class DecisionOrchestrator {
     regime?: RegimeClassificationReport,
     ensemble?: StrategyEnsembleReport,
     temporal?: TemporalDecayReport,
-    adaptiveConfidence?: AdaptiveConfidenceReport
+    adaptiveConfidence?: AdaptiveConfidenceReport,
+    runtimeBudget?: RuntimePerformanceBudgetReport
   ): readonly string[] {
     const warnings: string[] = [...decision.warnings];
     if (ranking.eligibleCount === 0) warnings.push('Nenhuma estratégia elegível no ranking bayesiano.');
@@ -241,6 +257,8 @@ export class DecisionOrchestrator {
     if (temporal?.warnings.length) warnings.push(...temporal.warnings);
     if (adaptiveConfidence?.decision === 'OBSERVE') warnings.push('Confiança adaptativa exige observação: threshold dinâmico ainda não foi superado.');
     if (adaptiveConfidence?.warnings.length) warnings.push(...adaptiveConfidence.warnings);
+    if (runtimeBudget?.status === 'THROTTLE') warnings.push(`Orçamento de performance solicita redução de carga: throttleFactor=${runtimeBudget.throttleFactor}.`);
+    if (runtimeBudget?.recommendations.length && runtimeBudget.status !== 'WITHIN_BUDGET') warnings.push(...runtimeBudget.recommendations.slice(0, 2));
     return warnings;
   }
 
