@@ -1,37 +1,54 @@
-# RL.SYS CORE — Sprint 029
+# RL.SYS CORE — Sprint 029 v3 Hotfix
 
 ## Spatial Cluster Correlation Engine
 
 ### Objetivo
 
-Implementar uma camada de pesquisa offline para correlacionar clusters espaciais da roleta com contexto operacional.
+Corrigir e estabilizar a Sprint 029, adicionando um motor de pesquisa
+offline para correlacionar clusters espaciais da roda com contexto
+operacional.
 
-Esta Sprint complementa:
+Esta Sprint não autoriza apostas, não gera sinal live e não altera o
+runtime mobile. O objetivo é fortalecer a fase de Physical Edge Research.
 
-- Sprint 027 — Dealer Signature Engine
-- Sprint 028 — Wheel Sector Persistence Analyzer
+---
 
-O objetivo não é prever uma rodada individual, mas detectar se há correlação persistente entre:
-
-- dealer
-- regime
-- setor físico
-- cluster espacial
-- janela temporal
-
-### Entregas
+## Entregas
 
 - `SpatialClusterCorrelationEngine`
-- Testes unitários determinísticos
-- Status de correlação espacial
-- Checksum de auditoria
-- Proteção contra input malformado
-- Limite de processamento para ambiente low-end
+- Testes unitários de correlação espacial
+- Correção do patch corrompido da Sprint 029 v2
+- Rejeição segura de input inválido
+- Checksum determinístico de pesquisa
 
-### Governança
+---
 
-A Sprint permanece estritamente `research-only`.
+## Governança
 
-Ela não libera aposta, não gera sinal live, não depende de OCR, UI, API externa ou runtime mobile.
+O engine classifica correlações como:
 
-### Complexidade
+- `CLUSTER_CORRELATION_CANDIDATE`
+- `WEAK_CORRELATION`
+- `INCONCLUSIVE`
+- `BLOCKED`
+
+Nenhum status abre operação real. Qualquer candidato deve ser validado
+por Walk-Forward, Monte Carlo, EV/Risk e governança de snapshots antes
+de chegar ao runtime mobile.
+
+---
+
+## Complexidade
+
+Tempo:
+
+```txt
+O(n)
+```
+
+Espaço:
+
+```txt
+O(k)
+```
+

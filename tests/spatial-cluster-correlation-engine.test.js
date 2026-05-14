@@ -5,18 +5,20 @@ const {
   SpatialClusterCorrelationEngine
 } = require('../dist/domain/research/SpatialClusterCorrelationEngine');
 
-function buildClusteredContext() {
+const WHEEL_CLUSTER_ZERO_NUMBERS = [0, 32, 15, 19, 4];
+
+function buildDealerClusterDataset() {
   const records = [];
 
-  for (let index = 0; index < 180; index += 1) {
+  for (let index = 0; index < 120; index += 1) {
     records.push({
-      rouletteNumber: (index % 5) * 8,
+      rouletteNumber: WHEEL_CLUSTER_ZERO_NUMBERS[index % WHEEL_CLUSTER_ZERO_NUMBERS.length],
       dealerId: 'dealer-alpha',
       regime: 'stable'
     });
   }
 
-  for (let index = 0; index < 160; index += 1) {
+  for (let index = 0; index < 80; index += 1) {
     records.push({
       rouletteNumber: index % 37,
       dealerId: 'dealer-beta',
@@ -27,14 +29,14 @@ function buildClusteredContext() {
   return records;
 }
 
-function buildBalancedContext() {
+function buildBalancedDataset() {
   const records = [];
 
   for (let index = 0; index < 240; index += 1) {
     records.push({
       rouletteNumber: index % 37,
       dealerId: 'dealer-balanced',
-      regime: 'stable'
+      regime: 'balanced'
     });
   }
 
@@ -42,26 +44,58 @@ function buildBalancedContext() {
 }
 
 test(
-  'SpatialClusterCorrelationEngine detects contextual cluster correlation',
+  'SpatialClusterCorrelationEngine detects dealer-linked spatial cluster candidate',
   () => {
     const engine = new SpatialClusterCorrelationEngine();
-    const result = engine.evaluate(buildClusteredContext());
+
+    const result = engine.analyze(
+      buildDealerClusterDataset(),
+      'DEALER',
+      {
+        minSampleSize: 100,
+        clusterSize: 5,
+        candidateRatioThreshold: 0.55,
+        weakRatioThreshold: 0.35
+      }
+    );
 
     assert.equal(result.ok, true);
-    assert.equal(result.value.status, 'CLUSTER_CORRELATION_CANDIDATE');
-    assert.equal(result.value.strongestContext.contextKey, 'dealer-alpha|stable');
-    assert.equal(result.value.strongestContext.dominantCluster, 0);
+    assert.equal(
+      result.value.status,
+      'CLUSTER_CORRELATION_CANDIDATE'
+    );
+    assert.equal(
+      result.value.dominantContextKey,
+      'dealer-alpha'
+    );
+    assert.equal(
+      result.value.dominantClusterId,
+      0
+    );
   }
 );
 
 test(
-  'SpatialClusterCorrelationEngine reports weak or inconclusive balanced context',
+  'SpatialClusterCorrelationEngine returns inconclusive for balanced spatial history',
   () => {
     const engine = new SpatialClusterCorrelationEngine();
-    const result = engine.evaluate(buildBalancedContext());
+
+    const result = engine.analyze(
+      buildBalancedDataset(),
+      'GLOBAL',
+      {
+        minSampleSize: 100,
+        clusterSize: 5,
+        candidateRatioThreshold: 0.45,
+        weakRatioThreshold: 0.32
+      }
+    );
 
     assert.equal(result.ok, true);
-    assert.notEqual(result.value.status, 'CLUSTER_CORRELATION_CANDIDATE');
+    assert.equal(
+      result.value.status,
+      'INCONCLUSIVE'
+    );
   }
 );
 
@@ -69,59 +103,68 @@ test(
   'SpatialClusterCorrelationEngine blocks insufficient samples',
   () => {
     const engine = new SpatialClusterCorrelationEngine();
-    const result = engine.evaluate([
-      {
-        rouletteNumber: 17,
-        dealerId: 'dealer-small',
-        regime: 'stable'
-      }
-    ]);
+
+    const result = engine.analyze(
+      [
+        {
+          rouletteNumber: 17,
+          dealerId: 'dealer-small',
+          regime: 'stable'
+        }
+      ],
+      'DEALER'
+    );
 
     assert.equal(result.ok, true);
-    assert.equal(result.value.status, 'BLOCKED');
-    assert.equal(result.value.reason, 'INSUFFICIENT_SAMPLE');
+    assert.equal(
+      result.value.status,
+      'BLOCKED'
+    );
+    assert.equal(
+      result.value.reason,
+      'INSUFFICIENT_SAMPLE'
+    );
   }
 );
 
 test(
-  'SpatialClusterCorrelationEngine blocks oversized batches',
+  'SpatialClusterCorrelationEngine blocks oversized research batches',
   () => {
     const engine = new SpatialClusterCorrelationEngine();
-    const records = [];
+    const records = buildBalancedDataset();
 
-    for (let index = 0; index < 11; index += 1) {
-      records.push({
-        rouletteNumber: index % 37,
-        dealerId: 'dealer-large',
-        regime: 'stable'
-      });
-    }
-
-    const result = engine.evaluate(records, {
-      minSampleSize: 2,
-      maxRecords: 10
-    });
+    const result = engine.analyze(
+      records,
+      'GLOBAL',
+      {
+        maxRecords: 10
+      }
+    );
 
     assert.equal(result.ok, true);
-    assert.equal(result.value.status, 'BLOCKED');
-    assert.equal(result.value.reason, 'MAX_RECORD_LIMIT_EXCEEDED');
+    assert.equal(
+      result.value.status,
+      'BLOCKED'
+    );
+    assert.equal(
+      result.value.reason,
+      'BATCH_TOO_LARGE'
+    );
   }
 );
 
 test(
-  'SpatialClusterCorrelationEngine rejects malformed roulette numbers',
+  'SpatialClusterCorrelationEngine rejects malformed roulette numbers without silent failure',
   () => {
     const engine = new SpatialClusterCorrelationEngine();
-    const result = engine.evaluate([
-      {
-        rouletteNumber: 99,
-        dealerId: 'dealer-bad',
-        regime: 'stable'
-      }
-    ], {
-      minSampleSize: 1
-    });
 
-    assert.equal(result.ok, false);
-    assert.equal(result.error, 'INVALID_ROULETTE_NUMBER');
-  }
+    const result = engine.analyze(
+      [
+        {
+          rouletteNumber: 99,
+          dealerId: 'dealer-invalid',
+          regime: 'stable'
+        },
+        ...buildBalancedDataset()
+      ],
+      'DEALER'

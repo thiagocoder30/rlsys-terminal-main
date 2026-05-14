@@ -4,37 +4,57 @@ export type SpatialClusterCorrelationStatus =
   | 'INCONCLUSIVE'
   | 'BLOCKED';
 
+export type SpatialCorrelationContextMode =
+  | 'DEALER'
+  | 'REGIME'
+  | 'GLOBAL';
+
 export interface SpatialClusterRecord {
   readonly rouletteNumber: number;
   readonly dealerId?: string;
   readonly regime?: string;
-  readonly frameIndex?: number;
 }
 
 export interface SpatialClusterCorrelationPolicy {
   readonly minSampleSize: number;
+  readonly clusterSize: number;
+  readonly candidateRatioThreshold: number;
+  readonly weakRatioThreshold: number;
   readonly maxRecords: number;
-  readonly minDominantClusterRatio: number;
-  readonly minLiftOverBaseline: number;
 }
 
-export interface SpatialClusterContextReport {
+export interface SpatialClusterMetric {
+  readonly clusterId: number;
+  readonly wheelStartIndex: number;
+  readonly wheelEndIndex: number;
+  readonly hits: number;
+  readonly ratio: number;
+}
+
+export interface SpatialContextCorrelation {
   readonly contextKey: string;
-  readonly totalRecords: number;
-  readonly dominantCluster: number;
-  readonly dominantClusterHits: number;
+  readonly sampleSize: number;
+  readonly dominantClusterId: number;
   readonly dominantClusterRatio: number;
-  readonly liftOverBaseline: number;
+  readonly baselineRatio: number;
+  readonly lift: number;
+  readonly status: SpatialClusterCorrelationStatus;
 }
 
 export interface SpatialClusterCorrelationReport {
   readonly status: SpatialClusterCorrelationStatus;
+  readonly contextMode: SpatialCorrelationContextMode;
   readonly totalRecords: number;
-  readonly evaluatedContexts: number;
-  readonly strongestContext: SpatialClusterContextReport | null;
-  readonly averageDominantRatio: number;
-  readonly checksum: string;
+  readonly clusterSize: number;
+  readonly dominantContextKey: string;
+  readonly dominantClusterId: number;
+  readonly dominantClusterRatio: number;
+  readonly baselineRatio: number;
+  readonly lift: number;
+  readonly clusters: readonly SpatialClusterMetric[];
+  readonly contexts: readonly SpatialContextCorrelation[];
   readonly reason: string;
+  readonly checksum: string;
 }
 
 export interface ResultSuccess<T> {
@@ -49,222 +69,256 @@ export interface ResultFailure {
 
 export type Result<T> = ResultSuccess<T> | ResultFailure;
 
+const EUROPEAN_WHEEL_ORDER: readonly number[] = [
+  0, 32, 15, 19, 4, 21, 2, 25, 17, 34,
+  6, 27, 13, 36, 11, 30, 8, 23, 10, 5,
+  24, 16, 33, 1, 20, 14, 31, 9, 22, 18,
+  29, 7, 28, 12, 35, 3, 26
+];
+
 const ROULETTE_MIN = 0;
 const ROULETTE_MAX = 36;
-const CLUSTER_COUNT = 8;
 
 const DEFAULT_POLICY: SpatialClusterCorrelationPolicy = {
-  minSampleSize: 120,
-  maxRecords: 10000,
-  minDominantClusterRatio: 0.32,
-  minLiftOverBaseline: 0.12
+  minSampleSize: 80,
+  clusterSize: 5,
+  candidateRatioThreshold: 0.42,
+  weakRatioThreshold: 0.34,
+  maxRecords: 20_000
 };
 
-interface MutableContextBucket {
-  readonly contextKey: string;
-  totalRecords: number;
-  readonly clusterHits: number[];
-}
-
 /**
- * Research-only engine for detecting spatial cluster correlations.
+ * Offline research engine for detecting spatial cluster correlations.
  *
- * The engine is intentionally framework-free and deterministic. It aggregates
- * roulette outcomes into physical wheel clusters and then evaluates whether a
- * context such as dealer/regime repeatedly favors a specific cluster beyond a
- * uniform baseline.
+ * The engine maps roulette outcomes to their physical wheel position and
+ * aggregates deterministic cluster pressure by context. It intentionally
+ * avoids runtime/mobile dependencies and never authorizes live stake.
  */
 export class SpatialClusterCorrelationEngine {
-  public evaluate(
+  private readonly wheelIndexByNumber: ReadonlyMap<number, number>;
+
+  public constructor() {
+    const indexes = new Map<number, number>();
+
+    for (let index = 0; index < EUROPEAN_WHEEL_ORDER.length; index += 1) {
+      indexes.set(EUROPEAN_WHEEL_ORDER[index], index);
+    }
+
+    this.wheelIndexByNumber = indexes;
+  }
+
+  public analyze(
     records: readonly SpatialClusterRecord[],
+    contextMode: SpatialCorrelationContextMode,
     policy: Partial<SpatialClusterCorrelationPolicy> = {}
   ): Result<SpatialClusterCorrelationReport> {
     try {
       if (!Array.isArray(records)) {
-        return { ok: false, error: 'INVALID_RECORDS' };
+        return {
+          ok: false,
+          error: 'INVALID_RECORDS'
+        };
       }
 
-      const effectivePolicy = this.mergePolicy(policy);
-      const policyValidation = this.validatePolicy(effectivePolicy);
-
-      if (!policyValidation.ok) {
-        return policyValidation;
+      if (!this.isValidContextMode(contextMode)) {
+        return {
+          ok: false,
+          error: 'INVALID_CONTEXT_MODE'
+        };
       }
 
-      if (records.length > effectivePolicy.maxRecords) {
+      const normalizedPolicy = this.normalizePolicy(policy);
+
+      if (records.length > normalizedPolicy.maxRecords) {
         return {
           ok: true,
           value: this.blockedReport(
+            contextMode,
             records.length,
-            'MAX_RECORD_LIMIT_EXCEEDED'
+            normalizedPolicy,
+            'BATCH_TOO_LARGE'
           )
         };
       }
 
-      if (records.length < effectivePolicy.minSampleSize) {
+      if (records.length < normalizedPolicy.minSampleSize) {
         return {
           ok: true,
           value: this.blockedReport(
+            contextMode,
             records.length,
+            normalizedPolicy,
             'INSUFFICIENT_SAMPLE'
           )
         };
       }
 
-      const contexts = new Map<string, MutableContextBucket>();
+      const totalClusters = Math.ceil(
+        EUROPEAN_WHEEL_ORDER.length / normalizedPolicy.clusterSize
+      );
 
-      for (let index = 0; index < records.length; index += 1) {
-        const record = records[index];
+      const globalClusterHits = this.createCounter(totalClusters);
+      const contextClusterHits = new Map<string, number[]>();
+      const contextSampleSizes = new Map<string, number>();
 
+      for (const record of records) {
         if (!this.isValidRouletteNumber(record.rouletteNumber)) {
-          return { ok: false, error: 'INVALID_ROULETTE_NUMBER' };
-        }
-
-        const contextKey = this.buildContextKey(record);
-        const cluster = this.toWheelCluster(record.rouletteNumber);
-        let bucket = contexts.get(contextKey);
-
-        if (!bucket) {
-          bucket = {
-            contextKey,
-            totalRecords: 0,
-            clusterHits: Array.from({ length: CLUSTER_COUNT }, () => 0)
+          return {
+            ok: false,
+            error: 'INVALID_ROULETTE_NUMBER'
           };
-
-          contexts.set(contextKey, bucket);
         }
 
-        bucket.totalRecords += 1;
-        bucket.clusterHits[cluster] += 1;
-      }
+        const contextKey = this.resolveContextKey(record, contextMode);
 
-      let strongestContext: SpatialClusterContextReport | null = null;
-      let ratioSum = 0;
-      let evaluatedContexts = 0;
-
-      for (const bucket of contexts.values()) {
-        if (bucket.totalRecords < effectivePolicy.minSampleSize) {
-          continue;
+        if (contextKey.length === 0) {
+          return {
+            ok: false,
+            error: 'INVALID_CONTEXT_KEY'
+          };
         }
 
-        const report = this.summarizeContext(bucket);
-        ratioSum += report.dominantClusterRatio;
-        evaluatedContexts += 1;
+        const clusterId = this.toClusterId(
+          record.rouletteNumber,
+          normalizedPolicy.clusterSize
+        );
 
-        if (
-          strongestContext === null ||
-          report.liftOverBaseline > strongestContext.liftOverBaseline ||
-          (report.liftOverBaseline === strongestContext.liftOverBaseline &&
-            report.contextKey < strongestContext.contextKey)
-        ) {
-          strongestContext = report;
+        globalClusterHits[clusterId] += 1;
+
+        const currentContextHits =
+          contextClusterHits.get(contextKey) ?? this.createCounter(totalClusters);
+
+        currentContextHits[clusterId] += 1;
+        contextClusterHits.set(contextKey, currentContextHits);
+
+        contextSampleSizes.set(
+          contextKey,
+          (contextSampleSizes.get(contextKey) ?? 0) + 1
+        );
+      }
+
+      const clusters = this.toClusterMetrics(
+        globalClusterHits,
+        records.length,
+        normalizedPolicy.clusterSize
+      );
+
+      const baselineRatio = 1 / totalClusters;
+      const contexts: SpatialContextCorrelation[] = [];
+
+      let dominantContextKey = 'GLOBAL';
+      let dominantClusterId = -1;
+      let dominantClusterRatio = 0;
+      let dominantLift = 0;
+
+      for (const [contextKey, hits] of contextClusterHits.entries()) {
+        const sampleSize = contextSampleSizes.get(contextKey) ?? 0;
+        const dominant = this.findDominantCluster(hits);
+        const ratio = sampleSize > 0 ? dominant.hits / sampleSize : 0;
+        const lift = baselineRatio > 0 ? ratio / baselineRatio : 0;
+        const status = this.toStatus(ratio, normalizedPolicy);
+
+        contexts.push({
+          contextKey,
+          sampleSize,
+          dominantClusterId: dominant.clusterId,
+          dominantClusterRatio: ratio,
+          baselineRatio,
+          lift,
+          status
+        });
+
+        if (ratio > dominantClusterRatio) {
+          dominantContextKey = contextKey;
+          dominantClusterId = dominant.clusterId;
+          dominantClusterRatio = ratio;
+          dominantLift = lift;
         }
       }
 
-      if (evaluatedContexts === 0 || strongestContext === null) {
-        return {
-          ok: true,
-          value: {
-            status: 'INCONCLUSIVE',
-            totalRecords: records.length,
-            evaluatedContexts,
-            strongestContext: null,
-            averageDominantRatio: 0,
-            checksum: this.checksum(`INCONCLUSIVE|${records.length}|0`),
-            reason: 'NO_CONTEXT_REACHED_MINIMUM_SAMPLE'
-          }
-        };
-      }
+      contexts.sort((left, right) => {
+        if (right.dominantClusterRatio !== left.dominantClusterRatio) {
+          return right.dominantClusterRatio - left.dominantClusterRatio;
+        }
 
-      const averageDominantRatio = ratioSum / evaluatedContexts;
-      const candidate =
-        strongestContext.dominantClusterRatio >=
-          effectivePolicy.minDominantClusterRatio &&
-        strongestContext.liftOverBaseline >= effectivePolicy.minLiftOverBaseline;
+        return left.contextKey.localeCompare(right.contextKey);
+      });
 
-      if (candidate) {
-        return {
-          ok: true,
-          value: {
-            status: 'CLUSTER_CORRELATION_CANDIDATE',
-            totalRecords: records.length,
-            evaluatedContexts,
-            strongestContext,
-            averageDominantRatio,
-            checksum: this.reportChecksum(
-              'CLUSTER_CORRELATION_CANDIDATE',
-              records.length,
-              evaluatedContexts,
-              strongestContext,
-              averageDominantRatio
-            ),
-            reason: 'PERSISTENT_CONTEXTUAL_CLUSTER_CORRELATION'
-          }
-        };
-      }
+      const status = this.toStatus(
+        dominantClusterRatio,
+        normalizedPolicy
+      );
 
       return {
         ok: true,
         value: {
-          status: strongestContext.liftOverBaseline > 0 ? 'WEAK_CORRELATION' : 'INCONCLUSIVE',
+          status,
+          contextMode,
           totalRecords: records.length,
-          evaluatedContexts,
-          strongestContext,
-          averageDominantRatio,
-          checksum: this.reportChecksum(
-            strongestContext.liftOverBaseline > 0 ? 'WEAK_CORRELATION' : 'INCONCLUSIVE',
-            records.length,
-            evaluatedContexts,
-            strongestContext,
-            averageDominantRatio
-          ),
-          reason: 'NO_STRONG_CLUSTER_CORRELATION'
+          clusterSize: normalizedPolicy.clusterSize,
+          dominantContextKey,
+          dominantClusterId,
+          dominantClusterRatio,
+          baselineRatio,
+          lift: dominantLift,
+          clusters,
+          contexts,
+          reason: this.toReason(status),
+          checksum: this.checksum([
+            contextMode,
+            String(records.length),
+            dominantContextKey,
+            String(dominantClusterId),
+            dominantClusterRatio.toFixed(6),
+            dominantLift.toFixed(6)
+          ])
         }
       };
     } catch {
-      return { ok: false, error: 'SPATIAL_CLUSTER_CORRELATION_FAILURE' };
+      return {
+        ok: false,
+        error: 'SPATIAL_CLUSTER_CORRELATION_FAILURE'
+      };
     }
   }
 
-  private mergePolicy(
+  private normalizePolicy(
     policy: Partial<SpatialClusterCorrelationPolicy>
   ): SpatialClusterCorrelationPolicy {
     return {
-      minSampleSize: policy.minSampleSize ?? DEFAULT_POLICY.minSampleSize,
-      maxRecords: policy.maxRecords ?? DEFAULT_POLICY.maxRecords,
-      minDominantClusterRatio:
-        policy.minDominantClusterRatio ?? DEFAULT_POLICY.minDominantClusterRatio,
-      minLiftOverBaseline:
-        policy.minLiftOverBaseline ?? DEFAULT_POLICY.minLiftOverBaseline
+      minSampleSize: this.positiveIntegerOrDefault(
+        policy.minSampleSize,
+        DEFAULT_POLICY.minSampleSize
+      ),
+      clusterSize: Math.min(
+        EUROPEAN_WHEEL_ORDER.length,
+        this.positiveIntegerOrDefault(
+          policy.clusterSize,
+          DEFAULT_POLICY.clusterSize
+        )
+      ),
+      candidateRatioThreshold:
+        typeof policy.candidateRatioThreshold === 'number'
+          ? policy.candidateRatioThreshold
+          : DEFAULT_POLICY.candidateRatioThreshold,
+      weakRatioThreshold:
+        typeof policy.weakRatioThreshold === 'number'
+          ? policy.weakRatioThreshold
+          : DEFAULT_POLICY.weakRatioThreshold,
+      maxRecords: this.positiveIntegerOrDefault(
+        policy.maxRecords,
+        DEFAULT_POLICY.maxRecords
+      )
     };
   }
 
-  private validatePolicy(
-    policy: SpatialClusterCorrelationPolicy
-  ): Result<true> {
-    if (!Number.isInteger(policy.minSampleSize) || policy.minSampleSize <= 0) {
-      return { ok: false, error: 'INVALID_MIN_SAMPLE_SIZE' };
+  private positiveIntegerOrDefault(
+    value: number | undefined,
+    fallback: number
+  ): number {
+    if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
+      return fallback;
     }
 
-    if (!Number.isInteger(policy.maxRecords) || policy.maxRecords < policy.minSampleSize) {
-      return { ok: false, error: 'INVALID_MAX_RECORDS' };
-    }
-
-    if (
-      !Number.isFinite(policy.minDominantClusterRatio) ||
-      policy.minDominantClusterRatio <= 0 ||
-      policy.minDominantClusterRatio > 1
-    ) {
-      return { ok: false, error: 'INVALID_DOMINANT_CLUSTER_RATIO' };
-    }
-
-    if (
-      !Number.isFinite(policy.minLiftOverBaseline) ||
-      policy.minLiftOverBaseline < 0 ||
-      policy.minLiftOverBaseline > 1
-    ) {
-      return { ok: false, error: 'INVALID_LIFT_THRESHOLD' };
-    }
-
-    return { ok: true, value: true };
+    return value;
   }
