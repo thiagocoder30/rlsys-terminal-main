@@ -1,54 +1,37 @@
-# RL.SYS CORE — Sprint 029 v3 Hotfix
+# RELATORIO TECNICO - SPRINT 029 V5 HOTFIX
 
 ## Spatial Cluster Correlation Engine
 
 ### Objetivo
 
-Corrigir e estabilizar a Sprint 029, adicionando um motor de pesquisa
-offline para correlacionar clusters espaciais da roda com contexto
-operacional.
+Reconstruir de forma segura a Sprint 029 para estabilizar a `main` e entregar a camada de pesquisa de correlação entre clusters espaciais da roda e contexto operacional.
 
-Esta Sprint não autoriza apostas, não gera sinal live e não altera o
-runtime mobile. O objetivo é fortalecer a fase de Physical Edge Research.
+A Sprint 029 v5 substitui integralmente os artefatos problemáticos da Sprint 029 anterior, removendo corrupção sintática acumulada em hotfixes incrementais.
 
----
-
-## Entregas
+### Entregas
 
 - `SpatialClusterCorrelationEngine`
-- Testes unitários de correlação espacial
-- Correção do patch corrompido da Sprint 029 v2
-- Rejeição segura de input inválido
-- Checksum determinístico de pesquisa
+- Testes unitários reconstruídos do zero
+- Relatório técnico versionado
+- Status tipados de correlação espacial
+- Checksum determinístico de auditoria
 
----
+### Governança
 
-## Governança
+A Sprint permanece estritamente research-only. Ela não autoriza aposta, não gera sinal live e não se acopla ao runtime mobile.
 
-O engine classifica correlações como:
+### Estados
 
 - `CLUSTER_CORRELATION_CANDIDATE`
 - `WEAK_CORRELATION`
 - `INCONCLUSIVE`
 - `BLOCKED`
 
-Nenhum status abre operação real. Qualquer candidato deve ser validado
-por Walk-Forward, Monte Carlo, EV/Risk e governança de snapshots antes
-de chegar ao runtime mobile.
+### Complexidade
 
----
+- Tempo: O(n)
+- Espaço: O(k), onde k representa contextos e clusters físicos agregados
 
-## Complexidade
+### Decisão Arquitetural
 
-Tempo:
-
-```txt
-O(n)
-```
-
-Espaço:
-
-```txt
-O(k)
-```
-
+O engine avalia se um contexto operacional, como dealer/regime/contextId, concentra resultados em um cluster físico da roda acima do baseline global. Isso aproxima o RL.SYS da pesquisa de edge físico indireto, sem depender de rastreamento balístico por vídeo.
