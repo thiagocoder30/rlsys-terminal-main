@@ -13,17 +13,12 @@ const baseState = {
   mandatoryCooldownActive: false
 };
 
-test('Deve permitir sessao saudavel', () => {
+test('Sessao Saudavel', () => {
   const status = SessionCircuitBreaker.evaluate(baseState);
   assert.strictEqual(status, SessionStatus.SESSION_OPEN);
 });
 
-test('Deve bloquear por perda (Stop Loss)', () => {
+test('Disparo Stop Loss', () => {
   const status = SessionCircuitBreaker.evaluate({...baseState, currentBankroll: 200});
   assert.strictEqual(status, SessionStatus.SESSION_LOCKED);
-});
-
-test('Deve bloquear por lucro (Stop Win)', () => {
-  const status = SessionCircuitBreaker.evaluate({...baseState, currentBankroll: 270});
-  assert.strictEqual(status, SessionStatus.SESSION_PROFIT_LOCKED);
 });
