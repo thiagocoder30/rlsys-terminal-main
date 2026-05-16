@@ -17,3 +17,17 @@ export interface CooldownStatus {
   readonly remainingMs: number;
   readonly reason: CooldownReason | null;
 }
+
+// Novo: Interface de Estado para Persistência
+export interface CooldownState {
+  readonly lockTimestampMs: number;
+  readonly activeReason: CooldownReason;
+  readonly requiredDurationMs: number;
+}
+
+// Novo: Contrato de Repositório (Inversão de Dependência)
+export interface CooldownStateRepository {
+  save(state: CooldownState): void;
+  load(): CooldownState | null;
+  clear(): void;
+}
