@@ -12,7 +12,8 @@
     "audit:deps": "npm audit --omit=dev",
     "release:check": "npm run check && npm run audit:deps",
     "clean": "rm -rf dist",
-    "build:clean": "npm run clean && npm run build"
+    "build:clean": "npm run clean && npm run build",
+    "start:live": "ts-node src/main.ts"
   },
   "keywords": [
     "rl-sys",
