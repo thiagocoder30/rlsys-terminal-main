@@ -10,13 +10,15 @@ async function main() {
   console.clear();
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true });
 
-  let pendingBet: { targetCluster: number[]; decision: DecisionResult } | null = null;
+  // Estado pendente enriquecido para a telemetria
+  let pendingBet: { targetCluster: number[]; decision: DecisionResult; sector: number; latency: number } | null = null;
 
   try {
     const config = { storageDirectory: './storage/snapshots', targetSnapshotId: process.argv[2] || 'default_alpha', bootTimeMs: Date.now() };
     console.log(`${BLUE}${BOLD}RL.SYS CORE — TERMINAL OPERACIONAL ATIVO${RESET}`);
-    const coordinator = AppContainer.bootstrap(config);
-    console.log(`${GREEN}[SISTEMA ARMADO]${RESET} Dynamic Bankroll Sizing Online.\n`);
+    
+    const { coordinator, logger } = AppContainer.bootstrap(config);
+    console.log(`${GREEN}[SISTEMA ARMADO]${RESET} Telemetria e Gravação Assíncrona Online.\n`);
 
     rl.on('line', (input) => {
       const val = input.trim();
@@ -26,26 +28,46 @@ async function main() {
 
       const now = Date.now();
 
+      // 1. Resolve a Aposta Pendente e Grava Telemetria
       if (pendingBet) {
         const isWin = WheelTopology.isHit(num, pendingBet.targetCluster);
-        // O PnL agora multiplica as unidades apostadas pela recompensa
         const units = pendingBet.decision.recommendedUnits || 1;
         const pnl = isWin ? (35 * units) : -units; 
         
         coordinator.registerOutcome(pnl, now);
         console.log(`${isWin ? GREEN : RED}[RESULTADO ANTERIOR] PnL: ${pnl > 0 ? '+' : ''}${pnl} Unidades${RESET}`);
+        
+        // Gravação em Disco (Fire-and-Forget)
+        logger.logSpin({
+          timestampMs: now,
+          dealerId: 'D_ALICE',
+          wheelSpeed: 'NORMAL',
+          targetSector: pendingBet.sector,
+          action: pendingBet.decision.action,
+          expectedEV: pendingBet.decision.expectedEV,
+          confidence: pendingBet.decision.confidence,
+          recommendedUnits: units,
+          pnl: pnl,
+          latencyMs: pendingBet.latency
+        });
+
         pendingBet = null;
       }
 
+      // 2. Processa a Nova Rodada
       const liveState = { dealerId: 'D_ALICE', wheelSpeedCategory: 'NORMAL' as any, targetSector: num };
+      
+      const t0 = performance.now();
       const decision = coordinator.processLiveSpin(liveState, now);
+      const t1 = performance.now();
+      const latency = t1 - t0;
 
       let color = RESET;
       let unitsStr = "";
       if (decision.action === ActionSignal.SIGNAL) { 
         color = GREEN + BOLD; 
         unitsStr = ` | ${MAGENTA}${BOLD}APOSTAR: ${decision.recommendedUnits} UNIDADES${RESET}`;
-        pendingBet = { targetCluster: WheelTopology.getCluster(num, 5), decision }; 
+        pendingBet = { targetCluster: WheelTopology.getCluster(num, 5), decision, sector: num, latency }; 
       }
       if (decision.action === ActionSignal.NO_GO) color = RED;
       if (decision.action === ActionSignal.OBSERVE) color = YELLOW;
