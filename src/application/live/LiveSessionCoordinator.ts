@@ -1,5 +1,6 @@
 import { SystemHealthGuard, FinancialGuard, CooldownGuard, TacticalEngine, DefenseStatus } from './IntegrationPorts';
 import { CurrentLiveState, DecisionResult, ActionSignal } from '../../domain/decision/DecisionContracts';
+import { PositionSizingEngine } from '../../domain/finance/PositionSizingEngine';
 
 export class LiveSessionCoordinator {
   constructor(
@@ -15,19 +16,23 @@ export class LiveSessionCoordinator {
       if (this.cooldownGuard.isOperatorReady(currentTimeMs) === DefenseStatus.BLOCKED) return this.buildRejection('OPERATOR_IN_COOLDOWN');
       if (this.financialGuard.authorizeEntry() === DefenseStatus.BLOCKED) return this.buildRejection('FINANCIAL_DRAWDOWN_ACTIVE');
 
-      return this.tacticalEngine.evaluate(liveState);
+      const decision = this.tacticalEngine.evaluate(liveState);
+
+      // Injeção da Inteligência Financeira
+      if (decision.action === ActionSignal.SIGNAL) {
+        const losses = this.financialGuard.getConsecutiveLosses();
+        const units = PositionSizingEngine.calculateUnits(decision.expectedEV, decision.confidence, losses);
+        return { ...decision, recommendedUnits: units };
+      }
+
+      return decision;
     } catch (error) {
       return this.buildRejection('UNEXPECTED_RUNTIME_EXCEPTION');
     }
   }
 
-  /**
-   * Feedback Loop O(1): Informa o sistema do resultado da aposta anterior.
-   */
   public registerOutcome(pnl: number, currentTimeMs: number): void {
     this.financialGuard.registerPnL(pnl);
-    
-    // Se bater o Drawdown (ex: 3 perdas), aplica punição de 30 minutos
     if (this.financialGuard.authorizeEntry() === DefenseStatus.BLOCKED) {
       this.cooldownGuard.triggerCooldown(30 * 60 * 1000, currentTimeMs);
     }
