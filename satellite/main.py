@@ -1,44 +1,43 @@
 import sys
 import json
 import time
-from adapters.mock_vision import MockCamera, MockOcrEngine
+from adapters.real_vision import RealCamera, RealOcrEngine
 
 def run_satellite():
     """
-    Loop principal de visão computacional.
-    Complexidade Espacial O(1): Frames são descartados instantaneamente.
+    Motor Cibernético: Loop de Visão Real.
     """
-    camera = MockCamera()
-    ocr = MockOcrEngine()
+    # Defina aqui as coordenadas (X, Y, Largura, Altura) da caixa onde os números aparecem.
+    roi_coords = {'top': 250, 'left': 50, 'width': 100, 'height': 60}
     
-    # Para garantir que o Node.js tenha tempo de arrancar antes do Python "gritar" dados
+    camera = RealCamera(bounding_box=roi_coords)
+    ocr = RealOcrEngine()
+    
+    # Aguarda o Node.js inicializar
     time.sleep(2)
 
     try:
         while True:
-            # 1. Tira a foto (ROI)
+            # Captura ultra-rápida (só a caixa)
             frame = camera.get_frame()
             
-            # 2. Extrai o texto
+            # Reconhecimento ótico
             read_result = ocr.extract_number(frame)
             
-            # 3. Se encontrou um número, envia via Standard Output (Pipe)
+            # Comunicação Unix Pipe
             if read_result:
                 payload = {
                     "sector": read_result.sector,
-                    "dealerId": read_result.dealer_id
+                    "dealerId": read_result.dealer_id,
+                    "speed": "NORMAL"
                 }
-                
-                # flush=True garante latência zero no Pipe do Linux
                 print(json.dumps(payload), flush=True)
                 
-                # Cooldown nativo após uma leitura de sucesso para poupar bateria
-                time.sleep(2) 
-            
-            # Limite para o teste não rodar infinitamente (encerra após a sequência do Mock)
-            if ocr.index >= len(ocr.test_sequence):
-                time.sleep(3) # Espera o Node terminar o log
-                break
+                # Debounce na visão: Após uma leitura bem sucedida, descansa o CPU por 3 segundos
+                time.sleep(3)
+            else:
+                # Se não viu nada, descansa brevemente para não esgotar o CPU (30 FPS max)
+                time.sleep(0.033)
 
     except KeyboardInterrupt:
         sys.exit(0)

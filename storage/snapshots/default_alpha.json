@@ -1,7 +1,7 @@
 {
   "metadata": {
     "snapshotId": "default_alpha_physics",
-    "compiledAtMs": 1778983308409,
+    "compiledAtMs": 1778985104439,
     "validUntilMs": 1779069708409,
     "compilerVersion": "2.0.0"
   },
@@ -11,10 +11,20 @@
   },
   "lookupTable": {
     "D_ALICE_NORMAL_32": [
-      { "targetSector": 15, "clusterSize": 5, "expectedEV": 0.22, "confidenceScore": 0.98 }
+      {
+        "targetSector": 15,
+        "clusterSize": 5,
+        "expectedEV": 17,
+        "confidenceScore": 0.6
+      }
     ],
     "D_ALICE_FAST_32": [
-      { "targetSector": 0, "clusterSize": 5, "expectedEV": 0.18, "confidenceScore": 0.92 }
+      {
+        "targetSector": 0,
+        "clusterSize": 5,
+        "expectedEV": 0.18,
+        "confidenceScore": 0.92
+      }
     ]
   }
 }
