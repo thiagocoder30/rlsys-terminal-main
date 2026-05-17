@@ -1,3 +1,4 @@
 timestampMs,dealerId,wheelSpeed,targetSector,action,expectedEV,confidence,recommendedUnits,pnl,latencyMs
 1778981459703,D_ALICE,NORMAL,32,SIGNAL,0.1500,0.9500,1.5,-1.5,3.69
 1778981899302,D_ALICE,NORMAL,32,SIGNAL,0.1500,0.9500,1.5,-1.5,4.49
+1778982585091,D_ALICE,NORMAL,32,SIGNAL,0.1500,0.9500,1.5,52.5,4.02

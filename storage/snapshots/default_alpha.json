@@ -1,18 +1,20 @@
 {
   "metadata": {
-    "snapshotId": "default_alpha",
-    "compiledAtMs": 1778976419820,
-    "validUntilMs": 1779062819820,
-    "compilerVersion": "1.0.0"
+    "snapshotId": "default_alpha_physics",
+    "compiledAtMs": 1778983308409,
+    "validUntilMs": 1779069708409,
+    "compilerVersion": "2.0.0"
   },
   "constraints": {
-    "expectedDealerId": "D_ALICE",
-    "wheelSpeedCategory": "NORMAL"
+    "expectedDealerId": "ANY",
+    "wheelSpeedCategory": "ANY"
   },
   "lookupTable": {
-    "D_ALICE_NORMAL": [
-      { "targetSector": 32, "clusterSize": 5, "expectedEV": 0.15, "confidenceScore": 0.95 },
-      { "targetSector": 0, "clusterSize": 5, "expectedEV": 0.08, "confidenceScore": 0.88 }
+    "D_ALICE_NORMAL_32": [
+      { "targetSector": 15, "clusterSize": 5, "expectedEV": 0.22, "confidenceScore": 0.98 }
+    ],
+    "D_ALICE_FAST_32": [
+      { "targetSector": 0, "clusterSize": 5, "expectedEV": 0.18, "confidenceScore": 0.92 }
     ]
   }
 }
