@@ -1,9 +1,15 @@
-node_modules/
-dist/
+# Variáveis de Ambiente Secretas
 .env
-*.log
-.DS_Store
-data/*.db
-data/*.sqlite
-data/*.jsonl
-coverage/
+
+# Ambientes Virtuais Isolados (Python)
+venv/
+env/
+
+# Arquivos de Otimização e Cache do Sistema
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Imagens de Validação Técnica e Debug
+*debug*.png

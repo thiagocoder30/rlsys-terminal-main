@@ -1,0 +1,102 @@
+(venv) [root@localhost rlsys-terminal-main]# cat src/infrastruct
+ure/di/AppContainer.ts
+import { LiveSessionCoordinator } from '../../application/live/L
+iveSessionCoordinator';
+import { FileSnapshotLoader } from '../storage/FileSnapshotLoade
+r';
+import { TacticalEngineAdapter, StandardHealthGuard } from './Sy
+stemAdapters';
+import { RealFinancialGuard, FileCooldownGuard } from '../defens
+es/RealGuards';
+import { FileTelemetryLogger } from '../telemetry/FileTelemetryL
+ogger';
+import { SessionTelemetryLogger } from '../../application/teleme
+try/TelemetryContracts';
+
+export interface BootConfig {
+  readonly storageDirectory: string;
+  readonly targetSnapshotId: string;
+  readonly bootTimeMs: number;
+}
+
+export interface BootResult {
+  readonly coordinator: LiveSessionCoordinator;
+  readonly logger: SessionTelemetryLogger;
+}
+
+export class AppContainer {
+  public static bootstrap(config: BootConfig): BootResult {
+    const snapshotLoader = new FileSnapshotLoader(config.storage
+Directory);
+    const loadResult = snapshotLoader.load(config.targetSnapshot
+Id, config.bootTimeMs);
+    if (!loadResult.success) throw new Error(`CRITICAL_BOOT_FAIL
+URE: ${loadResult.error}`);
+
+    const healthGuard = new StandardHealthGuard();
+    const financialGuard = new RealFinancialGuard(3, 10);
+    const cooldownGuard = new FileCooldownGuard(config.storageDi
+rectory);
+    const tacticalEngine = new TacticalEngineAdapter(loadResult.
+snapshot);
+    const logger = new FileTelemetryLogger(config.storageDirecto
+ry);
+
+    const coordinator = new LiveSessionCoordinator(healthGuard,
+financialGuard, cooldownGuard, tacticalEngine);
+
+    if (cooldownGuard.isOperatorReady(config.bootTimeMs) === 'BL
+OCKED') {
+      throw new Error("SISTEMA BLOQUEADO: Operador em período de
+ Cooldown.");
+    }
+
+    return { coordinator, logger };
+  }
+}
+(venv) [root@localhost rlsys-terminal-main]# echo -e "\n========
+============\n"
+
+====================
+
+(venv) [root@localhost rlsys-terminal-main]# grep -B 5 -A 5 "con
+fidence" src/domain/decision/DecisionLookupEngine.ts
+      return this.buildResult(ActionSignal.NO_GO, 0, 0, 'SECTOR_
+NO_EDGE');
+    }
+
+    // 5. Política de Execução Institucional (Hierarquia NO_GO -
+> OBSERVE -> SIGNAL)
+    // O snapshot já foi filtrado no compilador, mas o motor apl
+ica o julgamento tático final.
+    if (bestEdge.confidence < 0.85) {
+      return this.buildResult(ActionSignal.OBSERVE, bestEdge.exp
+ectedEV, bestEdge.confidenceScore, 'WEAK_CONFIDENCE');
+    }
+
+    // 6. Autorização Final de Ação
+    return this.buildResult(ActionSignal.SIGNAL, bestEdge.expect
+edEV, bestEdge.confidenceScore, 'ALPHA_CONFIRMED');
+  }
+
+  private static buildResult(
+    action: ActionSignal,
+    expectedEV: number,
+    confidence: number,
+    reason: string
+  ): DecisionResult {
+    return { action, expectedEV, confidence, reason };
+  }
+}
+(venv) [root@localhost rlsys-terminal-main]# echo -e "\n========
+============\n"
+
+====================
+
+(venv) [root@localhost rlsys-terminal-main]# grep -rn "interface
+ SectorEdge" src/
+src/domain/knowledge/SnapshotSchema.ts:22:export interface Secto
+rEdge {
+(venv) [root@localhost rlsys-terminal-main]# ./capture-sprint-bu
+ffer.sh
+

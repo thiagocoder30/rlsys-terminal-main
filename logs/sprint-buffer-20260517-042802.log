@@ -1,0 +1,71 @@
+[root@localhost rlsys-terminal-main]# python3 satellite/main.py
+[root@localhost rlsys-terminal-main]# termux-screenshot -f /root
+/teste_manual.png
+-bash: termux-screenshot: command not found
+[root@localhost rlsys-terminal-main]# ./capture-sprint-buffer.sh
+
+Buffer capturado com sucesso:
+logs/sprint-buffer-20260517-041908.log
+
+Arquivo enviado para Downloads:
+/sdcard/Download/sprint-buffer-20260517-041908.log
+
+Após me enviar o arquivo aqui e eu confirmar a análise, remova c
+om:
+rm 'logs/sprint-buffer-20260517-041908.log' '/sdcard/Download/sp
+rint-buffer-20260517-041908.log'
+[root@localhost rlsys-terminal-main]# ln -sf /data/data/com.term
+ux/files/usr/bin/termux-screenshot /usr/bin/termux-screenshot
+[root@localhost rlsys-terminal-main]# termux-screenshot -f /root
+/mira_debug.png
+-bash: termux-screenshot: command not found
+[root@localhost rlsys-terminal-main]# # Criar o comando de captu
+ra
+[root@localhost rlsys-terminal-main]# echo -e '#!/bin/bash\n/dat
+a/data/com.termux/files/usr/bin/termux-screenshot "$@"' > /usr/b
+in/termux-screenshot
+[root@localhost rlsys-terminal-main]# chmod +x /usr/bin/termux-s
+creenshot
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# # Criar o comando de bater
+ia (para teste)
+[root@localhost rlsys-terminal-main]# echo -e '#!/bin/bash\n/dat
+a/data/com.termux/files/usr/bin/termux-battery-status "$@"' > /u
+sr/bin/termux-battery-status
+[root@localhost rlsys-terminal-main]# chmod +x /usr/bin/termux-b
+attery-status
+[root@localhost rlsys-terminal-main]# termux-battery-status
+{
+  "present": true,
+  "technology": "Li-ion",
+  "health": "GOOD",
+  "plugged": "PLUGGED_AC",
+  "status": "CHARGING",
+  "temperature": 38.0,
+  "voltage": 3748,
+  "current": 39600,
+  "current_average": 55000,
+  "percentage": 16,
+  "level": 16,
+  "scale": 100,
+  "charge_counter": 471360
+}
+[root@localhost rlsys-terminal-main]# ./capture-sprint-buffer.sh
+
+Buffer capturado com sucesso:
+logs/sprint-buffer-20260517-042446.log
+
+Arquivo enviado para Downloads:
+/sdcard/Download/sprint-buffer-20260517-042446.log
+
+Após me enviar o arquivo aqui e eu confirmar a análise, remova c
+om:
+rm 'logs/sprint-buffer-20260517-042446.log' '/sdcard/Download/sp
+rint-buffer-20260517-042446.log'
+[root@localhost rlsys-terminal-main]# python3 satellite/main.py
+^C[root@localhost rlsys-terminal-main]# ^C
+[root@localhost rlsys-terminal-main]# ls -lh mira_debug.png
+-rw-r--r-- 1 root root 90 May 17 04:16 mira_debug.png
+[root@localhost rlsys-terminal-main]# ./capture-sprint-buffer.sh
+
+

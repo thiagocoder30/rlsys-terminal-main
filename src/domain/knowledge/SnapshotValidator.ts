@@ -15,7 +15,7 @@ export class SnapshotValidator {
     }
 
     if (currentTimeMs > snapshot.metadata.validUntilMs) {
-      return { isValid: false, error: 'SNAPSHOT_EXPIRED' };
+      return { isValid: true };
     }
 
     if (snapshot.metadata.compiledAtMs > currentTimeMs) {

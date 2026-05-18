@@ -1,57 +1,46 @@
-import re
+import subprocess
+import os
 import time
 from typing import Optional
-from PIL import Image, ImageOps
+from PIL import Image
 import pytesseract
-import mss
-
 from core.interfaces import ICamera, IOcrEngine, VisionRead
 
 class RealCamera(ICamera):
     def __init__(self, bounding_box=None):
-        """
-        Inicializa a captura de ecrã focada apenas na ROI (Region of Interest).
-        bounding_box padrão (exemplo): topo-esquerda, com 150x50 pixels.
-        """
-        self.sct = mss.mss()
-        # Ajuste estas coordenadas para o local exato onde o número aparece no seu ecrã/browser.
-        self.bbox = bounding_box or {'top': 300, 'left': 100, 'width': 80, 'height': 50}
+        self.bbox = {'top': 230, 'left': 480, 'width': 65, 'height': 55}
+        self.temp_path = "/sdcard/Download/mira_debug.png"
+        # CAMINHO ABSOLUTO DIRETO DO ANDROID (Evita o Shell do Linux)
+        self.bin_path = "/data/data/com.termux/files/usr/bin/termux-screenshot"
 
     def get_frame(self) -> Image.Image:
-        # Extração assintótica O(1) no espaço. Captura apenas os pixels vitais.
-        sct_img = self.sct.grab(self.bbox)
-        # Converte a matriz de pixels bruta para objeto de Imagem (Pillow)
-        return Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
-
+        try:
+            # Chamada direta ao binário sem passar pelo wrapper
+            subprocess.run([self.bin_path, "-f", self.temp_path], 
+                           check=True, capture_output=False, timeout=12)
+            
+            # O A10s precisa de tempo para escrever no disco (MMC lento)
+            time.sleep(0.8) 
+            
+            if os.path.exists(self.temp_path):
+                with Image.open(self.temp_path) as img:
+                    return img.crop((self.bbox['left'], self.bbox['top'], 
+                                     self.bbox['left']+self.bbox['width'], 
+                                     self.bbox['top']+self.bbox['height'])).copy()
+            return Image.new('RGB', (65, 55), (0, 0, 0))
+        except Exception as e:
+            return Image.new('RGB', (65, 55), (0, 0, 0))
 
 class RealOcrEngine(IOcrEngine):
     def __init__(self):
-        # Configuração do Tesseract: 
-        # --psm 8: Trata a imagem como uma única palavra/linha de texto.
-        # whitelist: Força a IA a procurar apenas números.
-        self.custom_config = r'--oem 3 --psm 8 -c tessedit_char_whitelist=0123456789'
+        # Configuração de baixo consumo para o processador Helio P22
+        self.config = r'--oem 3 --psm 8 -c tessedit_char_whitelist=0123456789'
 
     def extract_number(self, frame: Image.Image) -> Optional[VisionRead]:
         try:
-            # 1. Pré-processamento de Imagem (Tratamento de contraste/ruído)
-            gray = ImageOps.grayscale(frame)
-            # Limiarização (Threshold): Pixels mais escuros que 128 ficam pretos, resto fica branco.
-            thresh = gray.point(lambda p: p > 128 and 255)
-
-            # 2. Ingestão no Motor OCR
-            text = pytesseract.image_to_string(thresh, config=self.custom_config).strip()
-
-            # 3. Filtro e Sanitização (Regex)
-            # Procura um número isolado entre 0 e 36.
-            match = re.search(r'\b([0-9]|[1-2][0-9]|3[0-6])\b', text)
-            
-            if match:
-                sector = int(match.group(1))
-                # Para esta fase, definimos a velocidade como NORMAL e o dealer como genérico,
-                # até implementarmos a ROI secundária que lê os nomes.
-                return VisionRead(sector=sector, dealer_id="D_ALICE", confidence=0.85)
-
+            text = pytesseract.image_to_string(frame, config=self.config).strip()
+            if text.isdigit():
+                return VisionRead(sector=int(text), dealer_id="D_ALICE", confidence=0.80)
             return None
-        except Exception as e:
-            # O sistema nunca falha silenciosamente, mas não pode interromper o stream.
+        except:
             return None

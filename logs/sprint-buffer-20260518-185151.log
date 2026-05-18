@@ -1,0 +1,177 @@
+(venv) [root@localhost rlsys-terminal-main]# sed -i "s/bestEdge.
+confidence < 0.85/bestEdge.confidenceScore < 0.85/g" src/domain/
+decision/DecisionLookupEngine.ts
+(venv) [root@localhost rlsys-terminal-main]# cat << 'EOF' > src/
+main.ts
+> import * as readline from 'readline';
+> import { AppContainer } from './infrastructure/di/AppContainer
+';
+> import { PythonOcrAdapter } from './infrastructure/ocr/PythonO
+crAdapter';
+>
+> // 1. Inicialização do Ecossistema (DDD) via Static Bootstrap
+> const bootResult = AppContainer.bootstrap({
+>   storageDirectory: './data', // Ajuste caso a sua pasta de fi
+cheiros seja diferente
+>   targetSnapshotId: 'latest',
+>   bootTimeMs: Date.now()
+> });
+>
+> const coordinator = bootResult.coordinator;
+> const ocrAdapter = new PythonOcrAdapter();
+>
+> // 2. Configuração do CLI Interativo
+> const rl = readline.createInterface({
+>     input: process.stdin,
+>     output: process.stdout
+> });
+>
+> console.log("\n=========================================");
+> console.log(" 🎯 RLSYS SATELLITE - MOTOR TÁTICO CLI");
+> console.log("=========================================");
+> console.log(" - Digite um número (0-36) para girar a roleta.")
+;
+> console.log(" - Digite 'ocr' para capturar histórico na nuvem.
+");
+> console.log(" - Digite 'sair' para encerrar.");
+> console.log("=========================================\n");
+>
+> const askForInput = () => {
+>     rl.question("\x1b[33mAguardando comando/número: \x1b[0m",
+async (input) => {
+>         const command = input.trim().toLowerCase();
+>
+>         if (command === 'sair' || command === 'exit') {
+>             console.log("\n[MAIN] Suspendendo Motor Tático. At
+é logo!");
+>             rl.close();
+>             process.exit(0);
+>         }
+>
+>         if (command === 'ocr') {
+>             const historico = await ocrAdapter.extractHistory(
+);
+>
+>             if (historico.length > 0) {
+>                 console.log(`\n[MAIN] Iniciando Ingestão de Co
+ld Start (${historico.length} rodadas)...`);
+>
+>                 const historicoCronologico = [...historico].re
+verse();
+>
+>                 for (const num of historicoCronologico) {
+>                     try {
+>                         await coordinator.registerOutcome(num)
+;
+>                         await coordinator.processLiveSpin(num)
+;
+>                     } catch (err) {
+>                         console.error(`[MAIN Erro] Falha ao in
+jetar rodada ${num}:`, err);
+>                     }
+>                 }
+>
+>                 console.log(`\x1b[32m[MAIN] Cold Start Concluí
+do! Motor Matemático abastecido com ${historico.length} eventos.
+\x1b[0m\n`);
+>             }
+>             askForInput();
+>             return;
+>         }
+>
+>         const num = parseInt(command, 10);
+>         if (!isNaN(num) && num >= 0 && num <= 36) {
+>             try {
+>                 await coordinator.registerOutcome(num);
+>                 const decisao = await coordinator.processLiveS
+pin(num);
+>
+>                 console.log(`\n\x1b[36m--- DECISÃO DE EDGE ---
+\x1b[0m`);
+>                 console.dir(decisao, { depth: null, colors: tr
+ue });
+>                 console.log(`\x1b[36m-----------------------\x
+1b[0m\n`);
+>
+>             } catch (err) {
+>                 console.error(`\x1b[31m[MAIN Erro]\x1b[0m Falh
+a ao processar rodada manual:`, err);
+>             }
+>         } else {
+>             console.log("\x1b[31m[!] Entrada inválida. Digite
+0-36 ou 'ocr'.\x1b[0m\n");
+>         }
+>
+>         askForInput();
+>     });
+> };
+>
+> askForInput();
+> EOF
+(venv) [root@localhost rlsys-terminal-main]# npm run build
+
+> rl-sys-core@2.9.0 build
+> tsc
+
+src/main.ts:49:43 - error TS2554: Expected 2 arguments, but got
+1.
+
+49                         await coordinator.registerOutcome(num
+);
+                                             ~~~~~~~~~~~~~~~
+
+  src/application/live/LiveSessionCoordinator.ts:34:39
+    34   public registerOutcome(pnl: number, currentTimeMs: numb
+er): void {
+                                             ~~~~~~~~~~~~~~~~~~~
+~~
+    An argument for 'currentTimeMs' was not provided.
+
+src/main.ts:50:43 - error TS2554: Expected 2 arguments, but got
+1.
+
+50                         await coordinator.processLiveSpin(num
+);
+                                             ~~~~~~~~~~~~~~~
+
+  src/application/live/LiveSessionCoordinator.ts:13:55
+    13   public processLiveSpin(liveState: CurrentLiveState, cur
+rentTimeMs: number): DecisionResult {
+                                                             ~~~
+~~~~~~~~~~~~~~~~~~
+    An argument for 'currentTimeMs' was not provided.
+
+src/main.ts:65:35 - error TS2554: Expected 2 arguments, but got
+1.
+
+65                 await coordinator.registerOutcome(num);
+                                     ~~~~~~~~~~~~~~~
+
+  src/application/live/LiveSessionCoordinator.ts:34:39
+    34   public registerOutcome(pnl: number, currentTimeMs: numb
+er): void {
+                                             ~~~~~~~~~~~~~~~~~~~
+~~
+    An argument for 'currentTimeMs' was not provided.
+
+src/main.ts:66:51 - error TS2554: Expected 2 arguments, but got
+1.
+
+66                 const decisao = await coordinator.processLive
+Spin(num);
+                                                     ~~~~~~~~~~~
+~~~~
+
+  src/application/live/LiveSessionCoordinator.ts:13:55
+    13   public processLiveSpin(liveState: CurrentLiveState, cur
+rentTimeMs: number): DecisionResult {
+                                                             ~~~
+~~~~~~~~~~~~~~~~~~
+    An argument for 'currentTimeMs' was not provided.
+
+
+Found 4 errors in the same file, starting at: src/main.ts:49
+
+(venv) [root@localhost rlsys-terminal-main]# ./capture-sprint-bu
+ffer.sh
+

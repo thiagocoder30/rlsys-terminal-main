@@ -1,0 +1,958 @@
+[root@localhost rlsys-terminal-main]# #!/bin/bash
+)] $1" | tee -a "$LOG_FILE"
+}
+
+error_handler() {
+    echo -e "\n${RED}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${RED}${BOLD}   ❌ ERRO DETECTADO NA LINHA $1${NC}"
+    echo -e "${RED}   A Sprint 033 foi interrompida para protege
+r a integridade do código.${NC}"
+    echo -e "${RED}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    return 1 2>/dev/null || exit 1
+}
+
+trap 'error_handler $LINENO' ERR
+
+log "======================================================"
+log " INICIANDO SPRINT 033 - EMERGENCY CAPITAL FREEZE "
+log "======================================================"
+
+cd "$HOME/rlsys-terminal-main"
+
+# 1. Preparação do Git
+log "=> Sincronizando repositório..."
+git checkout main
+git pull origin main
+
+log "=> Preparando branch isolada..."
+git branch -D sprint-033-emergency-freeze 2>/dev/null || true
+git checkout -b sprint-033-emergency-freeze
+
+log "=> Criando ficheiros de domínio..."
+
+# 2. Escrita: Contratos de Telemetria (TelemetryContracts.ts)
+cat << 'EOF' > src/domain/runtime/TelemetryContracts.ts
+export interface TelemetrySnapshot {
+  readonly latencyMs: number;
+  readonly droppedFrames: number;
+  readonly ocrConfidence: number;      // 0.0 a 1.0
+  readonly lastHeartbeatAgeMs: number; // Tempo desde o último s
+inal vital
+}
+
+export interface FreezePolicy {
+  readonly maxLatencyMs: number;
+  readonly maxDroppedFrames: number;
+  readonly minOcrConfidence: number;
+  readonly maxHeartbeatAgeMs: number;
+}
+
+export enum FreezeReason {
+  NONE = 'NONE',
+  HIGH_LATENCY = 'HIGH_LATENCY',
+  FRAME_DROPS = 'FRAME_DROPS',
+  OCR_BLINDNESS = 'OCR_BLINDNESS',
+  HEARTBEAT_LOST = 'HEARTBEAT_LOST'
+}
+
+export interface FreezeResult {
+  readonly is[root@localhost rlsys-terminal-main]# set -uo pipef
+ail
+Frozen: boolean;
+  readonly reason: FreezeReason;
+}
+EOF
+
+# 3. Escrita: O Motor de Congelamento (EmergencyFreezeGuard.ts)
+cat << 'EOF' > src/domain/runtime/EmergencyFreezeGuard.ts
+import { TelemetrySnapshot, FreezePolicy, FreezeResult, FreezeRe
+ason } from './TelemetryContracts';
+
+export class EmergencyFreezeGuard {
+  // Padrão Flyweight: Reutiliza o mesmo objeto para evitar Garb
+age Collection em loops O(1)
+  private static readonly HEALTHY_RESULT: FreezeResult = { isFro
+zen: false, reason: FreezeReason.NONE };
+
+  /**
+   * Avalia a telemetria em tempo O(1) e espaço O(1).
+   * Padrão Specification estrito: Aborta no primeiro sinal de a
+nomalia (Fail-Fast).
+   */
+  public static evaluate(snapshot: TelemetrySnapshot, policy: Fr
+eezePolicy): FreezeResult {
+    // 1. Integridade Vital (Heartbeat)
+    if (snapshot.lastHeartbeatAgeMs > policy.maxHeartbeatAgeMs)
+{
+      return { isFrozen: true, reason: FreezeReason.HEARTBEAT_LO
+ST };
+    }
+
+    // 2. Cegueira de Sensores (OCR)
+    if (snapshot.ocrConfidence < policy.minOcrConfidence) {
+      return { isFrozen: true, reason: FreezeReason.OCR_BLINDNES
+S };
+    }
+
+    // 3. Atraso Crítico (Latency)
+    if (snapshot.latencyMs > policy.maxLatencyMs) {
+      return { isFrozen: true, reason: FreezeReason.HIGH_LATENCY
+ };
+    }
+
+    // 4. Perda de Pacotes/Stream (Frames)
+    if (snapshot.droppedFrames > policy.maxDroppedFrames) {
+      return { isFrozen: true, reason: FreezeReason.FRAME_DROPS
+};
+    }
+
+    return EmergencyFreezeGuard.HEALTHY_RESULT;
+  }
+}
+EOF
+
+# 4. Escrita: Testes Unitários Rígidos
+cat << 'EOF' > tests/emergency-freeze.test.js
+const test = require('node:test');
+const assert = require('node:assert');
+const { EmergencyFreezeGuard } = require('../dist/domain/runtime
+/EmergencyFreezeGuard');
+const { FreezeReason } = require('../dist/domain/runtime/Telemet
+ryContracts');
+
+const strictPolicy = {
+  maxLatencyMs: 150,
+  maxDroppedFrames: 5,
+  minOcrConfidence: [root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# # Cores para o alerta visu
+al
+[root@localhost rlsys-terminal-main]# GREEN='\033[0;32m'
+ healthy[root@localhost rlsys-terminal-main]# RED='\033[0;31m'
+[root@localhost rlsys-terminal-main]# NC='\033[0m'
+[root@localhost rlsys-terminal-main]# BOLD='\033[1m'
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# LOG_FILE="sprint_033_freez
+e.log"
+[root@localhost rlsys-terminal-main]# > "$LOG_FILE"
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# log() {
+>     echo -e "[$(date +'%H:%M:%S')] $1" | tee -a "$LOG_FILE"
+> }
+[root@localhost rlsys-terminal-main]#
+l[root@localhost rlsys-terminal-main]# error_handler() {
+>     echo -e "\n${RED}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+>     echo -e "${RED}${BOLD}   ❌ ERRO DETECTADO NA LINHA $1${NC
+}"
+>     echo -e "${RED}   A Sprint 033 foi interrompida para prote
+ger a integridade do código.${NC}"
+>     echo -e "${RED}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+>     return 1 2>/dev/null || exit 1
+> }
+a[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# trap 'error_handler $LINEN
+O' ERR
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# log "=====================
+================================="
+[22:46:58] =====================================================
+=
+[root@localhost rlsys-terminal-main]# log " INICIANDO SPRINT 033
+ - EMERGENCY CAPITAL FREEZE "
+[22:46:58]  INICIANDO SPRINT 033 - EMERGENCY CAPITAL FREEZE
+[root@localhost rlsys-terminal-main]# log "=====================
+================================="
+[22:46:59] =====================================================
+=
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# cd "$HOME/rlsys-terminal-m
+ain"
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# # 1. Preparação do Git
+[root@localhost rlsys-terminal-main]# log "=> Sincronizando repo
+sitório..."
+[22:46:59] => Sincronizando repositório...
+[root@localhost rlsys-terminal-main]# git checkout main
+t lagSnapsAlready on 'main'
+Your branch is up to date with 'origin/main'.
+[root@localhost rlsys-terminal-main]# git pull origin main
+From https://github.com/thiagocoder30/rlsys-terminal-main
+ * branch            main       -> FETCH_HEAD
+Already up to date.
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# log "=> Preparando branch
+isolada..."
+[22:47:02] => Preparando branch isolada...
+[root@localhost rlsys-terminal-main]# git branch -D sprint-033-e
+mergency-freeze 2>/dev/null || true
+[root@localhost rlsys-terminal-main]# git checkout -b sprint-033
+-emergency-freeze
+Switched to a new branch 'sprint-033-emergency-freeze'
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# log "=> Criando ficheiros
+de domínio..."
+[22:47:02] => Criando ficheiros de domínio...
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# # 2. Escrita: Contratos de
+ Telemetria (TelemetryContracts.ts)
+encyGuard: Avaliacao O(1) [root@localhost rlsys-terminal-main]#
+cat << 'EOF' > src/domain/runtime/TelemetryContracts.ts
+> export interface TelemetrySnapshot {
+>   readonly latencyMs: number;
+>   readonly droppedFrames: number;
+>   readonly ocrConfidence: number;      // 0.0 a 1.0
+>   readonly lastHeartbeatAgeMs: number; // Tempo desde o último
+ sinal vital
+> }
+>
+l> export interface FreezePolicy {
+>   readonly maxLatencyMs: number;
+"=> Instala>   readonly maxDroppedFrames: number;
+>   readonly minOcrConfidence: number;
+>   readonly maxHeartbeatAgeMs: number;
+> }
+>
+> export enum FreezeReason {
+>   NONE = 'NONE',
+>   HIGH_LATENCY = 'HIGH_LATENCY',
+>   FRAME_DROPS = 'FRAME_DROPS',
+>   OCR_BLINDNESS = 'OCR_BLINDNESS',
+>   HEARTBEAT_LOST = 'HEARTBEAT_LOST'
+> }
+>
+> export interface FreezeResult {
+>   readonly isFrozen: boolean;
+>   readonly reason: FreezeReason;
+> }
+t > EOF
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# # 3. Escrita: O Motor de C
+ongelamento (EmergencyFreezeGuard.ts)
+[root@localhost rlsys-terminal-main]# cat << 'EOF' > src/domain/
+runtime/EmergencyFreezeGuard.ts
+> import { TelemetrySnapshot, FreezePolicy, FreezeResult, Freeze
+Reason } from './TelemetryContracts';
+>
+> export class EmergencyFreezeGuard {
+>   // Padrão Flyweight: Reutiliza o mesmo objeto para evitar Ga
+rbage Collection em loops O(1)
+>   private static readonly HEALTHY_RESULT: FreezeResult = { isF
+rozen: false, reason: FreezeReason.NONE };
+>
+   • Prot>   /**
+>    * Avalia a telemetria em tempo O(1) e espaço O(1).
+>    * Padrão Specification estrito: Aborta no primeiro sinal de
+ anomalia (Fail-Fast).
+>    */
+>   public static evaluate(snapshot: TelemetrySnapshot, policy:
+FreezePolicy): FreezeResult {
+>     // 1. Integridade Vital (Heartbeat)
+>     if (snapshot.lastHeartbeatAgeMs > policy.maxHeartbeatAgeMs
+) {
+>       return { isFrozen: true, reason: FreezeReason.HEARTBEAT_
+LOST };
+>     }
+>
+>     // 2. Cegueira de Sensores (OCR)
+>     if (snapshot.ocrConfidence < policy.minOcrConfidence) {
+>       return { isFrozen: true, reason: FreezeReason.OCR_BLINDN
+ESS };
+>     }
+>
+>     // 3. Atraso Crítico (Latency)
+>     if (snapshot.latencyMs > policy.maxLatencyMs) {
+>       return { isFrozen: true, reason: FreezeReason.HIGH_LATEN
+CY };
+>     }
+>
+>     // 4. Perda de Pacotes/Stream (Frames)
+>     if (snapshot.droppedFrames > policy.maxDroppedFrames) {
+>       return { isFrozen: true, reason: FreezeReason.FRAME_DROP
+S };
+>     }
+>
+>     return EmergencyFreezeGuard.HEALTHY_RESULT;
+>   }
+> }
+> EOF
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# # 4. Escrita: Testes Unitá
+rios Rígidos
+[root@localhost rlsys-terminal-main]# cat << 'EOF' > tests/emerg
+ency-freeze.test.js
+> const test = require('node:test');
+> const assert = require('node:assert');
+> const { EmergencyFreezeGuard } = require('../dist/domain/runti
+me/EmergencyFreezeGuard');
+> const { FreezeReason } = require('../dist/domain/runtime/Telem
+etryContracts');
+>
+> const strictPolicy = {
+>   maxLatencyMs: 150,
+>   maxDroppedFrames: 5,
+>   minOcrConfidence: 0.95,
+>   maxHeartbeatAgeMs: 2000
+> };
+>
+> const healthySnapshot = {
+>   latencyMs: 45,
+>   droppedFrames: 0,
+>   ocrConfidence: 0.99,
+>   lastHeartbeatAgeMs: 100
+> };
+>
+> test('EmergencyGuard: Permite operacao com telemetria saudavel
+', () => {
+>   const result = EmergencyFreezeGuard.evaluate(healthySnapshot
+, strictPolicy);
+>   assert.strictEqual(result.isFrozen, false);
+>   assert.strictEqual(result.reason, FreezeReason.NONE);
+> });
+>
+> test('EmergencyGuard: Congela por perda de Heartbeat (Morte do
+ Sensor)', () => {
+>   const deadSnapshot = { ...healthySnapshot, lastHeartbeatAgeM
+s: 5000 };
+>   const result = EmergencyFreezeGuard.evaluate(deadSnapshot, s
+trictPolicy);
+>   assert.strictEqual(result.isFrozen, true);
+>   assert.strictEqual(result.reason, FreezeReason.HEARTBEAT_LOS
+T);
+> });
+>
+> test('EmergencyGuard: Congela por cegueira do OCR (Baixa Confi
+anca)', () => {
+>   const blindSnapshot = { ...healthySnapshot, ocrConfidence: 0
+.80 };
+>   const result = EmergencyFreezeGuard.evaluate(blindSnapshot,
+strictPolicy);
+>   assert.strictEqual(result.isFrozen, true);
+>   assert.strictEqual(result.reason, FreezeReason.OCR_BLINDNESS
+);
+> });
+>
+> test('EmergencyGuard: Congela por alta latencia (Risco de dela
+y na acao)', () => {
+>   const lagSnapshot = { ...healthySnapshot, latencyMs: 300 };
+>   const result = EmergencyFreezeGuard.evaluate(lagSnapshot, st
+rictPolicy);
+>   assert.strictEqual(result.isFrozen, true);
+>   assert.strictEqual(result.reason, FreezeReason.HIGH_LATENCY)
+;
+> });
+>
+> test('EmergencyGuard: Avaliacao O(1) nao aloca memoria se saud
+avel', () => {
+>   const result1 = EmergencyFreezeGuard.evaluate(healthySnapsho
+t, strictPolicy);
+>   const result2 = EmergencyFreezeGuard.evaluate(healthySnapsho
+t, strictPolicy);
+>   // Garante que é a mesma referência estática na memória
+>   assert.strictEqual(result1, result2);
+> });
+> EOF
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# # 5. Compilação e Teste
+[root@localhost rlsys-terminal-main]# log "=> Instalando dependê
+ncias e a compilar (TypeScript)..."
+[22:47:04] => Instalando dependências e a compilar (TypeScript).
+..
+[root@localhost rlsys-terminal-main]# npm ci && npm run build
+
+added 98 packages, and audited 99 packages in 21s
+
+19 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+
+> rl-sys-core@2.9.0 build
+> tsc
+
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# log "=> Executando validaç
+ão de domínio (Tests)..."
+[22:48:10] => Executando validação de domínio (Tests)...
+[root@localhost rlsys-terminal-main]# npm test
+
+> rl-sys-core@2.9.0 test
+> node --test tests/*.test.js
+
+✔ AdaptiveConfidenceEngine allows mature low-noise signal calibr
+ation (44.040154ms)
+✔ AdaptiveConfidenceEngine observes marginal confidence near dyn
+amic threshold (11.967769ms)
+✔ AdaptiveConfidenceEngine blocks noisy low-quality calibration
+(14.449231ms)
+✔ AdaptiveConfidenceEngine rejects malformed input without silen
+t failure (19.199308ms)
+✔ AdvancedWalkForwardService rejects corrupted datasets (53808.8
+0108ms)
+✔ AdvancedWalkForwardService returns blocked research report for
+ clean dataset (620.803462ms)
+✔ AdvancedWalkForwardValidator rejects invalid roulette history
+(32.484538ms)
+✔ AdvancedWalkForwardValidator detects low robustness on balance
+d data (230.874154ms)
+✔ AdvancedWalkForwardValidator surfaces candidate for persistent
+ out-of-sample bias (146.192307ms)
+✔ BayesianEdgeValidator rejects insufficient evidence (46.470692
+ms)
+✔ BayesianEdgeValidator supports strong positive out-of-sample e
+vidence (8.71577ms)
+✔ BenchmarkComparisonService rejects corrupted datasets (38112.8
+56848ms)
+✔ BenchmarkComparisonService returns institutional benchmark rep
+ort with blocked gate (1201.238769ms)
+✔ BootstrapResampler creates deterministic block samples with ch
+ecksums (74.322538ms)
+✔ BootstrapResampler rejects insufficient history (5.580462ms)
+✔ CapitalExposureService returns institutional capital report wi
+th blocked gate (12581.489616ms)
+✔ CapitalExposureService rejects corrupted datasets (4.708231ms)
+✔ CapitalExposureSimulator returns bounded capital survival metr
+ics (103.13523ms)
+✔ CapitalExposureSimulator rejects invalid roulette histories (2
+5.635693ms)
+✔ CapitalExposureSimulator flags aggressive capital pressure wit
+hout opening operational gate (135.446923ms)
+✔ ConfidenceScorer returns a bounded score and grade (47.143ms)
+✔ ConfigValidator accepts production-safe defaults with warnings
+ only (55.964539ms)
+✔ ConfigValidator rejects invalid ports and log levels (9.358692
+ms)
+✔ DataIntegrityValidator accepts research-sized canonical datase
+ts (46.315385ms)
+✔ DataIntegrityValidator blocks insufficient datasets (4.926693m
+s)
+✔ DatasetEngine parses and normalizes CSV datasets with checksum
+s (7356.832001ms)
+✔ DatasetEngine rejects invalid spin values without throwing (7.
+533538ms)
+✔ DatasetRegistryEngine accepts high quality datasets with deter
+ministic checksums (47.521231ms)
+✔ DatasetRegistryEngine requires review for OCR datasets with we
+ak reliability (7.989307ms)
+✔ DatasetRegistryEngine blocks corrupted roulette sample values
+(7.784154ms)
+✔ DatasetRegistryEngine rejects duplicate dataset ids without si
+lent failure (4.438231ms)
+✔ DatasetRegistryEngine blocks oversized dataset batches before
+processing (3.454923ms)
+✔ DatasetRegistryEngine can block synthetic datasets by policy (
+4.634308ms)
+✔ DealerSignatureEngine detects persistent dealer sector signatu
+re (39.113462ms)
+✔ DealerSignatureEngine returns inconclusive for balanced dealer
+ history (6.110924ms)
+✔ DealerSignatureEngine blocks insufficient dealer sample (16.26
+4308ms)
+✔ DealerSignatureEngine rejects malformed roulette values withou
+t silent failure (4.938077ms)
+✔ DealerSignatureEngine blocks oversized batches for low-end har
+dware safety (20.256769ms)
+✔ DealerSignatureEngine is deterministic for repeated analysis (
+19.120692ms)
+✔ DecisionOrchestrator connects ranking to research-only live de
+cision (49.903384ms)
+✔ DecisionOrchestrator keeps observation state when live session
+ is not ready (9.37577ms)
+✔ DecisionOrchestrator returns typed Result error for malformed
+input (6.944154ms)
+✔ DecisionOrchestrator blocks research signal when regime policy
+ blocks signals (19.987231ms)
+✔ DecisionOrchestrator blocks research signal when ensemble repo
+rts strategic conflict (12.628923ms)
+✔ DecisionOrchestrator blocks research signal when temporal deca
+y expires evidence (12.153462ms)
+✔ DecisionOrchestrator blocks research signal when adaptive conf
+idence is too low (12.002385ms)
+✔ DeterministicReplayStudio replays command streams with stable
+checksums (5951.869847ms)
+✔ DeterministicReplayStudio preserves idempotency for duplicate
+frame events (6.26377ms)
+✔ DeterministicReplayStudio replays verified persistence records
+ (19.647692ms)
+✔ DeterministicReplayStudio blocks checkpoint mismatches without
+ throwing (6.004077ms)
+✔ DeterministicReplayStudio rejects malformed requests without s
+ilent failure (15.74077ms)
+✔ EdgePersistenceAnalyzer returns no persistent edge for rotatin
+g balanced data (183.446308ms)
+✔ EdgePersistenceAnalyzer flags stable concentrated evidence as
+persistent research signal (44.235693ms)
+✔ EdgePersistenceAnalyzer estimates decay direction for fading s
+ignals (41.738384ms)
+✔ EmergencyGuard: Permite operacao com telemetria saudavel (22.2
+64616ms)
+✔ EmergencyGuard: Congela por perda de Heartbeat (Morte do Senso
+r) (2.837462ms)
+✔ EmergencyGuard: Congela por cegueira do OCR (Baixa Confianca)
+(2.674231ms)
+✔ EmergencyGuard: Congela por alta latencia (Risco de delay na a
+cao) (2.899692ms)
+✔ EmergencyGuard: Avaliacao O(1) nao aloca memoria se saudavel (
+2.700693ms)
+✔ EVRiskAnalyticsEngine identifies positive edge candidate under
+ bounded risk (125.265384ms)
+✔ EVRiskAnalyticsEngine blocks negative expected value samples (
+6.806846ms)
+✔ EVRiskAnalyticsEngine blocks insufficient samples even when pr
+ofitable (5.971538ms)
+✔ EVRiskAnalyticsEngine exposes deterministic checksums for repe
+ated analytics (6.066692ms)
+✔ EVRiskAnalyticsEngine rejects malformed outcomes without silen
+t failure (6.169538ms)
+✔ EVRiskAnalyticsEngine blocks oversized analytics batches befor
+e processing (3.089308ms)
+✔ ExplainabilityEngine generates deterministic audit narrative f
+or research signal (86.750538ms)
+✔ ExplainabilityEngine surfaces blockers as primary reason for r
+ejected decisions (12.324539ms)
+✔ ExplainabilityEngine bounds evidence list for low-memory opera
+tor UI (16.852846ms)
+✔ ExplainabilityEngine rejects malformed input without silent fa
+ilure (4.646231ms)
+✔ HealthCheckService reports readiness with writable data direct
+ory (11651.530155ms)
+✔ HypothesisValidator keeps operational gate blocked without str
+ong large-sample evidence (35.121692ms)
+✔ IncrementalStatisticsEngine updates bounded rolling metrics wi
+thout recompute over full history (44.302923ms)
+✔ IncrementalStatisticsEngine preserves idempotency for duplicat
+e round events (3.546538ms)
+✔ IncrementalStatisticsEngine detects concentrated low-entropy w
+indows (9.857616ms)
+✔ IncrementalStatisticsEngine replays deterministically with mat
+ching checksum (35.779769ms)
+✔ IncrementalStatisticsEngine rejects malformed roulette values
+without silent failure (15.068616ms)
+✔ InputHardeningEngine accepts bounded manual roulette payloads
+(47.005615ms)
+✔ InputHardeningEngine rejects invalid roulette values before do
+main processing (7.462692ms)
+✔ InputHardeningEngine rejects suspicious tokens and prototype p
+ollution keys (5.009461ms)
+✔ InputHardeningEngine sanitizes long strings without mutating p
+ayload (12.13323ms)
+✔ InputHardeningEngine rejects payloads exceeding bounded array
+policy (62.467154ms)
+✔ InputHardeningEngine returns typed Result error for malformed
+request (3.363ms)
+✔ InstitutionalBacktestEngine returns bounded institutional metr
+ics and gates (153.677769ms)
+✔ InstitutionalBacktestEngine rejects invalid roulette history (
+8.530616ms)
+✔ InstitutionalBacktestService rejects corrupted datasets and ke
+eps operational gate blocked (13191.905462ms)
+✔ InstitutionalBacktestService returns institutional research re
+port for clean dataset (830.80677ms)
+✔ InternalEventBus delivers events to observers in a typed deter
+ministic report (37.111539ms)
+✔ InternalEventBus preserves idempotency for duplicate event ids
+ (6.102077ms)
+✔ InternalEventBus isolates observer failures without throwing t
+hrough publisher (89.732ms)
+✔ InternalEventBus rejects malformed events without silent failu
+re (4.504538ms)
+✔ LiveSessionRuntimeService collects rounds before decision read
+iness (7524.656616ms)
+✔ LiveSessionRuntimeService invokes decision layer after 100 rou
+nds while keeping live gate blocked (136.008ms)
+✔ LiveSessionRuntimeService reports duplicate events idempotentl
+y (3.431769ms)
+✔ LiveSessionRuntimeService rejects malformed round input (5.332
+923ms)
+✔ LiveSessionRuntimeService surfaces cooldown without invoking l
+ive stake (90.022846ms)
+✔ LiveSessionRuntime ingests rounds incrementally with bounded w
+indows (4235.001077ms)
+✔ LiveSessionRuntime is idempotent for duplicated event ids (3.2
+45923ms)
+✔ LiveSessionRuntime rejects invalid roulette values without sil
+ent failure (2.838308ms)
+✔ LiveSessionRuntime exposes deterministic control frame for dec
+ision readiness (16.395307ms)
+✔ LiveSessionRuntime enters cooldown on concentrated rolling win
+dow (7.431924ms)
+✔ MetricsRegistry captures counters, timers, uptime and memory (
+4094.795308ms)
+✔ MonteCarloEngine returns bounded institutional risk metrics (3
+5.983077ms)
+(node:19713) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type
+ of file:///root/rlsys-terminal-main/tests/monte-carlo-research-
+studio.test.js is not specified and it doesn't parse as CommonJS
+.
+Reparsing as ES module because module syntax was detected. This
+incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /root/rlsys-t
+erminal-main/package.json.
+(Use `node --trace-warnings ...` to show where the warning was c
+reated)
+✔ MonteCarloResearchStudio accepts robust candidate under varian
+ce stress (59.728385ms)
+✔ MonteCarloResearchStudio blocks fragile candidate when drawdow
+n and ruin risk are excessive (11.906231ms)
+✔ MonteCarloResearchStudio is deterministic for the same seed an
+d inputs (23.140384ms)
+✔ MonteCarloResearchStudio blocks oversized research batches (3.
+550308ms)
+✔ MonteCarloResearchStudio rejects malformed outcomes without si
+lent failure (3.642231ms)
+✔ MonteCarloV2Engine returns bounded bootstrap risk metrics (298
+.328923ms)
+✔ MonteCarloV2Engine surfaces robust candidate without opening o
+perational gate (152.606154ms)
+✔ MonteCarloV2Engine rejects invalid histories (5.249461ms)
+✔ MonteCarloV2Service returns institutional blocked research rep
+ort (16064.665078ms)
+✔ MonteCarloV2Service rejects corrupted datasets (10.806769ms)
+✔ OfflineResearchRunner processes clean datasets with determinis
+tic checksum (4130.185231ms)
+✔ OfflineResearchRunner preserves replay idempotency metrics for
+ duplicate events (13.860616ms)
+✔ OfflineResearchRunner blocks oversized offline batches before
+replay (5.694385ms)
+✔ OfflineResearchRunner rejects malformed datasets without silen
+t failure (4.979ms)
+✔ OfflineResearchRunner reports no signal-like frames without tr
+eating it as failure (7.311077ms)
+✔ OperatorHudProjectionEngine creates deterministic research-onl
+y HUD projection (98.375615ms)
+✔ OperatorHudProjectionEngine surfaces blocked decisions as dang
+er mode (9.855539ms)
+✔ OperatorHudProjectionEngine bounds cards for low-memory operat
+or UI (7.059231ms)
+✔ OperatorHudProjectionEngine rejects malformed input without si
+lent failure (3.377462ms)
+✔ PersistenceResearchService rejects corrupted tiny dataset (30.
+199462ms)
+✔ PersistenceResearchService returns research-ready status for p
+ersistent evidence while keeping operational gate blocked (8028.
+828308ms)
+✔ RegimeClassificationEngine classifies balanced history as stab
+le research regime (32.252ms)
+✔ RegimeClassificationEngine blocks chaotic concentrated history
+ (4.458077ms)
+✔ RegimeClassificationEngine detects drifting sector pressure wi
+thout opening signals (9.971ms)
+✔ RegimeClassificationEngine returns typed Result error for malf
+ormed history (5.01623ms)
+✔ RegimeDetector returns bounded stability and windows (37.95030
+8ms)
+✔ RegimeDetector marks very small samples as unstable (3.318385m
+s)
+✔ ReleaseReadinessService returns review when config has warning
+s but no blockers (8035.362692ms)
+✔ ReleaseReadinessService blocks failed readiness checks (3.6780
+76ms)
+✔ ResearchDatasetService returns accepted report for clean resea
+rch dataset (5884.517847ms)
+✔ ResearchDatasetService rejects corrupted dataset (5.637ms)
+✔ ResearchExperimentOrchestrator promotes governed positive edge
+ to alpha candidate (32.847846ms)
+✔ ResearchExperimentOrchestrator blocks when analytics is negati
+ve or inconclusive (3.723308ms)
+✔ ResearchExperimentOrchestrator blocks mismatched dataset count
+s without silent failure (4.271616ms)
+✔ ResearchExperimentOrchestrator is deterministic for repeated e
+xperiment envelopes (4.624538ms)
+✔ ResearchExperimentOrchestrator blocks insufficient offline fra
+me evidence (4.366538ms)
+✔ ResearchReportingService rejects corrupted datasets with audit
+ envelope (4821.888231ms)
+✔ ResearchReportingService consolidates all research modules whi
+le keeping operational gate blocked (604.93323ms)
+✔ DrawdownMonitor: Mantem status HEALTHY em flutuacoes normais (
+13.759539ms)
+✔ DrawdownMonitor: Dispara VELOCITY_ALERT em queda brusca (2.545
+923ms)
+✔ DrawdownMonitor: Garante idempotencia e rejeita rodadas duplic
+adas (2.059231ms)
+✔ RuntimePerformanceBudgetEngine keeps low-end runtime within bu
+dget (27.298231ms)
+✔ RuntimePerformanceBudgetEngine throttles when queue and latenc
+y exceed policy (4.670077ms)
+✔ RuntimePerformanceBudgetEngine blocks live evaluation on criti
+cal thermal state (3.090462ms)
+✔ RuntimePerformanceBudgetEngine produces deterministic checksum
+s for repeated samples (3.301308ms)
+✔ RuntimePerformanceBudgetEngine rejects malformed samples witho
+ut silent failure (3.419462ms)
+✔ RuntimeSanityEngine accepts healthy runtime alignment (16.3281
+54ms)
+✔ RuntimeSanityEngine requires review for moderate divergence (2
+.719385ms)
+✔ RuntimeSanityEngine detects paradigm break under severe diverg
+ence (2.506ms)
+✔ RuntimeSanityEngine blocks insufficient runtime sample (2.2744
+61ms)
+✔ RuntimeSanityEngine rejects malformed runtime input (2.303384m
+s)
+✔ securityHeaders applies baseline hardening headers (15.817154m
+s)
+✔ valueToState maps roulette values to institutional states (9.1
+40153ms)
+✔ SequentialBiasDetector returns low evidence for rotating balan
+ced states (32.552616ms)
+✔ SequentialBiasDetector flags persistent temporal clusters (16.
+634307ms)
+✔ SequentialResearchService rejects corrupted tiny dataset (34.4
+69923ms)
+✔ SequentialResearchService returns a temporal report for persis
+tent dataset (145.555384ms)
+✔ Sessao Saudavel (13.637077ms)
+✔ Disparo Stop Loss (2.927ms)
+✔ SessionPersistenceEngine creates and verifies deterministic pe
+rsistence records (16897.355078ms)
+✔ SessionPersistenceEngine replays journal for crash recovery wi
+th matching checksum (23.936846ms)
+✔ SessionPersistenceEngine preserves idempotency during replay (
+9.892846ms)
+✔ SessionPersistenceEngine rejects corrupted records without sil
+ent failure (6.432846ms)
+✔ SpatialClusterCorrelationEngine detects contextual spatial clu
+ster (32.983077ms)
+✔ SpatialClusterCorrelationEngine remains deterministic for repe
+ated evaluation (24.805385ms)
+✔ SpatialClusterCorrelationEngine returns inconclusive for balan
+ced contexts (8.073615ms)
+✔ SpatialClusterCorrelationEngine blocks insufficient sample (3.
+449154ms)
+✔ SpatialClusterCorrelationEngine rejects malformed roulette val
+ues without silent failure (5.923616ms)
+✔ StatisticalResearchService returns inconclusive research repor
+t for clean uniform dataset (10629.578155ms)
+✔ StatisticalResearchService rejects corrupted tiny dataset (39.
+390692ms)
+✔ StatisticalSignificanceEngine treats balanced roulette distrib
+ution as low evidence (27.326154ms)
+✔ StatisticalSignificanceEngine flags concentrated deviation as
+significant (11.333923ms)
+✔ StrategyBenchmarkEngine rejects invalid histories (19.249616ms
+)
+✔ StrategyBenchmarkEngine returns bounded benchmark metrics (524
+.313384ms)
+✔ StrategyBenchmarkEngine can surface candidate without opening
+operational gate (428.226077ms)
+✔ StrategyComparisonFramework selects a clear risk-adjusted lead
+er (26.978ms)
+✔ StrategyComparisonFramework returns no clear leader for close
+candidates (4.280539ms)
+✔ StrategyComparisonFramework blocks candidates that fail eligib
+ility policy (4.087846ms)
+✔ StrategyComparisonFramework is deterministic across repeated c
+omparisons (68.145461ms)
+✔ StrategyComparisonFramework rejects malformed input without si
+lent failure (3.421539ms)
+✔ StrategyComparisonFramework blocks oversized comparison batche
+s (2.673615ms)
+✔ StrategyDecisionEngine returns research-only entry candidate f
+or strong evidence (35.474923ms)
+✔ StrategyDecisionEngine blocks NO_GO warmup regardless of other
+ evidence (6.414154ms)
+✔ StrategyDecisionEngine never opens live stake even for candida
+tes (3.177539ms)
+✔ StrategyDecisionEngine blocks unsafe bankroll progression when
+ stake does not fit stop loss budget (5.23377ms)
+✔ StrategyDecisionEngine exposes no-stake bankroll guard for obs
+ervation states (9.498846ms)
+✔ StrategyDecisionService returns blocked governance decision fo
+r clean session (7457.047616ms)
+✔ StrategyDecisionService rejects corrupted tiny sessions throug
+h decision blockers (26.968308ms)
+✔ RouletteStats rejects invalid roulette numbers (10.753769ms)
+✔ StrategyEngine locks insufficient samples (2.673308ms)
+✔ StrategyEngine returns institutional analysis shape for valid
+sample (16.880538ms)
+✔ BacktestEngine produces a stable walk-forward summary (259.908
+538ms)
+✔ RiskPolicy blocks strategy without enough walk-forward evidenc
+e (5.434461ms)
+✔ StrategyEnsembleEngine forms consensus from aligned strategy v
+otes (21.783539ms)
+✔ StrategyEnsembleEngine blocks when strategies conflict above p
+olicy limit (3.722769ms)
+✔ StrategyEnsembleEngine rejects malformed votes without silent
+failure (4.407384ms)
+✔ StrategyRankingEngine ranks eligible candidates by Bayesian ev
+idence adjusted for risk (17.611ms)
+✔ StrategyRankingEngine is deterministic for repeated input orde
+r and tie-breaks by id (92.661154ms)
+✔ StrategyRankingEngine rejects malformed candidates without sil
+ent failure (6.605847ms)
+✔ StressScenarioAnalyzer returns bounded stress metrics and draw
+down surface (118.016461ms)
+✔ StressScenarioAnalyzer rejects invalid roulette histories (4.7
+43077ms)
+✔ StressScenarioAnalyzer flags aggressive capital pressure witho
+ut opening operational gate (67.752615ms)
+✔ StressScenarioService returns institutional stress report with
+ blocked gate (8844.310539ms)
+✔ StressScenarioService rejects corrupted datasets (7.270538ms)
+✔ StructuredLogger emits sanitized JSON logs (8004.436ms)
+(node:20042) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type
+ of file:///root/rlsys-terminal-main/tests/synthetic-session-gen
+erator.test.js is not specified and it doesn't parse as CommonJS
+.
+Reparsing as ES module because module syntax was detected. This
+incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /root/rlsys-t
+erminal-main/package.json.
+(Use `node --trace-warnings ...` to show where the warning was c
+reated)
+✔ SyntheticSessionGenerator creates deterministic balanced contr
+ol sessions (47.294ms)
+✔ SyntheticSessionGenerator injects sector bias for physical-edg
+e research (15.848616ms)
+✔ SyntheticSessionGenerator creates drifting sessions with multi
+ple segments (10.284846ms)
+✔ SyntheticSessionGenerator blocks oversized batches for low-mem
+ory devices (3.187462ms)
+✔ SyntheticSessionGenerator rejects malformed requests without s
+ilent failure (3.531462ms)
+✔ TemporalDecayEngine keeps fresh signals eligible with bounded
+contribution (20.453462ms)
+✔ TemporalDecayEngine blocks expired evidence before live decisi
+on (3.376154ms)
+✔ TemporalDecayEngine returns observation for aging but non-expi
+red evidence (2.884ms)
+✔ TemporalDecayEngine rejects malformed signal without silent fa
+ilure (3.293923ms)
+✔ VisionReliabilityInspector accepts complete high-quality warmu
+p extraction (20.277693ms)
+✔ VisionReliabilityInspector requires manual review for low item
+ confidence (5.320615ms)
+✔ VisionReliabilityInspector rejects incomplete high-rejection e
+xtraction (2.729461ms)
+✔ VisionWarmupNormalizer extracts valid roulette numbers from JS
+ON markdown (27.620231ms)
+✔ VisionWarmupNormalizer reports rejected OCR values without gue
+ssing (3.063769ms)
+✔ VisionWarmupNormalizer rejects payload without sequence (2.086
+462ms)
+✔ VisionWarmupNormalizer reads object values and exposes reliabi
+lity review (4.504077ms)
+✔ WalkForwardValidationLab accepts robust out-of-sample alpha ca
+ndidate (36.864077ms)
+✔ WalkForwardValidationLab flags train-positive validation-negat
+ive overfit (10.958616ms)
+✔ WalkForwardValidationLab returns inconclusive when validation
+pass rate is weak but not pure overfit (6.016846ms)
+✔ WalkForwardValidationLab is deterministic across repeated runs
+ (10.475923ms)
+✔ WalkForwardValidationLab rejects malformed outcomes without si
+lent failure (3.426ms)
+✔ WalkForwardValidationLab blocks oversized research batches (2.
+543461ms)
+✔ WarmupSessionAnalyzer accepts complete balanced 100-round warm
+up for research (66.189538ms)
+✔ WarmupSessionAnalyzer rejects invalid roulette values (16.0956
+92ms)
+✔ WarmupSessionAnalyzer marks incomplete warmup as NO_GO (4.6085
+38ms)
+✔ WarmupSessionService evaluates manual 100-round warmup with bl
+ocked operational gate (6784.656308ms)
+✔ WarmupSessionService rejects corrupted warmup dataset (5.25707
+6ms)
+✔ WarmupSessionService evaluates vision raw JSON without opening
+ operational gate (22.544461ms)
+ℹ tests 235
+ℹ suites 0
+ℹ pass 235
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 60501.281543
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# # 6. Finalização Git
+[root@localhost rlsys-terminal-main]# log "=> Guardar registos e
+ integrar (Merge)..."
+[22:49:17] => Guardar registos e integrar (Merge)...
+[root@localhost rlsys-terminal-main]# git add .
+[root@localhost rlsys-terminal-main]# git commit -m "feat(runtim
+e): O(1) emergency capital freeze guard"
+[sprint-033-emergency-freeze 67d031e] feat(runtime): O(1) emerge
+ncy capital freeze guard
+ 3 files changed, 112 insertions(+)
+ create mode 100644 src/domain/runtime/EmergencyFreezeGuard.ts
+ create mode 100644 src/domain/runtime/TelemetryContracts.ts
+ create mode 100644 tests/emergency-freeze.test.js
+[root@localhost rlsys-terminal-main]# git push -u origin sprint-
+033-emergency-freeze
+Enumerating objects: 14, done.
+Counting objects: 100% (14/14), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (9/9), done.
+Writing objects: 100% (9/9), 2.18 KiB | 171.00 KiB/s, done.
+Total 9 (delta 5), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (5/5), completed with 5 local obj
+ects.
+remote:
+remote: Create a pull request for 'sprint-033-emergency-freeze'
+on GitHub by visiting:
+remote:      https://github.com/thiagocoder30/rlsys-terminal-mai
+n/pull/new/sprint-033-emergency-freeze
+remote:
+To https://github.com/thiagocoder30/rlsys-terminal-main.git
+ * [new branch]      sprint-033-emergency-freeze -> sprint-033-e
+mergency-freeze
+branch 'sprint-033-emergency-freeze' set up to track 'origin/spr
+int-033-emergency-freeze'.
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# git checkout main
+Switched to branch 'main'
+Your branch is up to date with 'origin/main'.
+[root@localhost rlsys-terminal-main]# git merge sprint-033-emerg
+ency-freeze
+Updating c9857af..67d031e
+Fast-forward
+ .../runtime/EmergencyFreezeGuard.ts      | 34 ++++++++++
+ src/domain/runtime/TelemetryContracts.ts | 26 ++++++++
+ tests/emergency-freeze.test.js           | 52 ++++++++++++++++
+ 3 files changed, 112 insertions(+)
+ create mode 100644 src/domain/runtime/EmergencyFreezeGuard.ts
+ create mode 100644 src/domain/runtime/TelemetryContracts.ts
+ create mode 100644 tests/emergency-freeze.test.js
+[root@localhost rlsys-terminal-main]# git push origin main
+Total 0 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/thiagocoder30/rlsys-terminal-main.git
+   c9857af..67d031e  main -> main
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# # 7. Banner de Sucesso
+[root@localhost rlsys-terminal-main]# echo -e "\n${GREEN}${BOLD}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${N
+C}"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[root@localhost rlsys-terminal-main]# echo -e "${GREEN}${BOLD}
+ 🚨 SPRINT 033 CONCLUÍDA: EMERGENCY FREEZE GUARD ATIVO!${NC}"
+echo -e "${GREEN}${BOLD}   🚨 SPRINT 033 CONCLUÍDA: EMERGENCY FR
+EEZE GUARD ATIVO"\n${GREEN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"{NC}"
+   🚨 SPRINT 033 CONCLUÍDA: EMERGENCY FREEZE GUARD ATIVOn━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{NC}
+[root@localhost rlsys-terminal-main]# echo -e "${GREEN}   • Sens
+or O(1) implementado com padrão Flyweight (Zero GC).${NC}"
+   • Sensor O(1) implementado com padrão Flyweight (Zero GC).
+[root@localhost rlsys-terminal-main]# echo -e "${GREEN}   • Prot
+eção contra OCR cego, Latência e Perda de Conexão.${NC}"
+   • Proteção contra OCR cego, Latência e Perda de Conexão.
+[root@localhost rlsys-terminal-main]# echo -e "${GREEN}   • Test
+es unitários passados rigorosamente.${NC}"
+   • Testes unitários passados rigorosamente.
+[root@localhost rlsys-terminal-main]# echo -e "${GREEN}${BOLD}━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}
+"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[root@localhost rlsys-terminal-main]# log "Operação terminada. T
+erminal livre para uso."
+[22:49:27] Operação terminada. Terminal livre para uso.
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# ./capture-sprint-buffer.sh
+
+

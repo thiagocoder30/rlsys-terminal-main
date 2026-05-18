@@ -1,0 +1,483 @@
+[root@localhost rlsys-terminal-main]# cd "$HOME/rlsys-termi
+nal-main"
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# git checkout main
+Already on 'main'
+Your branch is up to date with 'origin/main'.
+[root@localhost rlsys-terminal-main]# git pull origin main
+From https://github.com/thiagocoder30/rlsys-terminal-main
+ * branch            main       -> FETCH_HEAD
+Already up to date.
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# git checkout -b sprin
+t-024-walk-forward-validation-lab
+fatal: a branch named 'sprint-024-walk-forward-validation-l
+ab' already exists
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# git apply --check rls
+ys-terminal-sprint-024.diff
+error: can't open patch 'rlsys-terminal-sprint-024.diff': N
+o such file or directory
+[root@localhost rlsys-terminal-main]# git apply rlsys-termi
+nal-sprint-024.diff
+error: can't open patch 'rlsys-terminal-sprint-024.diff': N
+o such file or directory
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# npm ci
+
+added 98 packages, and audited 99 packages in 17s
+
+19 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+[root@localhost rlsys-terminal-main]# npm run build
+
+> rl-sys-core@2.9.0 build
+> tsc
+
+[root@localhost rlsys-terminal-main]# npm test
+
+> rl-sys-core@2.9.0 test
+> node --test tests/*.test.js
+
+✔ AdaptiveConfidenceEngine allows mature low-noise signal c
+alibration (17.172ms)
+✔ AdaptiveConfidenceEngine observes marginal confidence nea
+r dynamic threshold (3.012846ms)
+✔ AdaptiveConfidenceEngine blocks noisy low-quality calibra
+tion (8.125923ms)
+✔ AdaptiveConfidenceEngine rejects malformed input without
+silent failure (5.503692ms)
+✔ AdvancedWalkForwardService rejects corrupted datasets (38
+746.300156ms)
+✔ AdvancedWalkForwardService returns blocked research repor
+t for clean dataset (223.985ms)
+✔ AdvancedWalkForwardValidator rejects invalid roulette his
+tory (15.835384ms)
+✔ AdvancedWalkForwardValidator detects low robustness on ba
+lanced data (153.480692ms)
+✔ AdvancedWalkForwardValidator surfaces candidate for persi
+stent out-of-sample bias (66.640154ms)
+✔ BayesianEdgeValidator rejects insufficient evidence (24.7
+10385ms)
+✔ BayesianEdgeValidator supports strong positive out-of-sam
+ple evidence (4.218231ms)
+✔ BenchmarkComparisonService rejects corrupted datasets (27
+756.087309ms)
+✔ BenchmarkComparisonService returns institutional benchmar
+k report with blocked gate (1239.288154ms)
+✔ BootstrapResampler creates deterministic block samples wi
+th checksums (37.461154ms)
+✔ BootstrapResampler rejects insufficient history (5.167385
+ms)
+✔ CapitalExposureService returns institutional capital repo
+rt with blocked gate (8879.223077ms)
+✔ CapitalExposureService rejects corrupted datasets (3.6848
+46ms)
+✔ CapitalExposureSimulator returns bounded capital survival
+ metrics (63.378769ms)
+✔ CapitalExposureSimulator rejects invalid roulette histori
+es (5.116ms)
+✔ CapitalExposureSimulator flags aggressive capital pressur
+e without opening operational gate (43.105154ms)
+✔ ConfidenceScorer returns a bounded score and grade (13.39
+0692ms)
+✔ ConfigValidator accepts production-safe defaults with war
+nings only (11.715154ms)
+✔ ConfigValidator rejects invalid ports and log levels (3.6
+89461ms)
+✔ DataIntegrityValidator accepts research-sized canonical d
+atasets (34.007461ms)
+✔ DataIntegrityValidator blocks insufficient datasets (2.99
+3615ms)
+✔ DatasetEngine parses and normalizes CSV datasets with che
+cksums (4638.168692ms)
+✔ DatasetEngine rejects invalid spin values without throwin
+g (3.336077ms)
+✔ DatasetRegistryEngine accepts high quality datasets with
+deterministic checksums (39.194ms)
+✔ DatasetRegistryEngine requires review for OCR datasets wi
+th weak reliability (7.276154ms)
+✔ DatasetRegistryEngine blocks corrupted roulette sample va
+lues (5.661308ms)
+✔ DatasetRegistryEngine rejects duplicate dataset ids witho
+ut silent failure (3.725615ms)
+✔ DatasetRegistryEngine blocks oversized dataset batches be
+fore processing (2.794ms)
+✔ DatasetRegistryEngine can block synthetic datasets by pol
+icy (3.390616ms)
+✔ DecisionOrchestrator connects ranking to research-only li
+ve decision (45.140308ms)
+✔ DecisionOrchestrator keeps observation state when live se
+ssion is not ready (6.684154ms)
+✔ DecisionOrchestrator returns typed Result error for malfo
+rmed input (4.975231ms)
+✔ DecisionOrchestrator blocks research signal when regime p
+olicy blocks signals (18.449461ms)
+✔ DecisionOrchestrator blocks research signal when ensemble
+ reports strategic conflict (11.750231ms)
+✔ DecisionOrchestrator blocks research signal when temporal
+ decay expires evidence (10.371461ms)
+✔ DecisionOrchestrator blocks research signal when adaptive
+ confidence is too low (10.588846ms)
+✔ DeterministicReplayStudio replays command streams with st
+able checksums (3357.31523ms)
+✔ DeterministicReplayStudio preserves idempotency for dupli
+cate frame events (4.712769ms)
+✔ DeterministicReplayStudio replays verified persistence re
+cords (16.305385ms)
+✔ DeterministicReplayStudio blocks checkpoint mismatches wi
+thout throwing (4.97ms)
+✔ DeterministicReplayStudio rejects malformed requests with
+out silent failure (16.376923ms)
+✔ EdgePersistenceAnalyzer returns no persistent edge for ro
+tating balanced data (127.525615ms)
+✔ EdgePersistenceAnalyzer flags stable concentrated evidenc
+e as persistent research signal (39.118385ms)
+✔ EdgePersistenceAnalyzer estimates decay direction for fad
+ing signals (33.086154ms)
+✔ EVRiskAnalyticsEngine identifies positive edge candidate
+under bounded risk (91.877154ms)
+✔ EVRiskAnalyticsEngine blocks negative expected value samp
+les (4.738923ms)
+✔ EVRiskAnalyticsEngine blocks insufficient samples even wh
+en profitable (5.229384ms)
+✔ EVRiskAnalyticsEngine exposes deterministic checksums for
+ repeated analytics (4.065461ms)
+✔ EVRiskAnalyticsEngine rejects malformed outcomes without
+silent failure (3.564077ms)
+✔ EVRiskAnalyticsEngine blocks oversized analytics batches
+before processing (2.285154ms)
+✔ ExplainabilityEngine generates deterministic audit narrat
+ive for research signal (48.957538ms)
+✔ ExplainabilityEngine surfaces blockers as primary reason
+for rejected decisions (9.185308ms)
+✔ ExplainabilityEngine bounds evidence list for low-memory
+operator UI (10.926462ms)
+✔ ExplainabilityEngine rejects malformed input without sile
+nt failure (3.309ms)
+✔ HealthCheckService reports readiness with writable data d
+irectory (3916.547769ms)
+✔ HypothesisValidator keeps operational gate blocked withou
+t strong large-sample evidence (23.425846ms)
+✔ IncrementalStatisticsEngine updates bounded rolling metri
+cs without recompute over full history (34.146154ms)
+✔ IncrementalStatisticsEngine preserves idempotency for dup
+licate round events (2.969385ms)
+✔ IncrementalStatisticsEngine detects concentrated low-entr
+opy windows (9.903615ms)
+✔ IncrementalStatisticsEngine replays deterministically wit
+h matching checksum (29.144385ms)
+✔ IncrementalStatisticsEngine rejects malformed roulette va
+lues without silent failure (9.556693ms)
+✔ InputHardeningEngine accepts bounded manual roulette payl
+oads (31.809385ms)
+✔ InputHardeningEngine rejects invalid roulette values befo
+re domain processing (5.630616ms)
+✔ InputHardeningEngine rejects suspicious tokens and protot
+ype pollution keys (4.127461ms)
+✔ InputHardeningEngine sanitizes long strings without mutat
+ing payload (6.390538ms)
+✔ InputHardeningEngine rejects payloads exceeding bounded a
+rray policy (48.627307ms)
+✔ InputHardeningEngine returns typed Result error for malfo
+rmed request (3.062846ms)
+✔ InstitutionalBacktestEngine returns bounded institutional
+ metrics and gates (161.202846ms)
+✔ InstitutionalBacktestEngine rejects invalid roulette hist
+ory (14.612539ms)
+✔ InstitutionalBacktestService rejects corrupted datasets a
+nd keeps operational gate blocked (13279.344693ms)
+✔ InstitutionalBacktestService returns institutional resear
+ch report for clean dataset (1102.306462ms)
+✔ InternalEventBus delivers events to observers in a typed
+deterministic report (26.695769ms)
+✔ InternalEventBus preserves idempotency for duplicate even
+t ids (5.332385ms)
+✔ InternalEventBus isolates observer failures without throw
+ing through publisher (64.550077ms)
+✔ InternalEventBus rejects malformed events without silent
+failure (3.711846ms)
+✔ LiveSessionRuntimeService collects rounds before decision
+ readiness (9834.985463ms)
+✔ LiveSessionRuntimeService invokes decision layer after 10
+0 rounds while keeping live gate blocked (515.419307ms)
+✔ LiveSessionRuntimeService reports duplicate events idempo
+tently (6.149231ms)
+✔ LiveSessionRuntimeService rejects malformed round input (
+5.725769ms)
+✔ LiveSessionRuntimeService surfaces cooldown without invok
+ing live stake (186.097846ms)
+✔ LiveSessionRuntime ingests rounds incrementally with boun
+ded windows (2800.330077ms)
+✔ LiveSessionRuntime is idempotent for duplicated event ids
+ (4.193462ms)
+✔ LiveSessionRuntime rejects invalid roulette values withou
+t silent failure (4.175846ms)
+✔ LiveSessionRuntime exposes deterministic control frame fo
+r decision readiness (22.433539ms)
+✔ LiveSessionRuntime enters cooldown on concentrated rollin
+g window (15.601461ms)
+✔ MetricsRegistry captures counters, timers, uptime and mem
+ory (2894.594924ms)
+✔ MonteCarloEngine returns bounded institutional risk metri
+cs (33.952231ms)
+✔ MonteCarloV2Engine returns bounded bootstrap risk metrics
+ (263.823154ms)
+✔ MonteCarloV2Engine surfaces robust candidate without open
+ing operational gate (131.545ms)
+✔ MonteCarloV2Engine rejects invalid histories (5.339616ms)
+✔ MonteCarloV2Service returns institutional blocked researc
+h report (5745.718462ms)
+✔ MonteCarloV2Service rejects corrupted datasets (4.849384m
+s)
+✔ OfflineResearchRunner processes clean datasets with deter
+ministic checksum (3481.216923ms)
+✔ OfflineResearchRunner preserves replay idempotency metric
+s for duplicate events (7.194846ms)
+✔ OfflineResearchRunner blocks oversized offline batches be
+fore replay (4.112692ms)
+✔ OfflineResearchRunner rejects malformed datasets without
+silent failure (7.772307ms)
+✔ OfflineResearchRunner reports no signal-like frames witho
+ut treating it as failure (15.225846ms)
+✔ OperatorHudProjectionEngine creates deterministic researc
+h-only HUD projection (81.075769ms)
+✔ OperatorHudProjectionEngine surfaces blocked decisions as
+ danger mode (7.601154ms)
+✔ OperatorHudProjectionEngine bounds cards for low-memory o
+perator UI (5.569539ms)
+✔ OperatorHudProjectionEngine rejects malformed input witho
+ut silent failure (2.742616ms)
+✔ PersistenceResearchService rejects corrupted tiny dataset
+ (29.102846ms)
+✔ PersistenceResearchService returns research-ready status
+for persistent evidence while keeping operational gate bloc
+ked (10585.751847ms)
+✔ RegimeClassificationEngine classifies balanced history as
+ stable research regime (35.478462ms)
+✔ RegimeClassificationEngine blocks chaotic concentrated hi
+story (5.681308ms)
+✔ RegimeClassificationEngine detects drifting sector pressu
+re without opening signals (9.752923ms)
+✔ RegimeClassificationEngine returns typed Result error for
+ malformed history (4.19677ms)
+✔ RegimeDetector returns bounded stability and windows (38.
+842385ms)
+✔ RegimeDetector marks very small samples as unstable (4.48
+2538ms)
+✔ ReleaseReadinessService returns review when config has wa
+rnings but no blockers (5905.906539ms)
+✔ ReleaseReadinessService blocks failed readiness checks (3
+.809615ms)
+✔ ResearchDatasetService returns accepted report for clean
+research dataset (3680.432308ms)
+✔ ResearchDatasetService rejects corrupted dataset (5.82707
+7ms)
+✔ ResearchExperimentOrchestrator promotes governed positive
+ edge to alpha candidate (32.165615ms)
+✔ ResearchExperimentOrchestrator blocks when analytics is n
+egative or inconclusive (3.235ms)
+✔ ResearchExperimentOrchestrator blocks mismatched dataset
+counts without silent failure (3.072847ms)
+✔ ResearchExperimentOrchestrator is deterministic for repea
+ted experiment envelopes (3.745923ms)
+✔ ResearchExperimentOrchestrator blocks insufficient offlin
+e frame evidence (3.625077ms)
+✔ ResearchReportingService rejects corrupted datasets with
+audit envelope (3063.824539ms)
+✔ ResearchReportingService consolidates all research module
+s while keeping operational gate blocked (489.272693ms)
+✔ RuntimePerformanceBudgetEngine keeps low-end runtime with
+in budget (23.328ms)
+✔ RuntimePerformanceBudgetEngine throttles when queue and l
+atency exceed policy (6.250923ms)
+✔ RuntimePerformanceBudgetEngine blocks live evaluation on
+critical thermal state (3.444461ms)
+✔ RuntimePerformanceBudgetEngine produces deterministic che
+cksums for repeated samples (5.246692ms)
+✔ RuntimePerformanceBudgetEngine rejects malformed samples
+without silent failure (2.792307ms)
+✔ securityHeaders applies baseline hardening headers (10.41
+6154ms)
+✔ valueToState maps roulette values to institutional states
+ (11.858692ms)
+✔ SequentialBiasDetector returns low evidence for rotating
+balanced states (44.116384ms)
+✔ SequentialBiasDetector flags persistent temporal clusters
+ (11.295923ms)
+✔ SequentialResearchService rejects corrupted tiny dataset
+(36.546308ms)
+✔ SequentialResearchService returns a temporal report for p
+ersistent dataset (87.938769ms)
+✔ SessionPersistenceEngine creates and verifies determinist
+ic persistence records (10590.999077ms)
+✔ SessionPersistenceEngine replays journal for crash recove
+ry with matching checksum (17.298923ms)
+✔ SessionPersistenceEngine preserves idempotency during rep
+lay (6.921615ms)
+✔ SessionPersistenceEngine rejects corrupted records withou
+t silent failure (7.885077ms)
+✔ StatisticalResearchService returns inconclusive research
+report for clean uniform dataset (8395.549847ms)
+✔ StatisticalResearchService rejects corrupted tiny dataset
+ (10.554ms)
+✔ StatisticalSignificanceEngine treats balanced roulette di
+stribution as low evidence (30.291308ms)
+✔ StatisticalSignificanceEngine flags concentrated deviatio
+n as significant (8.085615ms)
+✔ StrategyBenchmarkEngine rejects invalid histories (17.445
+846ms)
+✔ StrategyBenchmarkEngine returns bounded benchmark metrics
+ (507.530846ms)
+✔ StrategyBenchmarkEngine can surface candidate without ope
+ning operational gate (436.111307ms)
+✔ StrategyComparisonFramework selects a clear risk-adjusted
+ leader (28.664846ms)
+✔ StrategyComparisonFramework returns no clear leader for c
+lose candidates (3.759693ms)
+✔ StrategyComparisonFramework blocks candidates that fail e
+ligibility policy (3.815077ms)
+✔ StrategyComparisonFramework is deterministic across repea
+ted comparisons (71.495154ms)
+✔ StrategyComparisonFramework rejects malformed input witho
+ut silent failure (3.45623ms)
+✔ StrategyComparisonFramework blocks oversized comparison b
+atches (2.791308ms)
+✔ StrategyDecisionEngine returns research-only entry candid
+ate for strong evidence (30.938385ms)
+✔ StrategyDecisionEngine blocks NO_GO warmup regardless of
+other evidence (4.621308ms)
+✔ StrategyDecisionEngine never opens live stake even for ca
+ndidates (2.933154ms)
+✔ StrategyDecisionEngine blocks unsafe bankroll progression
+ when stake does not fit stop loss budget (3.485615ms)
+✔ StrategyDecisionEngine exposes no-stake bankroll guard fo
+r observation states (9.535231ms)
+✔ StrategyDecisionService returns blocked governance decisi
+on for clean session (7844.083616ms)
+✔ StrategyDecisionService rejects corrupted tiny sessions t
+hrough decision blockers (11.578076ms)
+✔ RouletteStats rejects invalid roulette numbers (12.578769
+ms)
+✔ StrategyEngine locks insufficient samples (3.129539ms)
+✔ StrategyEngine returns institutional analysis shape for v
+alid sample (12.669846ms)
+✔ BacktestEngine produces a stable walk-forward summary (23
+5.176231ms)
+✔ RiskPolicy blocks strategy without enough walk-forward ev
+idence (4.390077ms)
+✔ StrategyEnsembleEngine forms consensus from aligned strat
+egy votes (16.230385ms)
+✔ StrategyEnsembleEngine blocks when strategies conflict ab
+ove policy limit (4.138692ms)
+✔ StrategyEnsembleEngine rejects malformed votes without si
+lent failure (4.315615ms)
+✔ StrategyRankingEngine ranks eligible candidates by Bayesi
+an evidence adjusted for risk (21.381846ms)
+✔ StrategyRankingEngine is deterministic for repeated input
+ order and tie-breaks by id (72.414384ms)
+✔ StrategyRankingEngine rejects malformed candidates withou
+t silent failure (6.576308ms)
+✔ StressScenarioAnalyzer returns bounded stress metrics and
+ drawdown surface (108.387615ms)
+✔ StressScenarioAnalyzer rejects invalid roulette histories
+ (4.503154ms)
+✔ StressScenarioAnalyzer flags aggressive capital pressure
+without opening operational gate (50.202924ms)
+✔ StressScenarioService returns institutional stress report
+ with blocked gate (3252.852847ms)
+✔ StressScenarioService rejects corrupted datasets (4.44446
+2ms)
+✔ StructuredLogger emits sanitized JSON logs (2969.291ms)
+✔ TemporalDecayEngine keeps fresh signals eligible with bou
+nded contribution (20.536308ms)
+✔ TemporalDecayEngine blocks expired evidence before live d
+ecision (3.505692ms)
+✔ TemporalDecayEngine returns observation for aging but non
+-expired evidence (3.521077ms)
+✔ TemporalDecayEngine rejects malformed signal without sile
+nt failure (3.805769ms)
+✔ VisionReliabilityInspector accepts complete high-quality
+warmup extraction (14.507769ms)
+✔ VisionReliabilityInspector requires manual review for low
+ item confidence (5.376538ms)
+✔ VisionReliabilityInspector rejects incomplete high-reject
+ion extraction (3.131462ms)
+✔ VisionWarmupNormalizer extracts valid roulette numbers fr
+om JSON markdown (24.828231ms)
+✔ VisionWarmupNormalizer reports rejected OCR values withou
+t guessing (4.522308ms)
+✔ VisionWarmupNormalizer rejects payload without sequence (
+2.881154ms)
+✔ VisionWarmupNormalizer reads object values and exposes re
+liability review (4.779923ms)
+✔ WalkForwardValidationLab accepts robust out-of-sample alp
+ha candidate (31.989154ms)
+✔ WalkForwardValidationLab flags train-positive validation-
+negative overfit (6.368ms)
+✔ WalkForwardValidationLab returns inconclusive when valida
+tion pass rate is weak but not pure overfit (4.773231ms)
+✔ WalkForwardValidationLab is deterministic across repeated
+ runs (6.788616ms)
+✔ WalkForwardValidationLab rejects malformed outcomes witho
+ut silent failure (3.075308ms)
+✔ WalkForwardValidationLab blocks oversized research batche
+s (2.538384ms)
+✔ WarmupSessionAnalyzer accepts complete balanced 100-round
+ warmup for research (30.048538ms)
+✔ WarmupSessionAnalyzer rejects invalid roulette values (5.
+399461ms)
+✔ WarmupSessionAnalyzer marks incomplete warmup as NO_GO (3
+.394846ms)
+✔ WarmupSessionService evaluates manual 100-round warmup wi
+th blocked operational gate (3534.223847ms)
+✔ WarmupSessionService rejects corrupted warmup dataset (5.
+409847ms)
+✔ WarmupSessionService evaluates vision raw JSON without op
+ening operational gate (16.390847ms)
+ℹ tests 199
+ℹ suites 0
+ℹ pass 199
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 41070.559002
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# rm rlsys-terminal-spr
+int-024.diff
+rm: cannot remove 'rlsys-terminal-sprint-024.diff': No such
+ file or directory
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# git add .
+[root@localhost rlsys-terminal-main]# git commit -m "feat(v
+alidation): add walk-forward validation lab"
+On branch main
+Your branch is up to date with 'origin/main'.
+
+nothing to commit, working tree clean
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# git push -u origin sp
+rint-024-walk-forward-validation-lab
+branch 'sprint-024-walk-forward-validation-lab' set up to t
+rack 'origin/sprint-024-walk-forward-validation-lab'.
+Everything up-to-date
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# git checkout main
+Already on 'main'
+Your branch is up to date with 'origin/main'.
+[root@localhost rlsys-terminal-main]# git pull origin main
+From https://github.com/thiagocoder30/rlsys-terminal-main
+ * branch            main       -> FETCH_HEAD
+Already up to date.
+[root@localhost rlsys-terminal-main]# git merge sprint-024-
+walk-forward-validation-lab
+Already up to date.
+[root@localhost rlsys-terminal-main]# git push origin main
+Everything up-to-date
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# ./capture-sprint-buff
+er.sh
+

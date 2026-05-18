@@ -1,0 +1,29 @@
+[root@localhost rlsys-terminal-main]# python3 satellite/main.py
+[root@localhost rlsys-terminal-main]# termux-screenshot -f /root
+/teste_manual.png
+-bash: termux-screenshot: command not found
+[root@localhost rlsys-terminal-main]# ./capture-sprint-buffer.sh
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

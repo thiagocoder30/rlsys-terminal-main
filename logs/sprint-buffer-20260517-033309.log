@@ -1,0 +1,1118 @@
+[root@localhost rlsys-terminal-main]# pacman -Syyu lcms2 libjpeg
+-turbo libpng tesseract --noconfirm
+:: Synchronizing package databases...
+ core                  258.9 KiB   123 KiB/s 00:02 [######] 100%
+ extra                   9.6 MiB   771 KiB/s 00:13 [######] 100%
+ alarm                  97.6 KiB  59.5 KiB/s 00:02 [######] 100%
+ aur                     9.5 KiB  9.04 KiB/s 00:01 [######] 100%
+:: Starting full system upgrade...
+resolving dependencies...
+:: There are 128 providers available for tessdata:
+:: Repository extra
+   1) tesseract-data-afr  2) tesseract-data-amh
+   3) tesseract-data-ara  4) tesseract-data-asm
+   5) tesseract-data-aze  6) tesseract-data-aze_cyrl
+   7) tesseract-data-bel  8) tesseract-data-ben
+   9) tesseract-data-bod  10) tesseract-data-bos
+   11) tesseract-data-bre  12) tesseract-data-bul
+   13) tesseract-data-cat  14) tesseract-data-ceb
+   15) tesseract-data-ces  16) tesseract-data-chi_sim
+   17) tesseract-data-chi_sim_vert  18) tesseract-data-chi_tra
+   19) tesseract-data-chi_tra_vert  20) tesseract-data-chr
+   21) tesseract-data-cos  22) tesseract-data-cym
+   23) tesseract-data-dan  24) tesseract-data-dan_frak
+   25) tesseract-data-deu  26) tesseract-data-deu_frak
+   27) tesseract-data-div  28) tesseract-data-dzo
+   29) tesseract-data-ell  30) tesseract-data-eng
+   31) tesseract-data-enm  32) tesseract-data-epo
+   33) tesseract-data-equ  34) tesseract-data-est
+   35) tesseract-data-eus  36) tesseract-data-fao
+   37) tesseract-data-fas  38) tesseract-data-fil
+   39) tesseract-data-fin  40) tesseract-data-fra
+   41) tesseract-data-frk  42) tesseract-data-frm
+   43) tesseract-data-fry  44) tesseract-data-gla
+   45) tesseract-data-gle  46) tesseract-data-glg
+   47) tesseract-data-grc  48) tesseract-data-guj
+   49) tesseract-data-hat  50) tesseract-data-heb
+   51) tesseract-data-hin  52) tesseract-data-hrv
+   53) tesseract-data-hun  54) tesseract-data-hye
+   55) tesseract-data-iku  56) tesseract-data-ind
+   57) tesseract-data-isl  58) tesseract-data-ita
+   59) tesseract-data-ita_old  60) tesseract-data-jav
+   61) tesseract-data-jpn  62) tesseract-data-jpn_vert
+   63) tesseract-data-kan  64) tesseract-data-kat
+   65) tesseract-data-kat_old  66) tesseract-data-kaz
+   67) tesseract-data-khm  68) tesseract-data-kir
+   69) tesseract-data-kmr  70) tesseract-data-kor
+   71) tesseract-data-kor_vert  72) tesseract-data-lao
+   73) tesseract-data-lat  74) tesseract-data-lav
+   75) tesseract-data-lit  76) tesseract-data-ltz
+   77) tesseract-data-mal  78) tesseract-data-mar
+   79) tesseract-data-mkd  80) tesseract-data-mlt
+   81) tesseract-data-mon  82) tesseract-data-mri
+   83) tesseract-data-msa  84) tesseract-data-mya
+   85) tesseract-data-nep  86) tesseract-data-nld
+   87) tesseract-data-nor  88) tesseract-data-oci
+   89) tesseract-data-ori  90) tesseract-data-pan
+   91) tesseract-data-pol  92) tesseract-data-por
+   93) tesseract-data-pus  94) tesseract-data-que
+   95) tesseract-data-ron  96) tesseract-data-rus
+   97) tesseract-data-san  98) tesseract-data-sin
+   99) tesseract-data-slk  100) tesseract-data-slk_frak
+   101) tesseract-data-slv  102) tesseract-data-snd
+   103) tesseract-data-spa  104) tesseract-data-spa_old
+   105) tesseract-data-sqi  106) tesseract-data-srp
+   107) tesseract-data-srp_latn  108) tesseract-data-sun
+   109) tesseract-data-swa  110) tesseract-data-swe
+   111) tesseract-data-syr  112) tesseract-data-tam
+   113) tesseract-data-tat  114) tesseract-data-tel
+   115) tesseract-data-tgk  116) tesseract-data-tgl
+   117) tesseract-data-tha  118) tesseract-data-tir
+   119) tesseract-data-ton  120) tesseract-data-tur
+   121) tesseract-data-uig  122) tesseract-data-ukr
+   123) tesseract-data-urd  124) tesseract-data-uzb
+   125) tesseract-data-uzb_cyrl  126) tesseract-data-vie
+   127) tesseract-data-yid  128) tesseract-data-yor
+
+Enter a number (default=1):
+looking for conflicting packages...
+
+Packages (43) boost-libs-1.91.0-1
+              ca-certificates-mozilla-3.124-1  cpio-2.15-3
+              curl-8.20.0-7  debugedit-5.3-1  dhcpcd-10.3.2-1
+              elfutils-0.195-1  expat-2.8.1-1  gdb-17.2-1
+              gdb-common-17.2-1  giflib-6.1.3-1
+              gnutls-3.8.13-2  go-2:1.26.3-1  hwdata-0.407-1
+              jbigkit-2.1-8  leptonica-1.87.0-1
+              libdeflate-1.25-1  libelf-0.195-1
+              libgpg-error-1.61-1  libksba-1.8.0-1
+              libnsl-2.0.1-2  libtiff-4.7.1-2
+              libunistring-1.4.2-1  libwebp-1.6.0-2
+              nettle-4.0-1  nodejs-26.1.0-2
+              nodejs-nopt-10.0.0-1  npm-11.14.1-1
+              openjpeg2-2.5.4-1  pacman-7.1.0.r9.g54d9411-2
+              python-3.14.5-1  semver-7.8.0-1
+              simdjson-1:4.6.4-1  source-highlight-3.1.9-18
+              sqlite-3.53.1-1  tesseract-data-afr-2:4.1.0-5
+              tesseract-data-osd-2:4.1.0-5  vim-9.2.0450-1
+              vim-runtime-9.2.0450-1  lcms2-2.19.1-1
+              libjpeg-turbo-3.1.4.1-1  libpng-1.6.58-1
+              tesseract-5.5.2-1
+
+Total Download Size:    97.29 MiB
+Total Installed Size:  575.72 MiB
+Net Upgrade Size:      127.66 MiB
+
+:: Proceed with installation? [Y/n]
+:: Retrieving packages...
+ gdb-17.2-1-armv7h       5.8 MiB   754 KiB/s 00:08 [######] 100%
+ vim-runtime-9.2....     7.2 MiB   784 KiB/s 00:09 [######] 100%
+ nodejs-26.1.0-2-...    13.1 MiB   858 KiB/s 00:16 [######] 100%
+ python-3.14.5-1-...    12.4 MiB   763 KiB/s 00:17 [######] 100%
+ vim-9.2.0450-1-a...  1856.0 KiB   250 KiB/s 00:07 [######] 100%
+ boost-libs-1.91....     4.4 MiB   444 KiB/s 00:10 [######] 100%
+ npm-11.14.1-1-any    1618.4 KiB   700 KiB/s 00:02 [######] 100%
+ gnutls-3.8.13-2-...  1675.6 KiB   541 KiB/s 00:03 [######] 100%
+ sqlite-3.53.1-1-...  1481.3 KiB  1037 KiB/s 00:01 [######] 100%
+ pacman-7.1.0.r9....   870.6 KiB   446 KiB/s 00:02 [######] 100%
+ curl-8.20.0-7-armv7h 1174.5 KiB   556 KiB/s 00:02 [######] 100%
+ hwdata-0.407-1-any   1642.3 KiB   312 KiB/s 00:05 [######] 100%
+ source-highlight...   644.6 KiB   350 KiB/s 00:02 [######] 100%
+ libunistring-1.4...   560.5 KiB   637 KiB/s 00:01 [######] 100%
+ elfutils-0.195-1...   548.1 KiB   482 KiB/s 00:01 [######] 100%
+ go-2:1.26.3-1-armv7h   39.8 MiB  1716 KiB/s 00:24 [######] 100%
+ libelf-0.195-1-a...   487.2 KiB   389 KiB/s 00:01 [######] 100%
+ ca-certificates-...   361.0 KiB   659 KiB/s 00:01 [######] 100%
+ nettle-4.0-1-armv7h   434.9 KiB   253 KiB/s 00:02 [######] 100%
+ simdjson-1:4.6.4...   255.9 KiB   243 KiB/s 00:01 [######] 100%
+ libgpg-error-1.6...   235.7 KiB   232 KiB/s 00:01 [######] 100%
+ cpio-2.15-3-armv7h    208.4 KiB   177 KiB/s 00:01 [######] 100%
+ lcms2-2.19.1-1-a...   178.6 KiB   203 KiB/s 00:01 [######] 100%
+ dhcpcd-10.3.2-1-...   169.5 KiB   161 KiB/s 00:01 [######] 100%
+ libksba-1.8.0-1-...   117.5 KiB   338 KiB/s 00:00 [######] 100%
+ gdb-common-17.2-...   113.0 KiB   317 KiB/s 00:00 [######] 100%
+ expat-2.8.1-1-armv7h  103.4 KiB   231 KiB/s 00:00 [######] 100%
+ debugedit-5.3-1-...    50.1 KiB   142 KiB/s 00:00 [######] 100%
+ semver-7.8.0-1-any     29.4 KiB  53.3 KiB/s 00:01 [######] 100%
+ libnsl-2.0.1-2-a...    19.7 KiB  45.3 KiB/s 00:00 [######] 100%
+ nodejs-nopt-10.0...    12.9 KiB  22.2 KiB/s 00:01 [######] 100%
+ Total (31/31)          97.3 MiB  3.61 MiB/s 00:27 [######] 100%
+(43/43) checking keys in keyring                   [######] 100%
+(43/43) checking package integrity                 [######] 100%
+(43/43) loading package files                      [######] 100%
+(43/43) checking for file conflicts                [######] 100%
+(43/43) checking available disk space              [######] 100%
+:: Processing package changes...
+( 1/43) installing libjpeg-turbo                   [######] 100%
+( 2/43) installing jbigkit                         [######] 100%
+( 3/43) installing libdeflate                      [######] 100%
+( 4/43) installing libwebp                         [######] 100%
+Optional dependencies for libwebp
+    libwebp-utils: WebP conversion and inspection tools
+( 5/43) installing libtiff                         [######] 100%
+Optional dependencies for libtiff
+    freeglut: for using tiffgt
+( 6/43) installing lcms2                           [######] 100%
+( 7/43) installing libpng                          [######] 100%
+( 8/43) upgrading sqlite                           [######] 100%
+( 9/43) upgrading libnsl                           [######] 100%
+(10/43) upgrading libgpg-error                     [######] 100%
+(11/43) upgrading ca-certificates-mozilla          [######] 100%
+(12/43) upgrading libunistring                     [######] 100%
+(13/43) upgrading nettle                           [######] 100%
+(14/43) upgrading gnutls                           [######] 100%
+(15/43) upgrading curl                             [######] 100%
+(16/43) installing giflib                          [######] 100%
+(17/43) installing openjpeg2                       [######] 100%
+(18/43) installing leptonica                       [######] 100%
+(19/43) installing tesseract-data-afr              [######] 100%
+(20/43) installing tesseract-data-osd              [######] 100%
+(21/43) installing tesseract                       [######] 100%
+Optional dependencies for tesseract
+    icu: for text2image [installed]
+    pango: for text2image
+    tesseract-data-afr: OCR data (afr) [installed]
+    tesseract-data-amh: OCR data (amh)
+    tesseract-data-ara: OCR data (ara)
+    tesseract-data-asm: OCR data (asm)
+    tesseract-data-aze: OCR data (aze)
+    tesseract-data-aze_cyrl: OCR data (aze_cyrl)
+    tesseract-data-bel: OCR data (bel)
+    tesseract-data-ben: OCR data (ben)
+    tesseract-data-bod: OCR data (bod)
+    tesseract-data-bos: OCR data (bos)
+    tesseract-data-bre: OCR data (bre)
+    tesseract-data-bul: OCR data (bul)
+    tesseract-data-cat: OCR data (cat)
+    tesseract-data-ceb: OCR data (ceb)
+    tesseract-data-ces: OCR data (ces)
+    tesseract-data-chi_sim: OCR data (chi_sim)
+    tesseract-data-chi_tra: OCR data (chi_tra)
+    tesseract-data-chr: OCR data (chr)
+    tesseract-data-cos: OCR data (cos)
+    tesseract-data-cym: OCR data (cym)
+    tesseract-data-dan: OCR data (dan)
+    tesseract-data-dan_frak: OCR data (dan_frak)
+    tesseract-data-deu: OCR data (deu)
+    tesseract-data-deu_frak: OCR data (deu_frak)
+    tesseract-data-div: OCR data (div)
+    tesseract-data-dzo: OCR data (dzo)
+    tesseract-data-ell: OCR data (ell)
+    tesseract-data-eng: OCR data (eng)
+    tesseract-data-enm: OCR data (enm)
+    tesseract-data-epo: OCR data (epo)
+    tesseract-data-equ: OCR data (equ)
+    tesseract-data-est: OCR data (est)
+    tesseract-data-eus: OCR data (eus)
+    tesseract-data-fao: OCR data (fao)
+    tesseract-data-fas: OCR data (fas)
+    tesseract-data-fil: OCR data (fil)
+    tesseract-data-fin: OCR data (fin)
+    tesseract-data-fra: OCR data (fra)
+    tesseract-data-frk: OCR data (frk)
+    tesseract-data-frm: OCR data (frm)
+    tesseract-data-fry: OCR data (fry)
+    tesseract-data-gla: OCR data (gla)
+    tesseract-data-gle: OCR data (gle)
+    tesseract-data-glg: OCR data (glg)
+    tesseract-data-grc: OCR data (grc)
+    tesseract-data-guj: OCR data (guj)
+    tesseract-data-hat: OCR data (hat)
+    tesseract-data-heb: OCR data (heb)
+    tesseract-data-hin: OCR data (hin)
+    tesseract-data-hrv: OCR data (hrv)
+    tesseract-data-hun: OCR data (hun)
+    tesseract-data-hye: OCR data (hye)
+    tesseract-data-iku: OCR data (iku)
+    tesseract-data-ind: OCR data (ind)
+    tesseract-data-isl: OCR data (isl)
+    tesseract-data-ita: OCR data (ita)
+    tesseract-data-ita_old: OCR data (ita_old)
+    tesseract-data-jav: OCR data (jav)
+    tesseract-data-jpn: OCR data (jpn)
+    tesseract-data-jpn_vert: OCR data (jpn_vert)
+    tesseract-data-kan: OCR data (kan)
+    tesseract-data-kat: OCR data (kat)
+    tesseract-data-kat_old: OCR data (kat_old)
+    tesseract-data-kaz: OCR data (kaz)
+    tesseract-data-khm: OCR data (khm)
+    tesseract-data-kir: OCR data (kir)
+    tesseract-data-kmr: OCR data (kmr)
+    tesseract-data-kor: OCR data (kor)
+    tesseract-data-kor_vert: OCR data (kor_vert)
+    tesseract-data-lao: OCR data (lao)
+    tesseract-data-lat: OCR data (lat)
+    tesseract-data-lav: OCR data (lav)
+    tesseract-data-lit: OCR data (lit)
+    tesseract-data-ltz: OCR data (ltz)
+    tesseract-data-mal: OCR data (mal)
+    tesseract-data-mar: OCR data (mar)
+    tesseract-data-mkd: OCR data (mkd)
+    tesseract-data-mlt: OCR data (mlt)
+    tesseract-data-mon: OCR data (mon)
+    tesseract-data-mri: OCR data (mri)
+    tesseract-data-msa: OCR data (msa)
+    tesseract-data-mya: OCR data (mya)
+    tesseract-data-nep: OCR data (nep)
+    tesseract-data-nld: OCR data (nld)
+    tesseract-data-nor: OCR data (nor)
+    tesseract-data-oci: OCR data (oci)
+    tesseract-data-ori: OCR data (ori)
+    tesseract-data-pan: OCR data (pan)
+    tesseract-data-pol: OCR data (pol)
+    tesseract-data-por: OCR data (por)
+    tesseract-data-pus: OCR data (pus)
+    tesseract-data-que: OCR data (que)
+    tesseract-data-ron: OCR data (ron)
+    tesseract-data-rus: OCR data (rus)
+    tesseract-data-san: OCR data (san)
+    tesseract-data-sin: OCR data (sin)
+    tesseract-data-slk: OCR data (slk)
+    tesseract-data-slk_frak: OCR data (slk_frak)
+    tesseract-data-slv: OCR data (slv)
+    tesseract-data-snd: OCR data (snd)
+    tesseract-data-spa: OCR data (spa)
+    tesseract-data-spa_old: OCR data (spa_old)
+    tesseract-data-sqi: OCR data (sqi)
+    tesseract-data-srp: OCR data (srp)
+    tesseract-data-srp_latn: OCR data (srp_latn)
+    tesseract-data-sun: OCR data (sun)
+    tesseract-data-swa: OCR data (swa)
+    tesseract-data-swe: OCR data (swe)
+    tesseract-data-syr: OCR data (syr)
+    tesseract-data-tam: OCR data (tam)
+    tesseract-data-tat: OCR data (tat)
+    tesseract-data-tel: OCR data (tel)
+    tesseract-data-tgk: OCR data (tgk)
+    tesseract-data-tgl: OCR data (tgl)
+    tesseract-data-tha: OCR data (tha)
+    tesseract-data-tir: OCR data (tir)
+    tesseract-data-ton: OCR data (ton)
+    tesseract-data-tur: OCR data (tur)
+    tesseract-data-uig: OCR data (uig)
+    tesseract-data-ukr: OCR data (ukr)
+    tesseract-data-urd: OCR data (urd)
+    tesseract-data-uzb: OCR data (uzb)
+    tesseract-data-uzb_cyrl: OCR data (uzb_cyrl)
+    tesseract-data-vie: OCR data (vie)
+    tesseract-data-yid: OCR data (yid)
+    tesseract-data-yor: OCR data (yor)
+(22/43) upgrading libelf                           [######] 100%
+(23/43) installing cpio                            [######] 100%
+(24/43) installing elfutils                        [######] 100%
+(25/43) installing boost-libs                      [######] 100%
+Optional dependencies for boost-libs
+    openmpi: for mpi support
+(26/43) upgrading expat                            [######] 100%
+(27/43) upgrading python                           [######] 100%
+(28/43) installing gdb-common                      [######] 100%
+(29/43) installing source-highlight                [######] 100%
+Optional dependencies for source-highlight
+    lesspipe: src-hilite-lesspipe.sh
+(30/43) installing gdb                             [######] 100%
+(31/43) upgrading debugedit                        [######] 100%
+(32/43) upgrading dhcpcd                           [######] 100%
+warning: directory permissions differ on /var/lib/dhcpcd/
+filesystem: 755  package: 750
+^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[B^[[B
+^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[B^[[A^[[A^[[A^[[A
+^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[A^[[A(33/43) upgrading go
+(33/43) upgrading go                               [######] 100%
+(34/43) upgrading hwdata                           [######] 100%
+(35/43) upgrading libksba                          [######] 100%
+(36/43) upgrading simdjson                         [######] 100%
+(37/43) upgrading nodejs                           [######] 100%
+(38/43) upgrading nodejs-nopt                      [######] 100%
+(39/43) upgrading semver                           [######] 100%
+(40/43) upgrading npm                              [######] 100%
+(41/43) upgrading pacman                           [######] 100%
+(42/43) upgrading vim-runtime                      [######] 100%
+(43/43) upgrading vim                              [######] 100%
+:: Running post-transaction hooks...
+(1/7) Creating system user accounts...
+Failed to chase and open directory '/etc/sysusers.d', ignoring:
+Protocol driver not attached
+Failed to chase and open directory '/run/sysusers.d', ignoring:
+Protocol driver not attached
+Failed to chase and open directory '/usr/local/lib/sysusers.d',
+ignoring: Protocol driver not attached
+Failed to chase and open directory '/usr/lib/sysusers.d', ignori
+ng: Protocol driver not attached
+Failed to load user database: Protocol driver not attached
+error: command failed to execute correctly
+(2/7) Creating temporary files...
+Failed to chase and open directory '/etc/tmpfiles.d', ignoring:
+Protocol driver not attached
+Failed to chase and open directory '/run/tmpfiles.d', ignoring:
+Protocol driver not attached
+Failed to chase and open directory '/usr/local/lib/tmpfiles.d',
+ignoring: Protocol driver not attached
+Failed to chase and open directory '/usr/lib/tmpfiles.d', ignori
+ng: Protocol driver not attached
+(3/7) Reloading system manager configuration...
+Failed to check for chroot() environment: Function not implement
+ed
+  Skipped: Current root is not booted.
+(4/7) Enqueuing marked services...
+Failed to check for chroot() environment: Function not implement
+ed
+  Skipped: Current root is not booted.
+(5/7) Arming ConditionNeedsUpdate...
+(6/7) Rebuilding certificate stores...
+(7/7) Updating the info directory file...
+[root@localhost rlsys-terminal-main]# pip install --no-cache-dir
+ Pillow mss pytesseract
+Collecting Pillow
+  Downloading pillow-12.2.0.tar.gz (47.0 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 47.0/47.0 MB 3.2 MB/s  0:00:14
+  Installing build dependencies ... done
+  Getting requirements to build wheel ... done
+  Preparing metadata (pyproject.toml) ... done
+Collecting mss
+  Downloading mss-10.2.0-py3-none-any.whl.metadata (7.2 kB)
+Collecting pytesseract
+  Downloading pytesseract-0.3.13-py3-none-any.whl.metadata (11 k
+B)
+Collecting packaging>=21.3 (from pytesseract)
+  Downloading packaging-26.2-py3-none-any.whl.metadata (3.5 kB)
+Downloading mss-10.2.0-py3-none-any.whl (67 kB)
+Downloading pytesseract-0.3.13-py3-none-any.whl (14 kB)
+Downloading packaging-26.2-py3-none-any.whl (100 kB)
+Building wheels for collected packages: Pillow
+  Building wheel for Pillow (pyproject.toml) ... error
+  error: subprocess-exited-with-error
+
+  × Building wheel for Pillow (pyproject.toml) did not run succe
+ssfully.
+  │ exit code: 1
+  ╰─> [351 lines of output]
+      running bdist_wheel
+      running build
+      running build_py
+      creating build/lib.android-24-armeabi_v7a-cpython-313/PIL
+      copying src/PIL/PcdImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/ImageColor.py -> build/lib.android-24-arme
+abi_v7a-cpython-313/PIL
+      copying src/PIL/ImageStat.py -> build/lib.android-24-armea
+bi_v7a-cpython-313/PIL
+      copying src/PIL/McIdasImagePlugin.py -> build/lib.android-
+24-armeabi_v7a-cpython-313/PIL
+      copying src/PIL/ExifTags.py -> build/lib.android-24-armeab
+i_v7a-cpython-313/PIL
+      copying src/PIL/TarIO.py -> build/lib.android-24-armeabi_v
+7a-cpython-313/PIL
+      copying src/PIL/__init__.py -> build/lib.android-24-armeab
+i_v7a-cpython-313/PIL
+      copying src/PIL/Jpeg2KImagePlugin.py -> build/lib.android-
+24-armeabi_v7a-cpython-313/PIL
+      copying src/PIL/ImageQt.py -> build/lib.android-24-armeabi
+_v7a-cpython-313/PIL
+      copying src/PIL/BlpImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/ImageDraw2.py -> build/lib.android-24-arme
+abi_v7a-cpython-313/PIL
+      copying src/PIL/JpegImagePlugin.py -> build/lib.android-24
+-armeabi_v7a-cpython-313/PIL
+      copying src/PIL/EpsImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/WmfImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/FtexImagePlugin.py -> build/lib.android-24
+-armeabi_v7a-cpython-313/PIL
+      copying src/PIL/ImtImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/DdsImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/DcxImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/report.py -> build/lib.android-24-armeabi_
+v7a-cpython-313/PIL
+      copying src/PIL/PdfImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/ImageFont.py -> build/lib.android-24-armea
+bi_v7a-cpython-313/PIL
+      copying src/PIL/_util.py -> build/lib.android-24-armeabi_v
+7a-cpython-313/PIL
+      copying src/PIL/Image.py -> build/lib.android-24-armeabi_v
+7a-cpython-313/PIL
+      copying src/PIL/ImageCms.py -> build/lib.android-24-armeab
+i_v7a-cpython-313/PIL
+      copying src/PIL/FpxImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/__main__.py -> build/lib.android-24-armeab
+i_v7a-cpython-313/PIL
+      copying src/PIL/ImageFile.py -> build/lib.android-24-armea
+bi_v7a-cpython-313/PIL
+      copying src/PIL/ImageMath.py -> build/lib.android-24-armea
+bi_v7a-cpython-313/PIL
+      copying src/PIL/TiffImagePlugin.py -> build/lib.android-24
+-armeabi_v7a-cpython-313/PIL
+      copying src/PIL/WalImageFile.py -> build/lib.android-24-ar
+meabi_v7a-cpython-313/PIL
+      copying src/PIL/PcxImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/IcnsImagePlugin.py -> build/lib.android-24
+-armeabi_v7a-cpython-313/PIL
+      copying src/PIL/features.py -> build/lib.android-24-armeab
+i_v7a-cpython-313/PIL
+      copying src/PIL/ImageEnhance.py -> build/lib.android-24-ar
+meabi_v7a-cpython-313/PIL
+      copying src/PIL/MpoImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/PaletteFile.py -> build/lib.android-24-arm
+eabi_v7a-cpython-313/PIL
+      copying src/PIL/BufrStubImagePlugin.py -> build/lib.androi
+d-24-armeabi_v7a-cpython-313/PIL
+      copying src/PIL/ImageText.py -> build/lib.android-24-armea
+bi_v7a-cpython-313/PIL
+      copying src/PIL/QoiImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/_typing.py -> build/lib.android-24-armeabi
+_v7a-cpython-313/PIL
+      copying src/PIL/GimpPaletteFile.py -> build/lib.android-24
+-armeabi_v7a-cpython-313/PIL
+      copying src/PIL/ImageOps.py -> build/lib.android-24-armeab
+i_v7a-cpython-313/PIL
+      copying src/PIL/GimpGradientFile.py -> build/lib.android-2
+4-armeabi_v7a-cpython-313/PIL
+      copying src/PIL/ImageShow.py -> build/lib.android-24-armea
+bi_v7a-cpython-313/PIL
+      copying src/PIL/SgiImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/WebPImagePlugin.py -> build/lib.android-24
+-armeabi_v7a-cpython-313/PIL
+      copying src/PIL/ImageChops.py -> build/lib.android-24-arme
+abi_v7a-cpython-313/PIL
+      copying src/PIL/MpegImagePlugin.py -> build/lib.android-24
+-armeabi_v7a-cpython-313/PIL
+      copying src/PIL/PpmImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/PcfFontFile.py -> build/lib.android-24-arm
+eabi_v7a-cpython-313/PIL
+      copying src/PIL/ImageFilter.py -> build/lib.android-24-arm
+eabi_v7a-cpython-313/PIL
+      copying src/PIL/IcoImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/ImImagePlugin.py -> build/lib.android-24-a
+rmeabi_v7a-cpython-313/PIL
+      copying src/PIL/PngImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/MicImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/_binary.py -> build/lib.android-24-armeabi
+_v7a-cpython-313/PIL
+      copying src/PIL/JpegPresets.py -> build/lib.android-24-arm
+eabi_v7a-cpython-313/PIL
+      copying src/PIL/GribStubImagePlugin.py -> build/lib.androi
+d-24-armeabi_v7a-cpython-313/PIL
+      copying src/PIL/ImageMorph.py -> build/lib.android-24-arme
+abi_v7a-cpython-313/PIL
+      copying src/PIL/AvifImagePlugin.py -> build/lib.android-24
+-armeabi_v7a-cpython-313/PIL
+      copying src/PIL/SunImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/FitsImagePlugin.py -> build/lib.android-24
+-armeabi_v7a-cpython-313/PIL
+      copying src/PIL/MspImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/GbrImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/ImageWin.py -> build/lib.android-24-armeab
+i_v7a-cpython-313/PIL
+      copying src/PIL/TgaImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/ImageGrab.py -> build/lib.android-24-armea
+bi_v7a-cpython-313/PIL
+      copying src/PIL/PalmImagePlugin.py -> build/lib.android-24
+-armeabi_v7a-cpython-313/PIL
+      copying src/PIL/FontFile.py -> build/lib.android-24-armeab
+i_v7a-cpython-313/PIL
+      copying src/PIL/ImageSequence.py -> build/lib.android-24-a
+rmeabi_v7a-cpython-313/PIL
+      copying src/PIL/TiffTags.py -> build/lib.android-24-armeab
+i_v7a-cpython-313/PIL
+      copying src/PIL/ImageTransform.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/XbmImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/PSDraw.py -> build/lib.android-24-armeabi_
+v7a-cpython-313/PIL
+      copying src/PIL/CurImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/_version.py -> build/lib.android-24-armeab
+i_v7a-cpython-313/PIL
+      copying src/PIL/ImageTk.py -> build/lib.android-24-armeabi
+_v7a-cpython-313/PIL
+      copying src/PIL/PsdImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/ImageMode.py -> build/lib.android-24-armea
+bi_v7a-cpython-313/PIL
+      copying src/PIL/Hdf5StubImagePlugin.py -> build/lib.androi
+d-24-armeabi_v7a-cpython-313/PIL
+      copying src/PIL/ImagePalette.py -> build/lib.android-24-ar
+meabi_v7a-cpython-313/PIL
+      copying src/PIL/_deprecate.py -> build/lib.android-24-arme
+abi_v7a-cpython-313/PIL
+      copying src/PIL/GifImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/BmpImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/_tkinter_finder.py -> build/lib.android-24
+-armeabi_v7a-cpython-313/PIL
+      copying src/PIL/SpiderImagePlugin.py -> build/lib.android-
+24-armeabi_v7a-cpython-313/PIL
+      copying src/PIL/XVThumbImagePlugin.py -> build/lib.android
+-24-armeabi_v7a-cpython-313/PIL
+      copying src/PIL/IptcImagePlugin.py -> build/lib.android-24
+-armeabi_v7a-cpython-313/PIL
+      copying src/PIL/GdImageFile.py -> build/lib.android-24-arm
+eabi_v7a-cpython-313/PIL
+      copying src/PIL/ImagePath.py -> build/lib.android-24-armea
+bi_v7a-cpython-313/PIL
+      copying src/PIL/PixarImagePlugin.py -> build/lib.android-2
+4-armeabi_v7a-cpython-313/PIL
+      copying src/PIL/ContainerIO.py -> build/lib.android-24-arm
+eabi_v7a-cpython-313/PIL
+      copying src/PIL/PdfParser.py -> build/lib.android-24-armea
+bi_v7a-cpython-313/PIL
+      copying src/PIL/ImageDraw.py -> build/lib.android-24-armea
+bi_v7a-cpython-313/PIL
+      copying src/PIL/FliImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/XpmImagePlugin.py -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/BdfFontFile.py -> build/lib.android-24-arm
+eabi_v7a-cpython-313/PIL
+      running egg_info
+      writing src/pillow.egg-info/PKG-INFO
+      writing dependency_links to src/pillow.egg-info/dependency
+_links.txt
+      writing requirements to src/pillow.egg-info/requires.txt
+      writing top-level names to src/pillow.egg-info/top_level.t
+xt
+      reading manifest file 'src/pillow.egg-info/SOURCES.txt'
+      reading manifest template 'MANIFEST.in'
+      warning: no files found matching '*.c'
+      warning: no files found matching '*.h'
+      warning: no files found matching '*.sh'
+      warning: no files found matching '*.txt'
+      warning: no files found matching '.flake8'
+      warning: no previously-included files found matching '.cla
+ng-format'
+      warning: no previously-included files found matching '.cov
+eragerc'
+      warning: no previously-included files found matching '.edi
+torconfig'
+      warning: no previously-included files found matching '.rea
+dthedocs.yml'
+      warning: no previously-included files found matching 'code
+cov.yml'
+      warning: no previously-included files found matching 'reno
+vate.json'
+      warning: no previously-included files found matching 'Test
+s/images/README.md'
+      warning: no previously-included files found matching 'Test
+s/images/crash*.tif'
+      warning: no previously-included files found matching 'Test
+s/images/string_dimension.tiff'
+      warning: no previously-included files matching '.git*' fou
+nd anywhere in distribution
+      warning: no previously-included files matching '*.so' foun
+d anywhere in distribution
+      no previously-included directories found matching '.ci'
+      no previously-included directories found matching 'wheels'
+      no previously-included directories found matching 'winbuil
+d/build'
+      no previously-included directories found matching 'winbuil
+d/depends'
+      no previously-included directories found matching 'Tests/e
+rrors'
+      no previously-included directories found matching 'Tests/i
+mages/jpeg2000'
+      no previously-included directories found matching 'Tests/i
+mages/msp'
+      no previously-included directories found matching 'Tests/i
+mages/picins'
+      no previously-included directories found matching 'Tests/i
+mages/sunraster'
+      no previously-included directories found matching 'Tests/t
+est-images'
+      adding license file 'LICENSE'
+      writing manifest file 'src/pillow.egg-info/SOURCES.txt'
+      copying src/PIL/_avif.pyi -> build/lib.android-24-armeabi_
+v7a-cpython-313/PIL
+      copying src/PIL/_imaging.pyi -> build/lib.android-24-armea
+bi_v7a-cpython-313/PIL
+      copying src/PIL/_imagingcms.pyi -> build/lib.android-24-ar
+meabi_v7a-cpython-313/PIL
+      copying src/PIL/_imagingft.pyi -> build/lib.android-24-arm
+eabi_v7a-cpython-313/PIL
+      copying src/PIL/_imagingmath.pyi -> build/lib.android-24-a
+rmeabi_v7a-cpython-313/PIL
+      copying src/PIL/_imagingmorph.pyi -> build/lib.android-24-
+armeabi_v7a-cpython-313/PIL
+      copying src/PIL/_imagingtk.pyi -> build/lib.android-24-arm
+eabi_v7a-cpython-313/PIL
+      copying src/PIL/_webp.pyi -> build/lib.android-24-armeabi_
+v7a-cpython-313/PIL
+      copying src/PIL/py.typed -> build/lib.android-24-armeabi_v
+7a-cpython-313/PIL
+      running build_clib
+      building 'pil_imaging_mode' library
+      creating build/temp.android-24-armeabi_v7a-cpython-313/src
+/libImaging
+      arm-linux-androideabi-clang -mfloat-abi=softfp -mfpu=vfpv3
+-d16 -fno-strict-overflow -Wsign-compare -Wunreachable-code -DND
+EBUG -g -O3 -Wall -march=armv7-a -mfpu=neon -mfloat-abi=softfp -
+mthumb -fstack-protector-strong -O3 -march=armv7-a -mfpu=neon -m
+float-abi=softfp -mthumb -fstack-protector-strong -O3 -fPIC -c s
+rc/libImaging/Mode.c -o build/temp.android-24-armeabi_v7a-cpytho
+n-313/src/libImaging/Mode.o
+      llvm-ar rcs build/temp.android-24-armeabi_v7a-cpython-313/
+libpil_imaging_mode.a build/temp.android-24-armeabi_v7a-cpython-
+313/src/libImaging/Mode.o
+      running build_ext
+      building 'PIL._imaging' extension
+      building 'PIL._imagingmorph' extension
+      building 'PIL._imagingcms' extension
+      building 'PIL._imagingmath' extension
+      building 'PIL._webp' extension
+      building 'PIL._imagingtk' extension
+      creating build/temp.android-24-armeabi_v7a-cpython-313/src
+/Tk
+      arm-linux-androideabi-clang -mfloat-abi=softfp -mfpu=vfpv3
+-d16 -fno-strict-overflow -Wsign-compare -Wunreachable-code -DND
+EBUG -g -O3 -Wall -march=armv7-a -mfpu=neon -mfloat-abi=softfp -
+mthumb -fstack-protector-strong -O3 -march=armv7-a -mfpu=neon -m
+float-abi=softfp -mthumb -fstack-protector-strong -O3 -fPIC -I/u
+sr/include/openjpeg-2.5 -I/usr/include -I/usr/include/webp -I/da
+ta/data/com.termux/files/usr/include -I/usr/local/include -I/dat
+a/data/com.termux/files/usr/include/python3.13 -c src/_imagingmo
+rph.c -o build/temp.android-24-armeabi_v7a-cpython-313/src/_imag
+ingmorph.o
+      arm-linux-androideabi-clang -mfloat-abi=softfp -mfpu=vfpv3
+-d16 -fno-strict-overflow -Wsign-compare -Wunreachable-code -DND
+EBUG -g -O3 -Wall -march=armv7-a -mfpu=neon -mfloat-abi=softfp -
+mthumb -fstack-protector-strong -O3 -march=armv7-a -mfpu=neon -m
+float-abi=softfp -mthumb -fstack-protector-strong -O3 -fPIC -I/u
+sr/include/openjpeg-2.5 -I/usr/include -I/usr/include/webp -I/da
+ta/data/com.termux/files/usr/include -I/usr/local/include -I/dat
+a/data/com.termux/files/usr/include/python3.13 -c src/_imagingcm
+s.c -o build/temp.android-24-armeabi_v7a-cpython-313/src/_imagin
+gcms.o
+      arm-linux-androideabi-clang -mfloat-abi=softfp -mfpu=vfpv3
+-d16 -fno-strict-overflow -Wsign-compare -Wunreachable-code -DND
+EBUG -g -O3 -Wall -march=armv7-a -mfpu=neon -mfloat-abi=softfp -
+mthumb -fstack-protector-strong -O3 -march=armv7-a -mfpu=neon -m
+float-abi=softfp -mthumb -fstack-protector-strong -O3 -fPIC -I/u
+sr/include/openjpeg-2.5 -I/usr/include -I/usr/include/webp -I/da
+ta/data/com.termux/files/usr/include -I/usr/local/include -I/dat
+a/data/com.termux/files/usr/include/python3.13 -c src/_imagingma
+th.c -o build/temp.android-24-armeabi_v7a-cpython-313/src/_imagi
+ngmath.o
+      arm-linux-androideabi-clang -mfloat-abi=softfp -mfpu=vfpv3
+-d16 -fno-strict-overflow -Wsign-compare -Wunreachable-code -DND
+EBUG -g -O3 -Wall -march=armv7-a -mfpu=neon -mfloat-abi=softfp -
+mthumb -fstack-protector-strong -O3 -march=armv7-a -mfpu=neon -m
+float-abi=softfp -mthumb -fstack-protector-strong -O3 -fPIC -I/u
+sr/include/openjpeg-2.5 -I/usr/include -I/usr/include/webp -I/da
+ta/data/com.termux/files/usr/include -I/usr/local/include -I/dat
+a/data/com.termux/files/usr/include/python3.13 -c src/_webp.c -o
+ build/temp.android-24-armeabi_v7a-cpython-313/src/_webp.o
+      arm-linux-androideabi-clang -mfloat-abi=softfp -mfpu=vfpv3
+-d16 -fno-strict-overflow -Wsign-compare -Wunreachable-code -DND
+EBUG -g -O3 -Wall -march=armv7-a -mfpu=neon -mfloat-abi=softfp -
+mthumb -fstack-protector-strong -O3 -march=armv7-a -mfpu=neon -m
+float-abi=softfp -mthumb -fstack-protector-strong -O3 -fPIC -I/u
+sr/include/openjpeg-2.5 -I/usr/include -I/usr/include/webp -I/da
+ta/data/com.termux/files/usr/include -I/usr/local/include -I/dat
+a/data/com.termux/files/usr/include/python3.13 -c src/_imagingtk
+.c -o build/temp.android-24-armeabi_v7a-cpython-313/src/_imaging
+tk.o
+      arm-linux-androideabi-clang -mfloat-abi=softfp -mfpu=vfpv3
+-d16 -fno-strict-overflow -Wsign-compare -Wunreachable-code -DND
+EBUG -g -O3 -Wall -march=armv7-a -mfpu=neon -mfloat-abi=softfp -
+mthumb -fstack-protector-strong -O3 -march=armv7-a -mfpu=neon -m
+float-abi=softfp -mthumb -fstack-protector-strong -O3 -fPIC -I/u
+sr/include/openjpeg-2.5 -I/usr/include -I/usr/include/webp -I/da
+ta/data/com.termux/files/usr/include -I/usr/local/include -I/dat
+a/data/com.termux/files/usr/include/python3.13 -c src/Tk/tkImagi
+ng.c -o build/temp.android-24-armeabi_v7a-cpython-313/src/Tk/tkI
+maging.o
+      In file included from src/_webp.c:2:
+      In file included from /data/data/com.termux/files/usr/incl
+ude/python3.13/Python.h:20:
+      In file included from /usr/include/assert.h:35:
+      In file included from /usr/include/features.h:564:
+      /usr/include/gnu/stubs.h:7:11: fatal error: 'gnu/stubs-sof
+t.h' file not found
+          7 | # include <gnu/stubs-soft.h>
+            |           ^~~~~~~~~~~~~~~~~~
+      In file included from src/_imagingtk.c:15:
+      In file included from /data/data/com.termux/files/usr/incl
+ude/python3.13/Python.h:20:
+      In file included from /usr/include/assert.h:35:
+      In file included from /usr/include/features.h:564:
+      /usr/include/gnu/stubs.h:7:11: fatal error: 'gnu/stubs-sof
+t.h' file not found
+          7 | # include <gnu/stubs-soft.h>
+            |           ^~~~~~~~~~~~~~~~~~
+      arm-linux-androideabi-clang -mfloat-abi=softfp -mfpu=vfpv3
+-d16 -fno-strict-overflow -Wsign-compare -Wunreachable-code -DND
+EBUG -g -O3 -Wall -march=armv7-a -mfpu=neon -mfloat-abi=softfp -
+mthumb -fstack-protector-strong -O3 -march=armv7-a -mfpu=neon -m
+float-abi=softfp -mthumb -fstack-protector-strong -O3 -fPIC -DHA
+VE_LIBTIFF -DHAVE_LIBJPEG -DHAVE_OPENJPEG -DHAVE_LIBZ -DPILLOW_V
+ERSION=\"12.2.0\" -I/usr/include/openjpeg-2.5 -I/usr/include -I/
+usr/include/webp -I/data/data/com.termux/files/usr/include -I/us
+r/local/include -I/data/data/com.termux/files/usr/include/python
+3.13 -c src/_imaging.c -o build/temp.android-24-armeabi_v7a-cpyt
+hon-313/src/_imaging.o
+      arm-linux-androideabi-clang -mfloat-abi=softfp -mfpu=vfpv3
+-d16 -fno-strict-overflow -Wsign-compare -Wunreachable-code -DND
+EBUG -g -O3 -Wall -march=armv7-a -mfpu=neon -mfloat-abi=softfp -
+mthumb -fstack-protector-strong -O3 -march=armv7-a -mfpu=neon -m
+float-abi=softfp -mthumb -fstack-protector-strong -O3 -fPIC -DHA
+VE_LIBTIFF -DHAVE_LIBJPEG -DHAVE_OPENJPEG -DHAVE_LIBZ -DPILLOW_V
+ERSION=\"12.2.0\" -I/usr/include/openjpeg-2.5 -I/usr/include -I/
+usr/include/webp -I/data/data/com.termux/files/usr/include -I/us
+r/local/include -I/data/data/com.termux/files/usr/include/python
+3.13 -c src/libImaging/Bands.c -o build/temp.android-24-armeabi_
+v7a-cpython-313/src/libImaging/Bands.o
+      arm-linux-androideabi-clang -mfloat-abi=softfp -mfpu=vfpv3
+-d16 -fno-strict-overflow -Wsign-compare -Wunreachable-code -DND
+EBUG -g -O3 -Wall -march=armv7-a -mfpu=neon -mfloat-abi=softfp -
+mthumb -fstack-protector-strong -O3 -march=armv7-a -mfpu=neon -m
+float-abi=softfp -mthumb -fstack-protector-strong -O3 -fPIC -DHA
+VE_LIBTIFF -DHAVE_LIBJPEG -DHAVE_OPENJPEG -DHAVE_LIBZ -DPILLOW_V
+ERSION=\"12.2.0\" -I/usr/include/openjpeg-2.5 -I/usr/include -I/
+usr/include/webp -I/data/data/com.termux/files/usr/include -I/us
+r/local/include -I/data/data/com.termux/files/usr/include/python
+3.13 -c src/libImaging/AlphaComposite.c -o build/temp.android-24
+-armeabi_v7a-cpython-313/src/libImaging/AlphaComposite.o
+      arm-linux-androideabi-clang -mfloat-abi=softfp -mfpu=vfpv3
+-d16 -fno-strict-overflow -Wsign-compare -Wunreachable-code -DND
+EBUG -g -O3 -Wall -march=armv7-a -mfpu=neon -mfloat-abi=softfp -
+mthumb -fstack-protector-strong -O3 -march=armv7-a -mfpu=neon -m
+float-abi=softfp -mthumb -fstack-protector-strong -O3 -fPIC -DHA
+VE_LIBTIFF -DHAVE_LIBJPEG -DHAVE_OPENJPEG -DHAVE_LIBZ -DPILLOW_V
+ERSION=\"12.2.0\" -I/usr/include/openjpeg-2.5 -I/usr/include -I/
+usr/include/webp -I/data/data/com.termux/files/usr/include -I/us
+r/local/include -I/data/data/com.termux/files/usr/include/python
+3.13 -c src/libImaging/Arrow.c -o build/temp.android-24-armeabi_
+v7a-cpython-313/src/libImaging/Arrow.o
+      arm-linux-androideabi-clang -mfloat-abi=softfp -mfpu=vfpv3
+-d16 -fno-strict-overflow -Wsign-compare -Wunreachable-code -DND
+EBUG -g -O3 -Wall -march=armv7-a -mfpu=neon -mfloat-abi=softfp -
+mthumb -fstack-protector-strong -O3 -march=armv7-a -mfpu=neon -m
+float-abi=softfp -mthumb -fstack-protector-strong -O3 -fPIC -DHA
+VE_LIBTIFF -DHAVE_LIBJPEG -DHAVE_OPENJPEG -DHAVE_LIBZ -DPILLOW_V
+ERSION=\"12.2.0\" -I/usr/include/openjpeg-2.5 -I/usr/include -I/
+usr/include/webp -I/data/data/com.termux/files/usr/include -I/us
+r/local/include -I/data/data/com.termux/files/usr/include/python
+3.13 -c src/libImaging/Access.c -o build/temp.android-24-armeabi
+_v7a-cpython-313/src/libImaging/Access.o
+      arm-linux-androideabi-clang -mfloat-abi=softfp -mfpu=vfpv3
+-d16 -fno-strict-overflow -Wsign-compare -Wunreachable-code -DND
+EBUG -g -O3 -Wall -march=armv7-a -mfpu=neon -mfloat-abi=softfp -
+mthumb -fstack-protector-strong -O3 -march=armv7-a -mfpu=neon -m
+float-abi=softfp -mthumb -fstack-protector-strong -O3 -fPIC -DHA
+VE_LIBTIFF -DHAVE_LIBJPEG -DHAVE_OPENJPEG -DHAVE_LIBZ -DPILLOW_V
+ERSION=\"12.2.0\" -I/usr/include/openjpeg-2.5 -I/usr/include -I/
+usr/include/webp -I/data/data/com.termux/files/usr/include -I/us
+r/local/include -I/data/data/com.termux/files/usr/include/python
+3.13 -c src/display.c -o build/temp.android-24-armeabi_v7a-cpyth
+on-313/src/display.o
+      arm-linux-androideabi-clang -mfloat-abi=softfp -mfpu=vfpv3
+-d16 -fno-strict-overflow -Wsign-compare -Wunreachable-code -DND
+EBUG -g -O3 -Wall -march=armv7-a -mfpu=neon -mfloat-abi=softfp -
+mthumb -fstack-protector-strong -O3 -march=armv7-a -mfpu=neon -m
+float-abi=softfp -mthumb -fstack-protector-strong -O3 -fPIC -DHA
+VE_LIBTIFF -DHAVE_LIBJPEG -DHAVE_OPENJPEG -DHAVE_LIBZ -DPILLOW_V
+ERSION=\"12.2.0\" -I/usr/include/openjpeg-2.5 -I/usr/include -I/
+usr/include/webp -I/data/data/com.termux/files/usr/include -I/us
+r/local/include -I/data/data/com.termux/files/usr/include/python
+3.13 -c src/encode.c -o build/temp.android-24-armeabi_v7a-cpytho
+n-313/src/encode.o
+      arm-linux-androideabi-clang -mfloat-abi=softfp -mfpu=vfpv3
+-d16 -fno-strict-overflow -Wsign-compare -Wunreachable-code -DND
+EBUG -g -O3 -Wall -march=armv7-a -mfpu=neon -mfloat-abi=softfp -
+mthumb -fstack-protector-strong -O3 -march=armv7-a -mfpu=neon -m
+float-abi=softfp -mthumb -fstack-protector-strong -O3 -fPIC -DHA
+VE_LIBTIFF -DHAVE_LIBJPEG -DHAVE_OPENJPEG -DHAVE_LIBZ -DPILLOW_V
+ERSION=\"12.2.0\" -I/usr/include/openjpeg-2.5 -I/usr/include -I/
+usr/include/webp -I/data/data/com.termux/files/usr/include -I/us
+r/local/include -I/data/data/com.termux/files/usr/include/python
+3.13 -c src/decode.c -o build/temp.android-24-armeabi_v7a-cpytho
+n-313/src/decode.o
+      In file included from src/_imagingmorph.c:14:
+      In file included from src/libImaging/Imaging.h:13:
+      In file included from src/libImaging/ImPlatform.h:11:
+      In file included from /data/data/com.termux/files/usr/incl
+ude/python3.13/Python.h:20:
+      In file included from /usr/include/assert.h:35:
+      In file included from /usr/include/features.h:564:
+      /usr/include/gnu/stubs.h:7:11: fatal error: 'gnu/stubs-sof
+t.h' file not found
+          7 | # include <gnu/stubs-soft.h>
+            |           ^~~~~~~~~~~~~~~~~~
+      In file included from src/libImaging/AlphaComposite.c:11:
+      In file included from src/libImaging/Imaging.h:13:
+      In file included from src/libImaging/ImPlatform.h:11:
+      In file included from /data/data/com.termux/files/usr/incl
+ude/python3.13/Python.h:20:
+      In file included from /usr/include/assert.h:35:
+      In file included from /usr/include/features.h:564:
+      /usr/include/gnu/stubs.h:7:11: fatal error: 'gnu/stubs-sof
+t.h' file not found
+          7 | # include <gnu/stubs-soft.h>
+            |           ^~~~~~~~~~~~~~~~~~
+      In file included from src/encode.c:26:
+      In file included from /data/data/com.termux/files/usr/incl
+ude/python3.13/Python.h:20:
+      In file included from /usr/include/assert.h:35:
+      In file included from /usr/include/features.h:564:
+      /usr/include/gnu/stubs.h:7:11: fatal error: 'gnu/stubs-sof
+t.h' file not found
+          7 | # include <gnu/stubs-soft.h>
+            |           ^~~~~~~~~~~~~~~~~~
+      In file included from src/decode.c:33:
+      In file included from /data/data/com.termux/files/usr/incl
+ude/python3.13/Python.h:20:
+      In file included from /usr/include/assert.h:35:
+      In file included from /usr/include/features.h:564:
+      /usr/include/gnu/stubs.h:7:11: fatal error: 'gnu/stubs-sof
+t.h' file not found
+          7 | # include <gnu/stubs-soft.h>
+            |           ^~~~~~~~~~~~~~~~~~
+      In file included from src/libImaging/Bands.c:18:
+      In file included from src/libImaging/Imaging.h:13:
+      In file included from src/libImaging/ImPlatform.h:11:
+      In file included from /data/data/com.termux/files/usr/incl
+ude/python3.13/Python.h:20:
+      In file included from /usr/include/assert.h:35:
+      In file included from /usr/include/features.h:564:
+      /usr/include/gnu/stubs.h:7:11: fatal error: 'gnu/stubs-sof
+t.h' file not found
+          7 | # include <gnu/stubs-soft.h>
+            |           ^~~~~~~~~~~~~~~~~~
+      In file included from src/libImaging/Access.c:12:
+      In file included from src/libImaging/Imaging.h:13:
+      In file included from src/libImaging/ImPlatform.h:11:
+      In file included from /data/data/com.termux/files/usr/incl
+ude/python3.13/Python.h:20:
+      In file included from /usr/include/assert.h:35:
+      In file included from /usr/include/features.h:564:
+      /usr/include/gnu/stubs.h:7:11: fatal error: 'gnu/stubs-sof
+t.h' file not found
+          7 | # include <gnu/stubs-soft.h>
+            |           ^~~~~~~~~~~~~~~~~~
+      In file included from src/display.c:26:
+      In file included from /data/data/com.termux/files/usr/incl
+ude/python3.13/Python.h:20:
+      In file included from /usr/include/assert.h:35:
+      In file included from /usr/include/features.h:564:
+      /usr/include/gnu/stubs.h:7:11: fatal error: 'gnu/stubs-sof
+t.h' file not found
+          7 | # include <gnu/stubs-soft.h>
+            |           ^~~~~~~~~~~~~~~~~~
+      In file included from src/_imaging.c:75:
+      In file included from /data/data/com.termux/files/usr/incl
+ude/python3.13/Python.h:20:
+      In file included from /usr/include/assert.h:35:
+      In file included from /usr/include/features.h:564:
+      /usr/include/gnu/stubs.h:7:11: fatal error: 'gnu/stubs-sof
+t.h' file not found
+          7 | # include <gnu/stubs-soft.h>
+            |           ^~~~~~~~~~~~~~~~~~
+      In file included from src/Tk/tkImaging.c:42:
+      In file included from src/Tk/../libImaging/Imaging.h:13:
+      In file included from src/Tk/../libImaging/ImPlatform.h:11
+:
+      In file included from /data/data/com.termux/files/usr/incl
+ude/python3.13/Python.h:20:
+      In file included from /usr/include/assert.h:35:
+      In file included from /usr/include/features.h:564:
+      /usr/include/gnu/stubs.h:7:11: fatal error: 'gnu/stubs-sof
+t.h' file not found
+          7 | # include <gnu/stubs-soft.h>
+            |           ^~~~~~~~~~~~~~~~~~
+      In file included from src/libImaging/Arrow.c:2:
+      In file included from src/libImaging/Arrow.h:1:
+      In file included from /usr/include/stdint.h:26:
+      In file included from /usr/include/bits/libc-header-start.
+h:33:
+      In file included from /usr/include/features.h:564:
+      /usr/include/gnu/stubs.h:7:11: fatal error: 'gnu/stubs-sof
+t.h' file not found
+          7 | # include <gnu/stubs-soft.h>
+            |           ^~~~~~~~~~~~~~~~~~
+      1 error generated.
+      1 error generated.
+      1 error generated.
+      arm-linux-androideabi-clang -mfloat-abi=softfp -mfpu=vfpv3
+-d16 -fno-strict-overflow -Wsign-compare -Wunreachable-code -DND
+EBUG -g -O3 -Wall -march=armv7-a -mfpu=neon -mfloat-abi=softfp -
+mthumb -fstack-protector-strong -O3 -march=armv7-a -mfpu=neon -m
+float-abi=softfp -mthumb -fstack-protector-strong -O3 -fPIC -DHA
+VE_LIBTIFF -DHAVE_LIBJPEG -DHAVE_OPENJPEG -DHAVE_LIBZ -DPILLOW_V
+ERSION=\"12.2.0\" -I/usr/include/openjpeg-2.5 -I/usr/include -I/
+usr/include/webp -I/data/data/com.termux/files/usr/include -I/us
+r/local/include -I/data/data/com.termux/files/usr/include/python
+3.13 -c src/libImaging/BcnDecode.c -o build/temp.android-24-arme
+abi_v7a-cpython-313/src/libImaging/BcnDecode.o
+      arm-linux-androideabi-clang -mfloat-abi=softfp -mfpu=vfpv3
+-d16 -fno-strict-overflow -Wsign-compare -Wunreachable-code -DND
+EBUG -g -O3 -Wall -march=armv7-a -mfpu=neon -mfloat-abi=softfp -
+mthumb -fstack-protector-strong -O3 -march=armv7-a -mfpu=neon -m
+float-abi=softfp -mthumb -fstack-protector-strong -O3 -fPIC -DHA
+VE_LIBTIFF -DHAVE_LIBJPEG -DHAVE_OPENJPEG -DHAVE_LIBZ -DPILLOW_V
+ERSION=\"12.2.0\" -I/usr/include/openjpeg-2.5 -I/usr/include -I/
+usr/include/webp -I/data/data/com.termux/files/usr/include -I/us
+r/local/include -I/data/data/com.termux/files/usr/include/python
+3.13 -c src/libImaging/BcnEncode.c -o build/temp.android-24-arme
+abi_v7a-cpython-313/src/libImaging/BcnEncode.o
+      arm-linux-androideabi-clang -mfloat-abi=softfp -mfpu=vfpv3
+-d16 -fno-strict-overflow -Wsign-compare -Wunreachable-code -DND
+EBUG -g -O3 -Wall -march=armv7-a -mfpu=neon -mfloat-abi=softfp -
+mthumb -fstack-protector-strong -O3 -march=armv7-a -mfpu=neon -m
+float-abi=softfp -mthumb -fstack-protector-strong -O3 -fPIC -DHA
+VE_LIBTIFF -DHAVE_LIBJPEG -DHAVE_OPENJPEG -DHAVE_LIBZ -DPILLOW_V
+ERSION=\"12.2.0\" -I/usr/include/openjpeg-2.5 -I/usr/include -I/
+usr/include/webp -I/data/data/com.termux/files/usr/include -I/us
+r/local/include -I/data/data/com.termux/files/usr/include/python
+3.13 -c src/libImaging/BitDecode.c -o build/temp.android-24-arme
+abi_v7a-cpython-313/src/libImaging/BitDecode.o
+      1 error generated.
+      arm-linux-androideabi-clang -mfloat-abi=softfp -mfpu=vfpv3
+-d16 -fno-strict-overflow -Wsign-compare -Wunreachable-code -DND
+EBUG -g -O3 -Wall -march=armv7-a -mfpu=neon -mfloat-abi=softfp -
+mthumb -fstack-protector-strong -O3 -march=armv7-a -mfpu=neon -m
+float-abi=softfp -mthumb -fstack-protector-strong -O3 -fPIC -DHA
+VE_LIBTIFF -DHAVE_LIBJPEG -DHAVE_OPENJPEG -DHAVE_LIBZ -DPILLOW_V
+ERSION=\"12.2.0\" -I/usr/include/openjpeg-2.5 -I/usr/include -I/
+usr/include/webp -I/data/data/com.termux/files/usr/include -I/us
+r/local/include -I/data/data/com.termux/files/usr/include/python
+3.13 -c src/libImaging/Blend.c -o build/temp.android-24-armeabi_
+v7a-cpython-313/src/libImaging/Blend.o
+      1 error generated.
+      arm-linux-androideabi-clang -mfloat-abi=softfp -mfpu=vfpv3
+-d16 -fno-strict-overflow -Wsign-compare -Wunreachable-code -DND
+EBUG -g -O3 -Wall -march=armv7-a -mfpu=neon -mfloat-abi=softfp -
+mthumb -fstack-protector-strong -O3 -march=armv7-a -mfpu=neon -m
+float-abi=softfp -mthumb -fstack-protector-strong -O3 -fPIC -DHA
+VE_LIBTIFF -DHAVE_LIBJPEG -DHAVE_OPENJPEG -DHAVE_LIBZ -DPILLOW_V
+ERSION=\"12.2.0\" -I/usr/include/openjpeg-2.5 -I/usr/include -I/
+usr/include/webp -I/data/data/com.termux/files/usr/include -I/us
+r/local/include -I/data/data/com.termux/files/usr/include/python
+3.13 -c src/libImaging/BoxBlur.c -o build/temp.android-24-armeab
+i_v7a-cpython-313/src/libImaging/BoxBlur.o
+      In file included from src/libImaging/BcnDecode.c:14:
+      In file included from src/libImaging/Imaging.h:13:
+      In file included from src/libImaging/ImPlatform.h:11:
+      In file included from /data/data/com.termux/files/usr/incl
+ude/python3.13/Python.h:20:
+      In file included from /usr/include/assert.h:35:
+      In file included from /usr/include/features.h:564:
+      /usr/include/gnu/stubs.h:7:11: fatal error: 'gnu/stubs-sof
+t.h' file not found
+          7 | # include <gnu/stubs-soft.h>
+            |           ^~~~~~~~~~~~~~~~~~
+      In file included from src/libImaging/BitDecode.c:16:
+      In file included from src/libImaging/Imaging.h:13:
+      In file included from src/libImaging/ImPlatform.h:11:
+      In file included from /data/data/com.termux/files/usr/incl
+ude/python3.13/Python.h:20:
+      In file included from /usr/include/assert.h:35:
+      In file included from /usr/include/features.h:564:
+      /usr/include/gnu/stubs.h:7:11: fatal error: 'gnu/stubs-sof
+t.h' file not found
+          7 | # include <gnu/stubs-soft.h>
+            |           ^~~~~~~~~~~~~~~~~~
+      In file included from src/libImaging/BcnEncode.c:11:
+      In file included from src/libImaging/Imaging.h:13:
+      In file included from src/libImaging/ImPlatform.h:11:
+      In file included from /data/data/com.termux/files/usr/incl
+ude/python3.13/Python.h:20:
+      In file included from /usr/include/assert.h:35:
+      In file included from /usr/include/features.h:564:
+      /usr/include/gnu/stubs.h:7:11: fatal error: 'gnu/stubs-sof
+t.h' file not found
+          7 | # include <gnu/stubs-soft.h>
+            |           ^~~~~~~~~~~~~~~~~~
+      In file included from src/libImaging/Blend.c:18:
+      In file included from src/libImaging/Imaging.h:13:
+      In file included from src/libImaging/ImPlatform.h:11:
+      In file included from /data/data/com.termux/files/usr/incl
+ude/python3.13/Python.h:20:
+      In file included from /usr/include/assert.h:35:
+      In file included from /usr/include/features.h:564:
+      /usr/include/gnu/stubs.h:7:11: fatal error: 'gnu/stubs-sof
+t.h' file not found
+          7 | # include <gnu/stubs-soft.h>
+            |           ^~~~~~~~~~~~~~~~~~
+      In file included from src/libImaging/BoxBlur.c:1:
+      In file included from src/libImaging/Imaging.h:13:
+      In file included from src/libImaging/ImPlatform.h:11:
+      In file included from /data/data/com.termux/files/usr/incl
+ude/python3.13/Python.h:20:
+      In file included from /usr/include/assert.h:35:
+      In file included from /usr/include/features.h:564:
+      /usr/include/gnu/stubs.h:7:11: fatal error: 'gnu/stubs-sof
+t.h' file not found
+          7 | # include <gnu/stubs-soft.h>
+            |           ^~~~~~~~~~~~~~~~~~
+      1 error generated.
+      1 error generated.
+      1 error generated.
+      In file included from src/_imagingmath.c:16:
+      In file included from /data/data/com.termux/files/usr/incl
+ude/python3.13/Python.h:20:
+      In file included from /usr/include/assert.h:35:
+      In file included from /usr/include/features.h:564:
+      /usr/include/gnu/stubs.h:7:11: fatal error: 'gnu/stubs-sof
+t.h' file not found
+          7 | # include <gnu/stubs-soft.h>
+            |           ^~~~~~~~~~~~~~~~~~
+      1 error generated.
+      1 error generated.
+      1 error generated.
+      1 error generated.
+      1 error generated.
+      1 error generated.
+      In file included from src/_imagingcms.c:30:
+      In file included from /data/data/com.termux/files/usr/incl
+ude/python3.13/Python.h:20:
+      In file included from /usr/include/assert.h:35:
+      In file included from /usr/include/features.h:564:
+      /usr/include/gnu/stubs.h:7:11: fatal error: 'gnu/stubs-sof
+t.h' file not found
+          7 | # include <gnu/stubs-soft.h>
+            |           ^~~~~~~~~~~~~~~~~~
+      1 error generated.
+      1 error generated.
+      1 error generated.
+      1 error generated.
+      1 error generated.
+      error: command '/data/data/com.termux/files/usr/bin/arm-li
+nux-androideabi-clang' failed with exit code 1
+      [end of output]
+
+  note: This error originates from a subprocess, and is likely n
+ot a problem with pip.
+  ERROR: Failed building wheel for Pillow
+Failed to build Pillow
+error: failed-wheel-build-for-install
+
+× Failed to build installable wheels for some pyproject.toml bas
+ed projects
+╰─> Pillow
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ❌ ERRO DETECTADO NA LINHA 5251
+   A Sprint 059 foi interrompida para proteger a integridade.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[root@localhost rlsys-terminal-main]# ./capture-sprint-buffer.sh
+
+

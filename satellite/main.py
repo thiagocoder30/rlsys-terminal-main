@@ -4,27 +4,23 @@ import time
 from adapters.real_vision import RealCamera, RealOcrEngine
 
 def run_satellite():
-    """
-    Motor Cibernético: Loop de Visão Real.
-    """
-    # Defina aqui as coordenadas (X, Y, Largura, Altura) da caixa onde os números aparecem.
-    roi_coords = {'top': 250, 'left': 50, 'width': 100, 'height': 60}
+    # Coordenadas calibradas para o 1º número da timeline (Ex: 31)
+    roi_evolution = {'top': 180, 'left': 460, 'width': 55, 'height': 45}
     
-    camera = RealCamera(bounding_box=roi_coords)
+    camera = RealCamera(bounding_box=roi_evolution)
     ocr = RealOcrEngine()
     
-    # Aguarda o Node.js inicializar
     time.sleep(2)
 
     try:
         while True:
-            # Captura ultra-rápida (só a caixa)
             frame = camera.get_frame()
             
-            # Reconhecimento ótico
+            # MODO DEBUG: Guarda a foto da mira no disco para validação
+            frame.save("mira_debug.png")
+            
             read_result = ocr.extract_number(frame)
             
-            # Comunicação Unix Pipe
             if read_result:
                 payload = {
                     "sector": read_result.sector,
@@ -32,11 +28,8 @@ def run_satellite():
                     "speed": "NORMAL"
                 }
                 print(json.dumps(payload), flush=True)
-                
-                # Debounce na visão: Após uma leitura bem sucedida, descansa o CPU por 3 segundos
                 time.sleep(3)
             else:
-                # Se não viu nada, descansa brevemente para não esgotar o CPU (30 FPS max)
                 time.sleep(0.033)
 
     except KeyboardInterrupt:

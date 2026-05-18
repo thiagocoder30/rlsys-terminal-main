@@ -1,0 +1,845 @@
+[root@localhost rlsys-terminal-main]# #!/bin/bash
+[root@localhost rlsys-terminal-main]#
+r sua sessão do Arch
+    return 1 2>/dev/null || exit 1
+}
+
+trap 'error_handler $LINENO' ERR
+
+log "======================================================"
+log " RECRIANDO SPRINT 031 - ARCH LINUX MODE (STAY OPEN) "
+log "======================================================"
+
+cd "$HOME/rlsys-terminal-main"
+
+# 1. Preparação de ambiente Git
+log "=> Sincronizando repositório..."
+git checkout main
+git pull origin main
+
+log "=> Preparando branch..."
+git branch -D sprint-031-session-circuit-breaker 2>/dev/null ||
+true
+git checkout -b sprint-031-session-circuit-breaker
+
+# 2. Escrita Direta dos Arquivos
+log "=> Criando estrutura e arquivos..."
+mkdir -p src/domain/runtime
+mkdir -p tests
+
+cat << 'EOF' > src/domain/runtime/SessionCircuitBreaker.ts
+export enum SessionStatus {
+  SESSION_OPEN = 'SESSION_OPEN',
+  SESSION_REVIEW = 'SESSION_REVIEW',
+  SESSION_LOCKED = 'SESSION_LOCKED',
+  SESSION_PROFIT_LOCKED = 'SESSION_PROFIT_LOCKED',
+  BLOCKED = 'BLOCKED'
+}
+
+export type SanityEngineState = 'HEALTHY' | 'DIVERGENT' | 'PARAD
+IGM_BREAK';
+
+export interface SessionState {
+  readonly initialBankroll: number;
+  readonly currentBankroll: number;
+  readonly stopLossThreshold: number;
+  readonly stopWinThreshold: number;
+  readonly drawdownVelocityAlert: boolean;
+  readonly sanityEngineState: SanityEngineState;
+  readonly dataIntegrityValid: boolean;
+  readonly mandatoryCooldownActive: boolean;
+}
+
+export class SessionCircuitBreaker {
+  public static evaluate(state: SessionState): SessionStatus {
+    if (!state.dataIntegrityValid || state.mandatoryCooldownActi
+ve) return SessionStatus.BLOCKED;
+    if (state.sanityEngineState === 'PARADIGM_BREAK') return Ses
+sionStatus.SESSION_LOCKED;
+
+    const diff = state.currentBankroll - state.initialBankroll;
+    if (diff <= (state.stopLossThreshold * -1)) return SessionSt
+atus.SESSION_LOCKED;
+    if (diff >= state.stopWinThreshold) return SessionStatus.SES
+SION_PROFIT_LOCKED;
+
+    if (state.drawdownVelocityAlert || state.sanityEngineState =
+== 'DIVERGENT') {
+      return SessionStatus.SESSION_REVIEW;
+    }
+    return SessionStatus.SESSION_OPEN;
+  }
+}
+EOF
+
+cat << 'EOF' > tests/session-circuit-breaker.test.js
+const test = require('node:test');
+const assert = require('node:assert');
+const { SessionCircuitBreaker, SessionStatus } = require('../dis
+t/domain/runtime/SessionCircuitBreaker');
+
+const baseState = {
+  initialBankroll: 240,
+  currentBankroll: 240,
+  stopLossThreshold: 30,
+  stopWinThreshold: 20,
+  drawdownVelocityAlert: false,
+  sanityEngineState: 'HEALTHY',
+  dataIntegrityValid: true,
+  mandatoryCooldownActive: false
+};
+
+test('Sessao Saudavel', () => {
+  const status = SessionCircuitBreaker.evaluate(baseState);
+  assert.strictEqual(status, SessionStatus.SESSION_OPEN);
+});
+
+test('Disparo Stop Loss', () => {
+  const status = SessionCircuitBreaker.evaluate({...baseState, c
+urrentBankroll: 200});
+  assert.strictEqual(status, SessionStatus.SESSION_LOCKED);
+});
+EOF
+
+# 3. Ciclo de Validação
+log "=> Instalando dependências e compilando..."
+npm ci && npm run build
+
+l[root@localhost rlsys-terminal-main]# # set -u: erro se houver
+variável não definida
+[root@localhost rlsys-terminal-main]# # set -o pipefail: erro se
+ algum comando no pipe falhar
+[root@localhost rlsys-terminal-main]# set -uo pipefail
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# # Cores para o alerta
+[root@localhost rlsys-terminal-main]# GREEN='\033[0;32m'
+[root@localhost rlsys-terminal-main]# RED='\033[0;31m'
+[root@localhost rlsys-terminal-main]# NC='\033[0m' # Sem cor
+[root@localhost rlsys-terminal-main]# BOLD='\033[1m'
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# LOG_FILE="sprint_031_final
+.log"
+[root@localhost rlsys-terminal-main]# > "$LOG_FILE"
+on-cir[root@localhost rlsys-terminal-main]#
+c[root@localhost rlsys-terminal-main]# log() {
+>     echo -e "[$(date +'%H:%M:%S')] $1" | tee -a "$LOG_FILE"
+> }
+
+echo -[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# # Função de erro que não f
+echa o terminal, apenas interrompe o script
+�━━━[root@localhost rlsys-terminal-main]# error_handler() {
+>     echo -e "\n${RED}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+>     echo -e "${RED}${BOLD}   ❌ ERRO DETECTADO NA LINHA $1${NC
+}"
+>     echo -e "${RED}   O script foi interrompido para proteção
+do repositório.${NC}"
+>     echo -e "${RED}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+>     # Não usamos exit aqui para não fechar sua sessão do Arch
+>     return 1 2>/dev/null || exit 1
+> }
+oc[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# trap 'error_handler $LINEN
+O' ERR
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# log "=====================
+================================="
+[22:20:16] =====================================================
+=
+[root@localhost rlsys-terminal-main]# log " RECRIANDO SPRINT 031
+ - ARCH LINUX MODE (STAY OPEN) "
+[22:20:17]  RECRIANDO SPRINT 031 - ARCH LINUX MODE (STAY OPEN)
+[root@localhost rlsys-terminal-main]# log "=====================
+================================="
+[22:20:17] =====================================================
+=
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# cd "$HOME/rlsys-terminal-m
+ain"
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# # 1. Preparação de ambient
+e Git
+[root@localhost rlsys-terminal-main]# log "=> Sincronizando repo
+sitório..."
+[22:20:17] => Sincronizando repositório...
+[root@localhost rlsys-terminal-main]# git checkout main
+Already on 'main'
+Your branch is ahead of 'origin/main' by 1 commit.
+  (use "git push" to publish your local commits)
+[root@localhost rlsys-terminal-main]# git pull origin main
+From https://github.com/thiagocoder30/rlsys-terminal-main
+ * branch            main       -> FETCH_HEAD
+Already up to date.
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# log "=> Preparando branch.
+.."
+[22:20:26] => Preparando branch...
+[root@localhost rlsys-terminal-main]# git branch -D sprint-031-s
+ession-circuit-breaker 2>/dev/null || true
+Deleted branch sprint-031-session-circuit-breaker (was 0ff20e6).
+[root@localhost rlsys-terminal-main]# git checkout -b sprint-031
+-session-circuit-breaker
+Switched to a new branch 'sprint-031-session-circuit-breaker'
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# # 2. Escrita Direta dos Ar
+quivos
+[root@localhost rlsys-terminal-main]# log "=> Criando estrutura
+e arquivos..."
+[22:20:26] => Criando estrutura e arquivos...
+[root@localhost rlsys-terminal-main]# mkdir -p src/domain/runtim
+e
+[root@localhost rlsys-terminal-main]# mkdir -p tests
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# cat << 'EOF' > src/domain/
+runtime/SessionCircuitBreaker.ts
+> export enum SessionStatus {
+>   SESSION_OPEN = 'SESSION_OPEN',
+>   SESSION_REVIEW = 'SESSION_REVIEW',
+>   SESSION_LOCKED = 'SESSION_LOCKED',
+>   SESSION_PROFIT_LOCKED = 'SESSION_PROFIT_LOCKED',
+>   BLOCKED = 'BLOCKED'
+> }
+>
+> export type SanityEngineState = 'HEALTHY' | 'DIVERGENT' | 'PAR
+ADIGM_BREAK';
+>
+> export interface SessionState {
+>   readonly initialBankroll: number;
+>   readonly currentBankroll: number;
+>   readonly stopLossThreshold: number;
+>   readonly stopWinThreshold: number;
+>   readonly drawdownVelocityAlert: boolean;
+>   readonly sanityEngineState: SanityEngineState;
+>   readonly dataIntegrityValid: boolean;
+>   readonly mandatoryCooldownActive: boolean;
+> }
+>
+> export class SessionCircuitBreaker {
+>   public static evaluate(state: SessionState): SessionStatus {
+>     if (!state.dataIntegrityValid || state.mandatoryCooldownAc
+tive) return SessionStatus.BLOCKED;
+>     if (state.sanityEngineState === 'PARADIGM_BREAK') return S
+essionStatus.SESSION_LOCKED;
+>
+>     const diff = state.currentBankroll - state.initialBankroll
+;
+>     if (diff <= (state.stopLossThreshold * -1)) return Session
+Status.SESSION_LOCKED;
+>     if (diff >= state.stopWinThreshold) return SessionStatus.S
+ESSION_PROFIT_LOCKED;
+>
+>     if (state.drawdownVelocityAlert || state.sanityEngineState
+ === 'DIVERGENT') {
+>       return SessionStatus.SESSION_REVIEW;
+>     }
+>     return SessionStatus.SESSION_OPEN;
+>   }
+> }
+> EOF
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# cat << 'EOF' > tests/sessi
+on-circuit-breaker.test.js
+> const test = require('node:test');
+> const assert = require('node:assert');
+> const { SessionCircuitBreaker, SessionStatus } = require('../d
+ist/domain/runtime/SessionCircuitBreaker');
+>
+> const baseState = {
+>   initialBankroll: 240,
+>   currentBankroll: 240,
+>   stopLossThreshold: 30,
+>   stopWinThreshold: 20,
+>   drawdownVelocityAlert: false,
+>   sanityEngineState: 'HEALTHY',
+>   dataIntegrityValid: true,
+>   mandatoryCooldownActive: false
+> };
+>
+> test('Sessao Saudavel', () => {
+>   const status = SessionCircuitBreaker.evaluate(baseState);
+>   assert.strictEqual(status, SessionStatus.SESSION_OPEN);
+> });
+>
+> test('Disparo Stop Loss', () => {
+>   const status = SessionCircuitBreaker.evaluate({...baseState,
+ currentBankroll: 200});
+>   assert.strictEqual(status, SessionStatus.SESSION_LOCKED);
+> });
+> EOF
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# # 3. Ciclo de Validação
+[root@localhost rlsys-terminal-main]# log "=> Instalando dependê
+ncias e compilando..."
+[22:20:27] => Instalando dependências e compilando...
+[root@localhost rlsys-terminal-main]# npm ci && npm run build
+
+added 98 packages, and audited 99 packages in 20s
+
+19 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+
+> rl-sys-core@2.9.0 build
+> tsc
+
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# log "=> Rodando testes uni
+tários..."
+[22:21:44] => Rodando testes unitários...
+[root@localhost rlsys-terminal-main]# npm test
+
+> rl-sys-core@2.9.0 test
+> node --test tests/*.test.js
+
+✔ AdaptiveConfidenceEngine allows mature low-noise signal calibr
+ation (24.890692ms)
+✔ AdaptiveConfidenceEngine observes marginal confidence near dyn
+amic threshold (4.386077ms)
+✔ AdaptiveConfidenceEngine blocks noisy low-quality calibration
+(7.444615ms)
+✔ AdaptiveConfidenceEngine rejects malformed input without silen
+t failure (5.096077ms)
+✔ AdvancedWalkForwardService rejects corrupted datasets (37960.8
+14926ms)
+✔ AdvancedWalkForwardService returns blocked research report for
+ clean dataset (371.876ms)
+✔ AdvancedWalkForwardValidator rejects invalid roulette history
+(18.654231ms)
+✔ AdvancedWalkForwardValidator detects low robustness on balance
+d data (142.759231ms)
+✔ AdvancedWalkForwardValidator surfaces candidate for persistent
+ out-of-sample bias (60.684538ms)
+✔ BayesianEdgeValidator rejects insufficient evidence (20.61423m
+s)
+✔ BayesianEdgeValidator supports strong positive out-of-sample e
+vidence (3.237846ms)
+✔ BenchmarkComparisonService rejects corrupted datasets (3794.84
+1693ms)
+✔ BenchmarkComparisonService returns institutional benchmark rep
+ort with blocked gate (1263.563ms)
+✔ BootstrapResampler creates deterministic block samples with ch
+ecksums (26.190308ms)
+✔ BootstrapResampler rejects insufficient history (4.338769ms)
+✔ CapitalExposureService returns institutional capital report wi
+th blocked gate (3401.328385ms)
+✔ CapitalExposureService rejects corrupted datasets (5.406077ms)
+✔ CapitalExposureSimulator returns bounded capital survival metr
+ics (76.187615ms)
+✔ CapitalExposureSimulator rejects invalid roulette histories (6
+.205846ms)
+✔ CapitalExposureSimulator flags aggressive capital pressure wit
+hout opening operational gate (43.667846ms)
+✔ ConfidenceScorer returns a bounded score and grade (14.634615m
+s)
+✔ ConfigValidator accepts production-safe defaults with warnings
+ only (14.711769ms)
+✔ ConfigValidator rejects invalid ports and log levels (6.081615
+ms)
+✔ DataIntegrityValidator accepts research-sized canonical datase
+ts (47.667538ms)
+✔ DataIntegrityValidator blocks insufficient datasets (4.651462m
+s)
+✔ DatasetEngine parses and normalizes CSV datasets with checksum
+s (20306.469924ms)
+✔ DatasetEngine rejects invalid spin values without throwing (4.
+664462ms)
+✔ DatasetRegistryEngine accepts high quality datasets with deter
+ministic checksums (45.870847ms)
+✔ DatasetRegistryEngine requires review for OCR datasets with we
+ak reliability (6.211538ms)
+✔ DatasetRegistryEngine blocks corrupted roulette sample values
+(8.734385ms)
+✔ DatasetRegistryEngine rejects duplicate dataset ids without si
+lent failure (4.047ms)
+✔ DatasetRegistryEngine blocks oversized dataset batches before
+processing (3.882462ms)
+✔ DatasetRegistryEngine can block synthetic datasets by policy (
+6.020846ms)
+✔ DealerSignatureEngine detects persistent dealer sector signatu
+re (29.452231ms)
+✔ DealerSignatureEngine returns inconclusive for balanced dealer
+ history (6.527538ms)
+✔ DealerSignatureEngine blocks insufficient dealer sample (12.70
+3077ms)
+✔ DealerSignatureEngine rejects malformed roulette values withou
+t silent failure (7.318846ms)
+✔ DealerSignatureEngine blocks oversized batches for low-end har
+dware safety (5.485462ms)
+✔ DealerSignatureEngine is deterministic for repeated analysis (
+12.722615ms)
+✔ DecisionOrchestrator connects ranking to research-only live de
+cision (59.996539ms)
+✔ DecisionOrchestrator keeps observation state when live session
+ is not ready (8.347539ms)
+✔ DecisionOrchestrator returns typed Result error for malformed
+input (6.271924ms)
+✔ DecisionOrchestrator blocks research signal when regime policy
+ blocks signals (20.889538ms)
+✔ DecisionOrchestrator blocks research signal when ensemble repo
+rts strategic conflict (14.395ms)
+✔ DecisionOrchestrator blocks research signal when temporal deca
+y expires evidence (13.303231ms)
+✔ DecisionOrchestrator blocks research signal when adaptive conf
+idence is too low (13.309846ms)
+✔ DeterministicReplayStudio replays command streams with stable
+checksums (11354.303078ms)
+✔ DeterministicReplayStudio preserves idempotency for duplicate
+frame events (5.882539ms)
+✔ DeterministicReplayStudio replays verified persistence records
+ (18.348615ms)
+✔ DeterministicReplayStudio blocks checkpoint mismatches without
+ throwing (5.354154ms)
+✔ DeterministicReplayStudio rejects malformed requests without s
+ilent failure (29.259615ms)
+✔ EdgePersistenceAnalyzer returns no persistent edge for rotatin
+g balanced data (160.633769ms)
+✔ EdgePersistenceAnalyzer flags stable concentrated evidence as
+persistent research signal (56.900384ms)
+✔ EdgePersistenceAnalyzer estimates decay direction for fading s
+ignals (45.611616ms)
+✔ EVRiskAnalyticsEngine identifies positive edge candidate under
+ bounded risk (124.271ms)
+✔ EVRiskAnalyticsEngine blocks negative expected value samples (
+6.133461ms)
+✔ EVRiskAnalyticsEngine blocks insufficient samples even when pr
+ofitable (5.659077ms)
+✔ EVRiskAnalyticsEngine exposes deterministic checksums for repe
+ated analytics (5.895154ms)
+✔ EVRiskAnalyticsEngine rejects malformed outcomes without silen
+t failure (4.680769ms)
+✔ EVRiskAnalyticsEngine blocks oversized analytics batches befor
+e processing (2.751385ms)
+✔ ExplainabilityEngine generates deterministic audit narrative f
+or research signal (62.675692ms)
+✔ ExplainabilityEngine surfaces blockers as primary reason for r
+ejected decisions (9.689462ms)
+✔ ExplainabilityEngine bounds evidence list for low-memory opera
+tor UI (17.788077ms)
+✔ ExplainabilityEngine rejects malformed input without silent fa
+ilure (4.165923ms)
+✔ HealthCheckService reports readiness with writable data direct
+ory (8785.143308ms)
+✔ HypothesisValidator keeps operational gate blocked without str
+ong large-sample evidence (28.286ms)
+✔ IncrementalStatisticsEngine updates bounded rolling metrics wi
+thout recompute over full history (91.022692ms)
+✔ IncrementalStatisticsEngine preserves idempotency for duplicat
+e round events (4.912769ms)
+✔ IncrementalStatisticsEngine detects concentrated low-entropy w
+indows (34.124692ms)
+✔ IncrementalStatisticsEngine replays deterministically with mat
+ching checksum (77.382769ms)
+✔ IncrementalStatisticsEngine rejects malformed roulette values
+without silent failure (23.382462ms)
+✔ InputHardeningEngine accepts bounded manual roulette payloads
+(64.499538ms)
+✔ InputHardeningEngine rejects invalid roulette values before do
+main processing (9.344923ms)
+✔ InputHardeningEngine rejects suspicious tokens and prototype p
+ollution keys (6.549539ms)
+✔ InputHardeningEngine sanitizes long strings without mutating p
+ayload (14.258846ms)
+✔ InputHardeningEngine rejects payloads exceeding bounded array
+policy (64.019846ms)
+✔ InputHardeningEngine returns typed Result error for malformed
+request (4.544538ms)
+✔ InstitutionalBacktestEngine returns bounded institutional metr
+ics and gates (311.518462ms)
+✔ InstitutionalBacktestEngine rejects invalid roulette history (
+19.507154ms)
+✔ InstitutionalBacktestService rejects corrupted datasets and ke
+eps operational gate blocked (3881.089385ms)
+✔ InstitutionalBacktestService returns institutional research re
+port for clean dataset (395.189769ms)
+✔ InternalEventBus delivers events to observers in a typed deter
+ministic report (28.893462ms)
+✔ InternalEventBus preserves idempotency for duplicate event ids
+ (5.533923ms)
+✔ InternalEventBus isolates observer failures without throwing t
+hrough publisher (69.936461ms)
+✔ InternalEventBus rejects malformed events without silent failu
+re (3.599154ms)
+✔ LiveSessionRuntimeService collects rounds before decision read
+iness (3685.347692ms)
+✔ LiveSessionRuntimeService invokes decision layer after 100 rou
+nds while keeping live gate blocked (153.169846ms)
+✔ LiveSessionRuntimeService reports duplicate events idempotentl
+y (3.446769ms)
+✔ LiveSessionRuntimeService rejects malformed round input (4.716
+846ms)
+✔ LiveSessionRuntimeService surfaces cooldown without invoking l
+ive stake (53.559ms)
+✔ LiveSessionRuntime ingests rounds incrementally with bounded w
+indows (3370.437385ms)
+✔ LiveSessionRuntime is idempotent for duplicated event ids (4.4
+74692ms)
+✔ LiveSessionRuntime rejects invalid roulette values without sil
+ent failure (3.854231ms)
+✔ LiveSessionRuntime exposes deterministic control frame for dec
+ision readiness (15.786308ms)
+✔ LiveSessionRuntime enters cooldown on concentrated rolling win
+dow (9.574692ms)
+✔ MetricsRegistry captures counters, timers, uptime and memory (
+7413.798693ms)
+✔ MonteCarloEngine returns bounded institutional risk metrics (3
+0.418693ms)
+(node:9968) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type
+of file:///root/rlsys-terminal-main/tests/monte-carlo-research-s
+tudio.test.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This
+incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /root/rlsys-t
+erminal-main/package.json.
+(Use `node --trace-warnings ...` to show where the warning was c
+reated)
+✔ MonteCarloResearchStudio accepts robust candidate under varian
+ce stress (71.892077ms)
+✔ MonteCarloResearchStudio blocks fragile candidate when drawdow
+n and ruin risk are excessive (16.626769ms)
+✔ MonteCarloResearchStudio is deterministic for the same seed an
+d inputs (24.877923ms)
+✔ MonteCarloResearchStudio blocks oversized research batches (3.
+768076ms)
+✔ MonteCarloResearchStudio rejects malformed outcomes without si
+lent failure (4.074693ms)
+✔ MonteCarloV2Engine returns bounded bootstrap risk metrics (323
+.585ms)
+✔ MonteCarloV2Engine surfaces robust candidate without opening o
+perational gate (182.159154ms)
+✔ MonteCarloV2Engine rejects invalid histories (7.338616ms)
+✔ MonteCarloV2Service returns institutional blocked research rep
+ort (4173.619924ms)
+✔ MonteCarloV2Service rejects corrupted datasets (6.905923ms)
+✔ OfflineResearchRunner processes clean datasets with determinis
+tic checksum (3506.705ms)
+✔ OfflineResearchRunner preserves replay idempotency metrics for
+ duplicate events (7.033ms)
+✔ OfflineResearchRunner blocks oversized offline batches before
+replay (4.027923ms)
+✔ OfflineResearchRunner rejects malformed datasets without silen
+t failure (3.643615ms)
+✔ OfflineResearchRunner reports no signal-like frames without tr
+eating it as failure (15.007846ms)
+✔ OperatorHudProjectionEngine creates deterministic research-onl
+y HUD projection (95.818693ms)
+✔ OperatorHudProjectionEngine surfaces blocked decisions as dang
+er mode (10.499538ms)
+✔ OperatorHudProjectionEngine bounds cards for low-memory operat
+or UI (6.864ms)
+✔ OperatorHudProjectionEngine rejects malformed input without si
+lent failure (3.365385ms)
+✔ PersistenceResearchService rejects corrupted tiny dataset (33.
+760615ms)
+✔ PersistenceResearchService returns research-ready status for p
+ersistent evidence while keeping operational gate blocked (8834.
+088846ms)
+✔ RegimeClassificationEngine classifies balanced history as stab
+le research regime (35.181769ms)
+✔ RegimeClassificationEngine blocks chaotic concentrated history
+ (6.203615ms)
+✔ RegimeClassificationEngine detects drifting sector pressure wi
+thout opening signals (9.006923ms)
+✔ RegimeClassificationEngine returns typed Result error for malf
+ormed history (4.505385ms)
+✔ RegimeDetector returns bounded stability and windows (45.50692
+3ms)
+✔ RegimeDetector marks very small samples as unstable (3.619462m
+s)
+✔ ReleaseReadinessService returns review when config has warning
+s but no blockers (4918.252ms)
+✔ ReleaseReadinessService blocks failed readiness checks (3.3047
+69ms)
+✔ ResearchDatasetService returns accepted report for clean resea
+rch dataset (3709.125231ms)
+✔ ResearchDatasetService rejects corrupted dataset (6.894769ms)
+✔ ResearchExperimentOrchestrator promotes governed positive edge
+ to alpha candidate (33.508ms)
+✔ ResearchExperimentOrchestrator blocks when analytics is negati
+ve or inconclusive (3.821769ms)
+✔ ResearchExperimentOrchestrator blocks mismatched dataset count
+s without silent failure (3.790923ms)
+✔ ResearchExperimentOrchestrator is deterministic for repeated e
+xperiment envelopes (4.935615ms)
+✔ ResearchExperimentOrchestrator blocks insufficient offline fra
+me evidence (4.177615ms)
+✔ ResearchReportingService rejects corrupted datasets with audit
+ envelope (3531.597923ms)
+✔ ResearchReportingService consolidates all research modules whi
+le keeping operational gate blocked (692.152385ms)
+✔ RuntimePerformanceBudgetEngine keeps low-end runtime within bu
+dget (25.636231ms)
+✔ RuntimePerformanceBudgetEngine throttles when queue and latenc
+y exceed policy (6.179307ms)
+✔ RuntimePerformanceBudgetEngine blocks live evaluation on criti
+cal thermal state (4.239154ms)
+✔ RuntimePerformanceBudgetEngine produces deterministic checksum
+s for repeated samples (5.242692ms)
+✔ RuntimePerformanceBudgetEngine rejects malformed samples witho
+ut silent failure (4.515846ms)
+✔ RuntimeSanityEngine accepts healthy runtime alignment (22.6723
+85ms)
+✔ RuntimeSanityEngine requires review for moderate divergence (3
+.403385ms)
+✔ RuntimeSanityEngine detects paradigm break under severe diverg
+ence (3.453ms)
+✔ RuntimeSanityEngine blocks insufficient runtime sample (4.508m
+s)
+✔ RuntimeSanityEngine rejects malformed runtime input (3.259846m
+s)
+✔ securityHeaders applies baseline hardening headers (16.442077m
+s)
+✔ valueToState maps roulette values to institutional states (15.
+550153ms)
+✔ SequentialBiasDetector returns low evidence for rotating balan
+ced states (40.284ms)
+✔ SequentialBiasDetector flags persistent temporal clusters (16.
+396231ms)
+✔ SequentialResearchService rejects corrupted tiny dataset (39.8
+53231ms)
+✔ SequentialResearchService returns a temporal report for persis
+tent dataset (87.601ms)
+✔ Sessao Saudavel (11.604769ms)
+✔ Disparo Stop Loss (4.131846ms)
+✔ SessionPersistenceEngine creates and verifies deterministic pe
+rsistence records (13143.212001ms)
+✔ SessionPersistenceEngine replays journal for crash recovery wi
+th matching checksum (21.007538ms)
+✔ SessionPersistenceEngine preserves idempotency during replay (
+9.967847ms)
+✔ SessionPersistenceEngine rejects corrupted records without sil
+ent failure (5.994538ms)
+✔ SpatialClusterCorrelationEngine detects contextual spatial clu
+ster (26.749846ms)
+✔ SpatialClusterCorrelationEngine remains deterministic for repe
+ated evaluation (26.306077ms)
+✔ SpatialClusterCorrelationEngine returns inconclusive for balan
+ced contexts (7.23777ms)
+✔ SpatialClusterCorrelationEngine blocks insufficient sample (2.
+563923ms)
+✔ SpatialClusterCorrelationEngine rejects malformed roulette val
+ues without silent failure (6.508847ms)
+✔ StatisticalResearchService returns inconclusive research repor
+t for clean uniform dataset (4376.787384ms)
+✔ StatisticalResearchService rejects corrupted tiny dataset (15.
+692769ms)
+✔ StatisticalSignificanceEngine treats balanced roulette distrib
+ution as low evidence (29.027077ms)
+✔ StatisticalSignificanceEngine flags concentrated deviation as
+significant (10.160231ms)
+✔ StrategyBenchmarkEngine rejects invalid histories (14.636847ms
+)
+✔ StrategyBenchmarkEngine returns bounded benchmark metrics (591
+.322154ms)
+✔ StrategyBenchmarkEngine can surface candidate without opening
+operational gate (609.822231ms)
+✔ StrategyComparisonFramework selects a clear risk-adjusted lead
+er (25.774154ms)
+✔ StrategyComparisonFramework returns no clear leader for close
+candidates (3.748615ms)
+✔ StrategyComparisonFramework blocks candidates that fail eligib
+ility policy (6.174308ms)
+✔ StrategyComparisonFramework is deterministic across repeated c
+omparisons (68.187462ms)
+✔ StrategyComparisonFramework rejects malformed input without si
+lent failure (3.301154ms)
+✔ StrategyComparisonFramework blocks oversized comparison batche
+s (2.260615ms)
+✔ StrategyDecisionEngine returns research-only entry candidate f
+or strong evidence (36.415ms)
+✔ StrategyDecisionEngine blocks NO_GO warmup regardless of other
+ evidence (5.763769ms)
+✔ StrategyDecisionEngine never opens live stake even for candida
+tes (3.706769ms)
+✔ StrategyDecisionEngine blocks unsafe bankroll progression when
+ stake does not fit stop loss budget (4.847461ms)
+✔ StrategyDecisionEngine exposes no-stake bankroll guard for obs
+ervation states (12.373769ms)
+✔ StrategyDecisionService returns blocked governance decision fo
+r clean session (5868.009846ms)
+✔ StrategyDecisionService rejects corrupted tiny sessions throug
+h decision blockers (29.307615ms)
+✔ RouletteStats rejects invalid roulette numbers (17.525923ms)
+✔ StrategyEngine locks insufficient samples (3.806923ms)
+✔ StrategyEngine returns institutional analysis shape for valid
+sample (23.059076ms)
+✔ BacktestEngine produces a stable walk-forward summary (301.202
+077ms)
+✔ RiskPolicy blocks strategy without enough walk-forward evidenc
+e (6.365615ms)
+✔ StrategyEnsembleEngine forms consensus from aligned strategy v
+otes (21.763154ms)
+✔ StrategyEnsembleEngine blocks when strategies conflict above p
+olicy limit (4.714ms)
+✔ StrategyEnsembleEngine rejects malformed votes without silent
+failure (5.164154ms)
+✔ StrategyRankingEngine ranks eligible candidates by Bayesian ev
+idence adjusted for risk (21.404462ms)
+✔ StrategyRankingEngine is deterministic for repeated input orde
+r and tie-breaks by id (94.766846ms)
+✔ StrategyRankingEngine rejects malformed candidates without sil
+ent failure (8.768846ms)
+✔ StressScenarioAnalyzer returns bounded stress metrics and draw
+down surface (159.896385ms)
+✔ StressScenarioAnalyzer rejects invalid roulette histories (6.0
+68154ms)
+✔ StressScenarioAnalyzer flags aggressive capital pressure witho
+ut opening operational gate (81.20023ms)
+✔ StressScenarioService returns institutional stress report with
+ blocked gate (6636.053077ms)
+✔ StressScenarioService rejects corrupted datasets (5.929769ms)
+✔ StructuredLogger emits sanitized JSON logs (4278.586385ms)
+(node:10203) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type
+ of file:///root/rlsys-terminal-main/tests/synthetic-session-gen
+erator.test.js is not specified and it doesn't parse as CommonJS
+.
+Reparsing as ES module because module syntax was detected. This
+incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /root/rlsys-t
+erminal-main/package.json.
+(Use `node --trace-warnings ...` to show where the warning was c
+reated)
+✔ SyntheticSessionGenerator creates deterministic balanced contr
+ol sessions (45.982692ms)
+✔ SyntheticSessionGenerator injects sector bias for physical-edg
+e research (16.366769ms)
+✔ SyntheticSessionGenerator creates drifting sessions with multi
+ple segments (12.269923ms)
+✔ SyntheticSessionGenerator blocks oversized batches for low-mem
+ory devices (3.375077ms)
+✔ SyntheticSessionGenerator rejects malformed requests without s
+ilent failure (4.026154ms)
+✔ TemporalDecayEngine keeps fresh signals eligible with bounded
+contribution (23.348846ms)
+✔ TemporalDecayEngine blocks expired evidence before live decisi
+on (4.150846ms)
+✔ TemporalDecayEngine returns observation for aging but non-expi
+red evidence (3.808539ms)
+✔ TemporalDecayEngine rejects malformed signal without silent fa
+ilure (4.115308ms)
+✔ VisionReliabilityInspector accepts complete high-quality warmu
+p extraction (18.695462ms)
+✔ VisionReliabilityInspector requires manual review for low item
+ confidence (5.960154ms)
+✔ VisionReliabilityInspector rejects incomplete high-rejection e
+xtraction (3.639923ms)
+✔ VisionWarmupNormalizer extracts valid roulette numbers from JS
+ON markdown (34.490307ms)
+✔ VisionWarmupNormalizer reports rejected OCR values without gue
+ssing (4.556923ms)
+✔ VisionWarmupNormalizer rejects payload without sequence (3.384
+615ms)
+✔ VisionWarmupNormalizer reads object values and exposes reliabi
+lity review (6.482384ms)
+✔ WalkForwardValidationLab accepts robust out-of-sample alpha ca
+ndidate (38.616385ms)
+✔ WalkForwardValidationLab flags train-positive validation-negat
+ive overfit (7.734385ms)
+✔ WalkForwardValidationLab returns inconclusive when validation
+pass rate is weak but not pure overfit (6.875539ms)
+✔ WalkForwardValidationLab is deterministic across repeated runs
+ (8.305692ms)
+✔ WalkForwardValidationLab rejects malformed outcomes without si
+lent failure (4.11477ms)
+✔ WalkForwardValidationLab blocks oversized research batches (2.
+981384ms)
+✔ WarmupSessionAnalyzer accepts complete balanced 100-round warm
+up for research (38.849385ms)
+✔ WarmupSessionAnalyzer rejects invalid roulette values (7.06376
+9ms)
+✔ WarmupSessionAnalyzer marks incomplete warmup as NO_GO (4.7414
+61ms)
+✔ WarmupSessionService evaluates manual 100-round warmup with bl
+ocked operational gate (3407.193769ms)
+✔ WarmupSessionService rejects corrupted warmup dataset (7.21815
+4ms)
+✔ WarmupSessionService evaluates vision raw JSON without opening
+ operational gate (22.781538ms)
+ℹ tests 227
+ℹ suites 0
+ℹ pass 227
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 47412.609695
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# # 4. Finalização Git
+[root@localhost rlsys-terminal-main]# log "=> Commit e Merge..."
+[22:22:39] => Commit e Merge...
+[root@localhost rlsys-terminal-main]# git add .
+[root@localhost rlsys-terminal-main]# git commit -m "feat(runtim
+e): stable circuit breaker"
+On branch sprint-031-session-circuit-breaker
+nothing to commit, working tree clean
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ❌ ERRO DETECTADO NA LINHA 128
+   O script foi interrompido para proteção do repositório.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[root@localhost rlsys-terminal-main]# git push -u origin sprint-
+031-session-circuit-breaker
+Enumerating objects: 7, done.
+Counting objects: 100% (7/7), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (4/4), done.
+Writing objects: 100% (4/4), 409 bytes | 21.00 KiB/s, done.
+Total 4 (delta 3), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (3/3), completed with 3 local obj
+ects.
+To https://github.com/thiagocoder30/rlsys-terminal-main.git
+   89729a2..0ff20e6  sprint-031-session-circuit-breaker -> sprin
+t-031-session-circuit-breaker
+branch 'sprint-031-session-circuit-breaker' set up to track 'ori
+gin/sprint-031-session-circuit-breaker'.
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# git checkout main
+Switched to branch 'main'
+Your branch is ahead of 'origin/main' by 1 commit.
+  (use "git push" to publish your local commits)
+[root@localhost rlsys-terminal-main]# git merge sprint-031-sessi
+on-circuit-breaker
+Already up to date.
+[root@localhost rlsys-terminal-main]# git push origin main
+Total 0 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/thiagocoder30/rlsys-terminal-main.git
+   89729a2..0ff20e6  main -> main
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# # 5. ALERTA DE SUCESSO VIS
+UAL
+[root@localhost rlsys-terminal-main]# echo -e "\n${GREEN}${BOLD}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${N
+C}"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[root@localhost rlsys-terminal-main]# echo -e "${GREEN}${BOLD}
+ ✅ SPRINT 031 VALIDADA E INTEGRADA COM SUCESSO!${NC}"
+echo -e "${GREEN}${BOLD}   ✅ SPRINT 031 VALIDADA E INTEGRADA CO
+M SUCESSO"\n${GREEN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━${NC}"{NC}"
+   ✅ SPRINT 031 VALIDADA E INTEGRADA COM SUCESSOn━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{NC}
+[root@localhost rlsys-terminal-main]# echo -e "${GREEN}   • Repo
+sitório atualizado na main.${NC}"
+   • Repositório atualizado na main.
+[root@localhost rlsys-terminal-main]# echo -e "${GREEN}   • Test
+es unitários passados.${NC}"
+   • Testes unitários passados.
+[root@localhost rlsys-terminal-main]# echo -e "${GREEN}   • Buil
+d TypeScript concluído.${NC}"
+   • Build TypeScript concluído.
+[root@localhost rlsys-terminal-main]# echo -e "${GREEN}${BOLD}━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}
+"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[root@localhost rlsys-terminal-main]# log "Fim do processo. Sess
+ão mantida ativa."
+[22:23:11] Fim do processo. Sessão mantida ativa.
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# # O script termina aqui se
+m 'exit', mantendo você no shell do Arch
+[root@localhost rlsys-terminal-main]# ./capture-sprint-buffer.sh
+
+

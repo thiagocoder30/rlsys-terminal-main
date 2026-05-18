@@ -1,0 +1,374 @@
+(venv) [root@localhost rlsys-terminal-main]# python extrator_gem
+ini.py
+/root/rlsys-terminal-main/extrator_gemini.py:2: FutureWarning:
+
+All support for the `google.generativeai` package has ended. It
+will no longer be receiving
+updates or bug fixes. Please switch to the `google.genai` packag
+e as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python
+/blob/main/README.md
+
+  import google.generativeai as genai
+[SISTEMA] Iniciando Conexão Cloud com Gemini Flash...
+[Screenshot_20260518-115634_Chrome.jpg] Transmitindo matriz orig
+inal para processamento na nuvem...
+[ERRO DE API] Falha na comunicação com o servidor: 404 models/ge
+mini-1.5-flash is not found for API version v1beta, or is not su
+pported for generateContent. Call ModelService.ListModels to see
+ the list of available models and their supported methods.
+(venv) [root@localhost rlsys-terminal-main]# ./capture-sprint-bu
+ffer.sh
+Buffer capturado com sucesso:
+logs/sprint-buffer-20260518-170441.log
+
+Arquivo enviado para Downloads:
+/sdcard/Download/sprint-buffer-20260518-170441.log
+
+Após me enviar o arquivo aqui e eu confirmar a análise, remova c
+om:
+rm 'logs/sprint-buffer-20260518-170441.log' '/sdcard/Download/sp
+rint-buffer-20260518-170441.log'
+(venv) [root@localhost rlsys-terminal-main]# # Remove o pacote o
+bsoleto e as suas dependências
+(venv) [root@localhost rlsys-terminal-main]# pip uninstall googl
+e-generativeai -y
+Found existing installation: google-generativeai 0.8.6
+Uninstalling google-generativeai-0.8.6:
+  Successfully uninstalled google-generativeai-0.8.6
+(venv) [root@localhost rlsys-terminal-main]#
+(venv) [root@localhost rlsys-terminal-main]# # Instala o novo SD
+K oficial do Google
+(venv) [root@localhost rlsys-terminal-main]# pip install google-
+genai
+Collecting google-genai
+  Downloading google_genai-2.4.0-py3-none-any.whl.metadata (52 k
+B)
+Collecting anyio<5.0.0,>=4.8.0 (from google-genai)
+  Downloading anyio-4.13.0-py3-none-any.whl.metadata (4.5 kB)
+Requirement already satisfied: google-auth<3.0.0,>=2.48.1 in ./v
+env/lib/python3.14/site-packages (from google-auth[requests]<3.0
+.0,>=2.48.1->google-genai) (2.53.0)
+Collecting httpx<1.0.0,>=0.28.1 (from google-genai)
+  Downloading httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+Requirement already satisfied: pydantic<3.0.0,>=2.9.0 in ./venv/
+lib/python3.14/site-packages (from google-genai) (2.13.4)
+Requirement already satisfied: requests<3.0.0,>=2.28.1 in ./venv
+/lib/python3.14/site-packages (from google-genai) (2.34.2)
+Collecting tenacity<9.2.0,>=8.2.3 (from google-genai)
+  Downloading tenacity-9.1.4-py3-none-any.whl.metadata (1.2 kB)
+Collecting websockets<17.0,>=13.0.0 (from google-genai)
+  Downloading websockets-16.0-py3-none-any.whl.metadata (6.8 kB)
+Requirement already satisfied: typing-extensions<5.0.0,>=4.14.0
+in ./venv/lib/python3.14/site-packages (from google-genai) (4.15
+.0)
+Collecting distro<2,>=1.7.0 (from google-genai)
+  Downloading distro-1.9.0-py3-none-any.whl.metadata (6.8 kB)
+Collecting sniffio (from google-genai)
+  Downloading sniffio-1.3.1-py3-none-any.whl.metadata (3.9 kB)
+Requirement already satisfied: idna>=2.8 in ./venv/lib/python3.1
+4/site-packages (from anyio<5.0.0,>=4.8.0->google-genai) (3.15)
+Requirement already satisfied: pyasn1-modules>=0.2.1 in ./venv/l
+ib/python3.14/site-packages (from google-auth<3.0.0,>=2.48.1->go
+ogle-auth[requests]<3.0.0,>=2.48.1->google-genai) (0.4.2)
+Requirement already satisfied: cryptography>=38.0.3 in ./venv/li
+b/python3.14/site-packages (from google-auth<3.0.0,>=2.48.1->goo
+gle-auth[requests]<3.0.0,>=2.48.1->google-genai) (48.0.0)
+Requirement already satisfied: certifi in ./venv/lib/python3.14/
+site-packages (from httpx<1.0.0,>=0.28.1->google-genai) (2026.4.
+22)
+Collecting httpcore==1.* (from httpx<1.0.0,>=0.28.1->google-gena
+i)
+  Downloading httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+Collecting h11>=0.16 (from httpcore==1.*->httpx<1.0.0,>=0.28.1->
+google-genai)
+  Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+Requirement already satisfied: annotated-types>=0.6.0 in ./venv/
+lib/python3.14/site-packages (from pydantic<3.0.0,>=2.9.0->googl
+e-genai) (0.7.0)
+Requirement already satisfied: pydantic-core==2.46.4 in ./venv/l
+ib/python3.14/site-packages (from pydantic<3.0.0,>=2.9.0->google
+-genai) (2.46.4)
+Requirement already satisfied: typing-inspection>=0.4.2 in ./ven
+v/lib/python3.14/site-packages (from pydantic<3.0.0,>=2.9.0->goo
+gle-genai) (0.4.2)
+Requirement already satisfied: charset_normalizer<4,>=2 in ./ven
+v/lib/python3.14/site-packages (from requests<3.0.0,>=2.28.1->go
+ogle-genai) (3.4.7)
+Requirement already satisfied: urllib3<3,>=1.26 in ./venv/lib/py
+thon3.14/site-packages (from requests<3.0.0,>=2.28.1->google-gen
+ai) (2.7.0)
+Requirement already satisfied: cffi>=2.0.0 in ./venv/lib/python3
+.14/site-packages (from cryptography>=38.0.3->google-auth<3.0.0,
+>=2.48.1->google-auth[requests]<3.0.0,>=2.48.1->google-genai) (2
+.0.0)
+Requirement already satisfied: pycparser in ./venv/lib/python3.1
+4/site-packages (from cffi>=2.0.0->cryptography>=38.0.3->google-
+auth<3.0.0,>=2.48.1->google-auth[requests]<3.0.0,>=2.48.1->googl
+e-genai) (3.0)
+Requirement already satisfied: pyasn1<0.7.0,>=0.6.1 in ./venv/li
+b/python3.14/site-packages (from pyasn1-modules>=0.2.1->google-a
+uth<3.0.0,>=2.48.1->google-auth[requests]<3.0.0,>=2.48.1->google
+-genai) (0.6.3)
+Downloading google_genai-2.4.0-py3-none-any.whl (818 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 818.2/818.2 kB 1.2 MB/s  0:00:00
+Downloading anyio-4.13.0-py3-none-any.whl (114 kB)
+Downloading distro-1.9.0-py3-none-any.whl (20 kB)
+Downloading httpx-0.28.1-py3-none-any.whl (73 kB)
+Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+Downloading tenacity-9.1.4-py3-none-any.whl (28 kB)
+Downloading websockets-16.0-py3-none-any.whl (171 kB)
+Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+Downloading sniffio-1.3.1-py3-none-any.whl (10 kB)
+Installing collected packages: websockets, tenacity, sniffio, h1
+1, distro, anyio, httpcore, httpx, google-genai
+Successfully installed anyio-4.13.0 distro-1.9.0 google-genai-2.
+4.0 h11-0.16.0 httpcore-1.0.9 httpx-0.28.1 sniffio-1.3.1 tenacit
+y-9.1.4 websockets-16.0
+(venv) [root@localhost rlsys-terminal-main]# cat << 'EOF' > extr
+ator_gemini.py
+> import os
+> import re
+> from dotenv import load_dotenv
+> from google import genai
+>
+> # Carrega as variáveis de ambiente do arquivo secreto .env
+> load_dotenv()
+>
+> # Recupera a chave de acesso
+> CHAVE_API = os.getenv("GEMINI_API_KEY")
+>
+> if not CHAVE_API:
+>     print("\033[91m[ERRO CRÍTICO]\033[0m Variável de ambiente
+GEMINI_API_KEY não localizada. Verifique o arquivo .env")
+>     exit()
+>
+> # Inicialização do cliente com a nova arquitetura do SDK
+> cliente = genai.Client(api_key=CHAVE_API)
+>
+> def extrair_via_nuvem():
+>     pasta_alvo = "/sdcard/DCIM/Screenshots/"
+>     print("\033[92m[SISTEMA]\033[0m Iniciando Conexão Cloud co
+m o novo SDK Gemini...")
+>
+>     try:
+>         arquivos = [f for f in os.listdir(pasta_alvo) if f.sta
+rtswith('Screenshot') or f.endswith('.jpg') or f.endswith('.png'
+)]
+>         if not arquivos:
+>             print("[ERRO] Nenhuma captura de tela identificada
+ na pasta alvo.")
+>             return None
+>
+>         arquivos.sort(key=lambda x: os.path.getmtime(os.path.j
+oin(pasta_alvo, x)), reverse=True)
+>         arquivo_atual = arquivos[0]
+>         caminho_completo = os.path.join(pasta_alvo, arquivo_at
+ual)
+>
+>         print(f"[{arquivo_atual}] Transmitindo matriz para o n
+ovo endpoint...")
+>
+>         # Novo método de upload de ficheiros no SDK genai
+>         arquivo_upload = cliente.files.upload(file=caminho_com
+pleto)
+>
+>         prompt = """
+>         Você é um sistema especializado em visão computacional
+ e análise de dados tabulares.
+>         A imagem fornecida é um painel de estatísticas de uma
+roleta de cassino.
+>
+>         Sua tarefa consiste em:
+>         1. Identificar e ler todos os números da linha de dest
+aque superior (os resultados mais recentes, lendo da esquerda pa
+ra a direita).
+>         2. Identificar e ler todos os números presentes no gri
+d/painel principal inferior (linha por linha, da esquerda para a
+ direita, de cima para baixo).
+>         3. Retornar APENAS os números identificados, separados
+ estritamente por um único espaço em branco. Não adicione nenhum
+a introdução, explicação, pontuação ou texto extra. Apenas a seq
+uência numérica.
+>         """
+>
+>         # Novo método de geração de conteúdo
+>         resposta = cliente.models.generate_content(
+>             model='gemini-1.5-flash',
+>             contents=[
+>                 arquivo_upload,
+>                 prompt
+>             ]
+>         )
+>
+>         # Novo método para expurgar o ficheiro da nuvem
+>         cliente.files.delete(name=arquivo_upload.name)
+>
+>         # Processamento do retorno
+>         texto_puro = resposta.text
+>         numeros_extraidos = re.findall(r'\b\d+\b', texto_puro)
+>
+>         # Filtro estrito (0 a 36)
+>         numeros_validos = [int(n) for n in numeros_extraidos i
+f 0 <= int(n) <= 36]
+>
+>         print(f"\n\033[93m[SUCESSO ABSOLUTO]\033[0m O Gemini e
+xtraiu {len(numeros_validos)} números com a nova API!")
+>         print(f"Últimos 15 números (Mais recentes): {numeros_v
+alidos[:15]}")
+>         print(f"Base do Grid (Antigos): {numeros_validos[-10:]
+}")
+>
+>         return numeros_validos
+>
+>     except Exception as e:
+>         print(f"[ERRO DE API] Falha na comunicação com o servi
+dor: {e}")
+>         return None
+>
+> if __name__ == "__main__":
+>     extrair_via_nuvem()
+> EOF
+(venv) [root@localhost rlsys-terminal-main]# python3 extrator_ge
+mini.py
+[SISTEMA] Iniciando Conexão Cloud com o novo SDK Gemini...
+[Screenshot_20260518-115634_Chrome.jpg] Transmitindo matriz para
+ o novo endpoint...
+[ERRO DE API] Falha na comunicação com o servidor: 404 NOT_FOUND
+. {'error': {'code': 404, 'message': 'models/gemini-1.5-flash is
+ not found for API version v1beta, or is not supported for gener
+ateContent. Call ModelService.ListModels to see the list of avai
+lable models and their supported methods.', 'status': 'NOT_FOUND
+'}}
+(venv) [root@localhost rlsys-terminal-main]# ./capture-sprint-bu
+ffer.sh
+Buffer capturado com sucesso:
+logs/sprint-buffer-20260518-170953.log
+
+Arquivo enviado para Downloads:
+/sdcard/Download/sprint-buffer-20260518-170953.log
+
+Após me enviar o arquivo aqui e eu confirmar a análise, remova c
+om:
+rm 'logs/sprint-buffer-20260518-170953.log' '/sdcard/Download/sp
+rint-buffer-20260518-170953.log'
+(venv) [root@localhost rlsys-terminal-main]# cat << 'EOF' > extr
+ator_gemini.py
+> import os
+> import re
+> from dotenv import load_dotenv
+> from google import genai
+>
+> # Carrega as variáveis de ambiente do arquivo secreto .env
+> load_dotenv()
+>
+> # Recupera a chave de acesso
+> CHAVE_API = os.getenv("GEMINI_API_KEY")
+>
+> if not CHAVE_API:
+>     print("\033[91m[ERRO CRÍTICO]\033[0m Variável de ambiente
+GEMINI_API_KEY não localizada. Verifique o arquivo .env")
+>     exit()
+>
+> # Inicialização do cliente com a nova arquitetura do SDK
+> cliente = genai.Client(api_key=CHAVE_API)
+>
+> def extrair_via_nuvem():
+>     pasta_alvo = "/sdcard/DCIM/Screenshots/"
+>     print("\033[92m[SISTEMA]\033[0m Iniciando Conexão Cloud co
+m o novo SDK Gemini...")
+>
+>     try:
+>         arquivos = [f for f in os.listdir(pasta_alvo) if f.sta
+rtswith('Screenshot') or f.endswith('.jpg') or f.endswith('.png'
+)]
+>         if not arquivos:
+>             print("[ERRO] Nenhuma captura de tela identificada
+ na pasta alvo.")
+>             return None
+>
+>         arquivos.sort(key=lambda x: os.path.getmtime(os.path.j
+oin(pasta_alvo, x)), reverse=True)
+>         arquivo_atual = arquivos[0]
+>         caminho_completo = os.path.join(pasta_alvo, arquivo_at
+ual)
+>
+>         print(f"[{arquivo_atual}] Transmitindo matriz para o n
+ovo endpoint...")
+>
+>         # Novo método de upload de ficheiros no SDK genai
+>         arquivo_upload = cliente.files.upload(file=caminho_com
+pleto)
+>
+>         prompt = """
+>         Você é um sistema especializado em visão computacional
+ e análise de dados tabulares.
+>         A imagem fornecida é um painel de estatísticas de uma
+roleta de cassino.
+>
+>         Sua tarefa consiste em:
+>         1. Identificar e ler todos os números da linha de dest
+aque superior (os resultados mais recentes, lendo da esquerda pa
+ra a direita).
+>         2. Identificar e ler todos os números presentes no gri
+d/painel principal inferior (linha por linha, da esquerda para a
+ direita, de cima para baixo).
+>         3. Retornar APENAS os números identificados, separados
+ estritamente por um único espaço em branco. Não adicione nenhum
+a introdução, explicação, pontuação ou texto extra. Apenas a seq
+uência numérica.
+>         """
+>
+>         # O SEGREDO ESTÁ AQUI: Atualização para o modelo 2.5 F
+lash
+>         resposta = cliente.models.generate_content(
+>             model='gemini-2.5-flash',
+>             contents=[
+>                 arquivo_upload,
+>                 prompt
+>             ]
+>         )
+>
+>         # Novo método para expurgar o ficheiro da nuvem
+>         cliente.files.delete(name=arquivo_upload.name)
+>
+>         # Processamento do retorno
+>         texto_puro = resposta.text
+>         numeros_extraidos = re.findall(r'\b\d+\b', texto_puro)
+>
+>         # Filtro estrito (0 a 36)
+>         numeros_validos = [int(n) for n in numeros_extraidos i
+f 0 <= int(n) <= 36]
+>
+>         print(f"\n\033[93m[SUCESSO ABSOLUTO]\033[0m O Gemini e
+xtraiu {len(numeros_validos)} números com a nova API!")
+>         print(f"Últimos 15 números (Mais recentes): {numeros_v
+alidos[:15]}")
+>         print(f"Base do Grid (Antigos): {numeros_validos[-10:]
+}")
+>
+>         return numeros_validos
+>
+>     except Exception as e:
+>         print(f"[ERRO DE API] Falha na comunicação com o servi
+dor: {e}")
+>         return None
+>
+> if __name__ == "__main__":
+>     extrair_via_nuvem()
+> EOF
+(venv) [root@localhost rlsys-terminal-main]# python extrator_gem
+ini.py
+[SISTEMA] Iniciando Conexão Cloud com o novo SDK Gemini...
+[Screenshot_20260518-115634_Chrome.jpg] Transmitindo matriz para
+ o novo endpoint...
+
+[SUCESSO ABSOLUTO] O Gemini extraiu 142 números com a nova API!
+Últimos 15 números (Mais recentes): [18, 23, 19, 21, 22, 18, 17,
+ 21, 36, 0, 31, 17, 19, 25, 19]
+Base do Grid (Antigos): [26, 3, 28, 10, 16, 6, 30, 35, 13, 28]
+(venv) [root@localhost rlsys-terminal-main]# ./capture-sprint-bu
+ffer.sh
+

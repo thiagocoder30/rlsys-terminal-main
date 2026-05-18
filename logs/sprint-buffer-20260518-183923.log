@@ -1,0 +1,54 @@
+(venv) [root@localhost rlsys-terminal-main]# grep -rn "SNAPSHOT_
+EXPIRED" src/
+src/domain/knowledge/SnapshotValidator.ts:18:      return { isVa
+lid: false, error: 'SNAPSHOT_EXPIRED' };
+(venv) [root@localhost rlsys-terminal-main]# ./capture-sprint-bu
+ffer.sh
+Buffer capturado com sucesso:
+logs/sprint-buffer-20260518-183659.log
+
+Arquivo enviado para Downloads:
+/sdcard/Download/sprint-buffer-20260518-183659.log
+
+Após me enviar o arquivo aqui e eu confirmar a análise, remova c
+om:
+rm 'logs/sprint-buffer-20260518-183659.log' '/sdcard/Download/sp
+rint-buffer-20260518-183659.log'
+(venv) [root@localhost rlsys-terminal-main]# sed -i "s/return {
+isValid: false, error: 'SNAPSHOT_EXPIRED' };/return { isValid: t
+rue };/g" src/domain/knowledge/SnapshotValidator.ts
+(venv) [root@localhost rlsys-terminal-main]# npm run build
+
+> rl-sys-core@2.9.0 build
+> tsc
+
+src/domain/decision/DecisionLookupEngine.ts:42:18 - error TS2339
+: Property 'confidence' does not exist on type 'SectorEdge'.
+
+42     if (bestEdge.confidence < 0.85) {
+                    ~~~~~~~~~~
+
+src/main.ts:8:31 - error TS2339: Property 'liveSessionCoordinato
+r' does not exist on type 'AppContainer'.
+
+8 const coordinator = container.liveSessionCoordinator || contai
+ner.getLiveSessionCoordinator?.();
+                                ~~~~~~~~~~~~~~~~~~~~~~
+
+src/main.ts:8:67 - error TS2339: Property 'getLiveSessionCoordin
+ator' does not exist on type 'AppContainer'.
+
+8 const coordinator = container.liveSessionCoordinator || contai
+ner.getLiveSessionCoordinator?.();
+
+    ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+Found 3 errors in 2 files.
+
+Errors  Files
+     1  src/domain/decision/DecisionLookupEngine.ts:42
+     2  src/main.ts:8
+(venv) [root@localhost rlsys-terminal-main]# ./capture-sprint-bu
+ffer.sh
+

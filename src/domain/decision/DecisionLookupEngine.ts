@@ -39,7 +39,7 @@ export class DecisionLookupEngine {
 
     // 5. Política de Execução Institucional (Hierarquia NO_GO -> OBSERVE -> SIGNAL)
     // O snapshot já foi filtrado no compilador, mas o motor aplica o julgamento tático final.
-    if (bestEdge.confidence < 0.85) {
+    if (bestEdge.confidenceScore < 0.85) {
       return this.buildResult(ActionSignal.OBSERVE, bestEdge.expectedEV, bestEdge.confidenceScore, 'WEAK_CONFIDENCE');
     }
 

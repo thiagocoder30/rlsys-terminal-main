@@ -1,0 +1,560 @@
+[root@localhost rlsys-terminal-main]# #!/bin/bash
+[root@localhost rlsys-terminal-main]# set -uo pipefail
+M:%S')] $1" | tee -a "$LOG_FILE"
+}
+
+error_handler() {
+    echo -e "\n${RED}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${RED}${BOLD}   ❌ ERRO DETECTADO NA LINHA $1${NC}"
+    echo -e "${RED}   A Sprint 058 foi interrompida para protege
+r a integridade.${NC}"
+    echo -e "${RED}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    return 1 2>/dev/null || exit 1
+}
+
+trap 'error_handler $LINENO' ERR
+
+log "======================================================"
+log " INICIANDO SPRINT 058 - THE AUTONOMOUS SCIENTIST "
+log "======================================================"
+
+cd "$HOME/rlsys-terminal-main"
+
+# 1. Preparação do Git
+log "=> Sincronizando repositório..."
+git checkout main
+git pull origin main
+
+log "=> Preparando branch isolada..."
+git branch -D sprint-058-self-learning 2>/dev/null || true
+git checkout -b sprint-058-self-learning
+
+mkdir -p src/domain/research
+mkdir -p src/infrastructure/research
+
+# 2. Escrita: O Motor de Aprendizagem Autónoma (Self-Learning En
+gine)
+cat << 'EOF' > src/domain/research/SelfLearningEngine.ts
+export interface SignatureStats {
+  plays: number;
+  hits: number;
+}
+
+export class SelfLearningEngine {
+  private readonly statsMap = new Map<string, SignatureStats>();
+
+  // Processa uma linha de telemetria O(1)
+  public ingestTelemetry(dealerId: string, speed: string, sector
+: number, action: string, pnl: number): void {
+    if (action !== 'SIGNAL' || isNaN(pnl)) return;
+
+    const key = `${dealerId}_${speed}_${sector}`;
+    const current = this.statsMap.get(key) || { plays: 0, hits:
+0 };
+
+    current.plays += 1;
+    if (pnl > 0) current.hits += 1;
+
+    this.statsMap.set(key, current);
+  }
+
+  // Refina o Snapshot de Conhecimento
+  public refineSnapshot(existingSnapshot: any): any {
+    const updatedSnapshot = JSON.parse(JSON.stringify(existingSn
+apshot)); // Clone profundo seguro
+
+    if (!updatedSnapshot.lookupTable) updatedSnapshot.lookupTabl
+e = {};
+
+    this.statsMap.forEach((stats, key) => {
+      // Cálculo de EV empírico
+      const winRate = stats.hits / stats.plays;
+      const calculatedEV = (winRate * 35) - ((1 - winRate) * 1);
+
+      // Lei dos Grandes Números: Confiança baseada no tamanho d
+a amostra (Máx 10 para base)
+      const sampleConfidence = Math.min(stats.plays / 10, 1.0);
+      const finalConfidence = Math.max(0.1, sampleConfidence); /
+/ Mínimo de 10%
+
+      // Se a assinatura já existir, atualiza; senão, cria uma n
+ova.
+      // O Alvo do Setor seria calculado pelo Tracker, assumimos
+ o alvo atual do snapshot ou 0 se novo.
+      let targetSector = 0;
+      if (updatedSnapshot.lookupTable[key] && updatedSnapshot.lo
+okupTable[key].length > 0) {
+        targetSector = updatedSnapshot.lookupTable[key][0].targe
+tSector;
+      }
+
+      updatedSnapshot.lookupTable[key] = [{
+        targetSector: targetSector,
+        clusterSize: 5,
+        expectedEV: Number(calculatedEV.toFixed(4)),
+        confidenceScore: Number(finalConfidence.toFixed(4))
+      }];
+    });
+
+    updatedSnapshot.metadata.compiledAtMs = Date.now();
+    return updatedSnapshot;
+  }
+}
+EOF
+
+# 3. Escrita: O Csv Streamer e Update Orchestrator (Idempotência
+)
+cat << 'EOF' > src/infrastructure/research/SnapshotUpdater.ts
+import * as fs from 'node:fs';
+import * as readline from 'node:readline';
+import * as path from 'node:path';
+import { SelfLearningEngine } from '../../domain/research/SelfLe
+arningEngine';
+
+export class SnapshotUpdater {
+  constructor(private readonly storageDirectory: string) {}
+
+  public async runRefinementCycle(): Promise<void> {
+    console.log("[CIENTISTA] Iniciando ingestão de telemetria (S
+tream Mode)...");
+ [root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# # Cores
+[root@localhost rlsys-terminal-main]# GREEN='\033[0;32m'
+[root@localhost rlsys-terminal-main]# RED='\033[0;31m'
+[root@localhost rlsys-terminal-main]# NC='\033[0m'
+[root@localhost rlsys-terminal-main]# BOLD='\033[1m'
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# LOG_FILE="sprint_058_self_
+learning.log"
+[root@localhost rlsys-terminal-main]# > "$LOG_FILE"
+[root@localhost rlsys-terminal-main]#
+s[root@localhost rlsys-terminal-main]# log() {
+With('se>     echo -e "[$(date +'%H:%M:%S')] $1" | tee -a "$LOG_
+FILE"
+> }
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# error_handler() {
+>     echo -e "\n${RED}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+>     echo -e "${RED}${BOLD}   ❌ ERRO DETECTADO NA LINHA $1${NC
+}"
+>     echo -e "${RED}   A Sprint 058 foi interrompida para prote
+ger a integridade.${NC}"
+>     echo -e "${RED}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+>     return 1 2>/dev/null || exit 1
+> }
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# trap 'error_handler $LINEN
+O' ERR
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# log "=====================
+================================="
+[02:25:52] =====================================================
+=
+[root@localhost rlsys-terminal-main]# log " INICIANDO SPRINT 058
+ - THE AUTONOMOUS SCIENTIST "
+[02:25:52]  INICIANDO SPRINT 058 - THE AUTONOMOUS SCIENTIST
+[root@localhost rlsys-terminal-main]# log "=====================
+================================="
+[02:25:52] =====================================================
+=
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# cd "$HOME/rlsys-terminal-m
+ain"
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# # 1. Preparação do Git
+[root@localhost rlsys-terminal-main]# log "=> Sincronizando repo
+sitório..."
+[02:25:53] => Sincronizando repositório...
+[root@localhost rlsys-terminal-main]# git checkout main
+Already on 'main'
+Your branch is up to date with 'origin/main'.
+[root@localhost rlsys-terminal-main]# git pull origin main
+From https://github.com/thiagocoder30/rlsys-terminal-main
+ * branch            main       -> FETCH_HEAD
+Already up to date.
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# log "=> Preparando branch
+isolada..."
+[02:25:56] => Preparando branch isolada...
+[root@localhost rlsys-terminal-main]# git branch -D sprint-058-s
+elf-learning 2>/dev/null || true
+[root@localhost rlsys-terminal-main]# git checkout -b sprint-058
+-self-learning
+Switched to a new branch 'sprint-058-self-learning'
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# mkdir -p src/domain/resear
+ch
+[root@localhost rlsys-terminal-main]# mkdir -p src/infrastructur
+e/research
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# # 2. Escrita: O Motor de A
+prendizagem Autónoma (Self-Learning Engine)
+[root@localhost rlsys-terminal-main]# cat << 'EOF' > src/domain/
+research/SelfLearningEngine.ts
+> export interface SignatureStats {
+>   plays: number;
+>   hits: number;
+> }
+>
+> export class SelfLearningEngine {
+>   private readonly statsMap = new Map<string, SignatureStats>(
+);
+>
+>   // Processa uma linha de telemetria O(1)
+>   public ingestTelemetry(dealerId: string, speed: string, sect
+or: number, action: string, pnl: number): void {
+>     if (action !== 'SIGNAL' || isNaN(pnl)) return;
+>
+>     const key = `${dealerId}_${speed}_${sector}`;
+>     const current = this.statsMap.get(key) || { plays: 0, hits
+: 0 };
+>
+>     current.plays += 1;
+>     if (pnl > 0) current.hits += 1;
+>
+>     this.statsMap.set(key, current);
+>   }
+>
+>   // Refina o Snapshot de Conhecimento
+>   public refineSnapshot(existingSnapshot: any): any {
+>     const updatedSnapshot = JSON.parse(JSON.stringify(existing
+Snapshot)); // Clone profundo seguro
+>
+ÍDO]\>     if (!updatedSnapshot.lookupTable) updatedSnapshot.loo
+kupTable = {};
+>
+>     this.statsMap.forEach((stats, key) => {
+>       // Cálculo de EV empírico
+>       const winRate = stats.hits / stats.plays;
+>       const calculatedEV = (winRate * 35) - ((1 - winRate) * 1
+);
+>
+�pido
+log "=> Configur>       // Lei dos Grandes Números: Confiança ba
+seada no tamanho da amostra (Máx 10 para base)
+>       const sampleConfidence = Math.min(stats.plays / 10, 1.0)
+;
+>       const finalConfidence = Math.max(0.1, sampleConfidence);
+ // Mínimo de 10%
+>
+>       // Se a assinatura já existir, atualiza; senão, cria uma
+ nova.
+>       // O Alvo do Setor seria calculado pelo Tracker, assumim
+os o alvo atual do snapshot ou 0 se novo.
+>       let targetSector = 0;
+>       if (updatedSnapshot.lookupTable[key] && updatedSnapshot.
+lookupTable[key].length > 0) {
+>         targetSector = updatedSnapshot.lookupTable[key][0].tar
+getSector;
+>       }
+>
+>       updatedSnapshot.lookupTable[key] = [{
+>         targetSector: targetSector,
+>         clusterSize: 5,
+>         expectedEV: Number(calculatedEV.toFixed(4)),
+>         confidenceScore: Number(finalConfidence.toFixed(4))
+>       }];
+>     });
+>
+t>     updatedSnapshot.metadata.compiledAtMs = Date.now();
+>     return updatedSnapshot;
+>   }
+> }
+> EOF
+[root@localhost rlsys-terminal-main]#
+t[root@localhost rlsys-terminal-main]# # 3. Escrita: O Csv Strea
+mer e Update Orchestrator (Idempotência)
+n main
+
+echo -e "\n${[root@localhost rlsys-terminal-main]# cat << 'EOF'
+> src/infrastructure/research/SnapshotUpdater.ts
+> import * as fs from 'node:fs';
+> import * as readline from 'node:readline';
+> import * as path from 'node:path';
+> import { SelfLearningEngine } from '../../domain/research/Self
+LearningEngine';
+>
+> export class SnapshotUpdater {
+>   constructor(private readonly storageDirectory: string) {}
+>
+s>   public async runRefinementCycle(): Promise<void> {
+>     console.log("[CIENTISTA] Iniciando ingestão de telemetria
+(Stream Mode)...");
+>     const engine = new SelfLearningEngine();
+>     const telemetryFiles = fs.readdirSync(this.storageDirector
+y).filter(f => f.startsWith('session_telemetry_') && f.endsWith(
+'.csv'));
+>
+�>     if (telemetryFiles.length === 0) {
+�>       console.log("[CIENTISTA] Nenhum log de telemetria encon
+trado.");
+>       return;
+>     }
+>
+>     // Leitura Assíncrona O(1) de Memória
+>     for (const file of telemetryFiles) {
+>       const filePath = path.join(this.storageDirectory, file);
+>       const fileStream = fs.createReadStream(filePath);
+>       const rl = readline.createInterface({ input: fileStream,
+ crlfDelay: Infinity });
+>
+>       let isHeader = true;
+>       for await (const line of rl) {
+>         if (isHeader) { isHeader = false; continue; }
+>
+>         // CSV: timestampMs,dealerId,wheelSpeed,targetSector,a
+ction,expectedEV,confidence,recommendedUnits,pnl,latencyMs
+>         const parts = line.split(',');
+>         if (parts.length >= 9) {
+>           const dealerId = parts[1];
+>           const speed = parts[2];
+>           const sector = parseInt(parts[3], 10);
+>           const action = parts[4];
+>           const pnl = parseFloat(parts[8]);
+>           engine.ingestTelemetry(dealerId, speed, sector, acti
+on, pnl);
+>         }
+>       }
+>     }
+>
+>     console.log("[CIENTISTA] Processamento de ficheiros conclu
+ído. Refinando cérebro...");
+>
+>     // Atualização Segura (Fail-Safe)
+>     const snapshotPath = path.join(this.storageDirectory, 'def
+ault_alpha.json');
+>     if (!fs.existsSync(snapshotPath)) throw new Error("Snapsho
+t base não encontrado.");
+>
+>     const existingData = JSON.parse(fs.readFileSync(snapshotPa
+th, 'utf-8'));
+>     const refinedData = engine.refineSnapshot(existingData);
+>
+>     fs.writeFileSync(snapshotPath, JSON.stringify(refinedData,
+ null, 2));
+>     console.log("[CIENTISTA] Snapshot default_alpha.json atual
+izado com sucesso. Novo EV e Confiança registados.");
+>   }
+> }
+> EOF
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# # 4. Escrita: O CLI Entry
+Point do Cientista
+[root@localhost rlsys-terminal-main]# cat << 'EOF' > src/researc
+h.ts
+> import { SnapshotUpdater } from './infrastructure/research/Sna
+pshotUpdater';
+>
+> async function main() {
+>   console.clear();
+>   console.log("\x1b[34m\x1b[1mRL.SYS CORE — AUTONOMOUS SCIENTI
+ST (FASE 3)\x1b[0m\n");
+>
+>   try {
+>     const updater = new SnapshotUpdater('./storage/snapshots')
+;
+>     await updater.runRefinementCycle();
+>     console.log("\n\x1b[32m\x1b[1m[PROCESSO CONCLUÍDO]\x1b[0m
+O sistema está pronto para a próxima sessão.");
+>   } catch (error: any) {
+>     console.log(`\n\x1b[31m\x1b[1m[ERRO CRÍTICO]\x1b[0m ${erro
+r.message}`);
+>     process.exit(1);
+>   }
+> }
+> main();
+> EOF
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# # 5. Configuração e Mock d
+e Dados para Teste Rápido
+[root@localhost rlsys-terminal-main]# log "=> Configurando scrip
+t no package.json..."
+[02:25:58] => Configurando script no package.json...
+[root@localhost rlsys-terminal-main]# node -e "
+> const fs = require('fs');
+> const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')
+);
+> pkg.scripts['research:update'] = 'node dist/research.js';
+> fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2))
+;
+> "
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# log "=> Gerando ficheiro d
+e telemetria falso para teste do Machine Learning..."
+[02:25:59] => Gerando ficheiro de telemetria falso para teste do
+ Machine Learning...
+[root@localhost rlsys-terminal-main]# cat << 'EOF' > storage/sna
+pshots/session_telemetry_test_learning.csv
+> timestampMs,dealerId,wheelSpeed,targetSector,action,expectedEV
+,confidence,recommendedUnits,pnl,latencyMs
+> 1700000000000,D_ALICE,NORMAL,32,SIGNAL,0.22,0.98,2,-2,5.0
+> 1700000000100,D_ALICE,NORMAL,32,SIGNAL,0.22,0.98,2,70,5.0
+> 1700000000200,D_ALICE,NORMAL,32,SIGNAL,0.22,0.98,2,70,5.0
+> EOF
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# log "=> Compilando sistema
+..."
+[02:25:59] => Compilando sistema...
+[root@localhost rlsys-terminal-main]# npm run build
+
+> rl-sys-core@2.9.0 build
+> tsc
+
+src/domain/decision/DecisionLookupEngine.ts:42:18 - error TS2339
+: Property 'confidence' does not exist on type 'SectorEdge'.
+
+42     if (bestEdge.confidence < 0.85) {
+                    ~~~~~~~~~~
+
+
+Found 1 error in src/domain/decision/DecisionLookupEngine.ts:42
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ❌ ERRO DETECTADO NA LINHA 4986
+   A Sprint 058 foi interrompida para proteger a integridade.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# log "=> Finalizando Sprint
+ no Git..."
+[02:26:40] => Finalizando Sprint no Git...
+[root@localhost rlsys-terminal-main]# git add .
+[root@localhost rlsys-terminal-main]# git commit -m "feat(ai): a
+utonomous scientist with stream-based telemetry parsing and EV r
+efinement"
+[sprint-058-self-learning 67eb4d0] feat(ai): autonomous scientis
+t with stream-based telemetry parsing and EV refinement
+ 5 files changed, 131 insertions(+), 1 deletion(-)
+ create mode 100644 src/domain/research/SelfLearningEngine.ts
+ create mode 100644 src/infrastructure/research/SnapshotUpdater.
+ts
+ create mode 100644 src/research.ts
+ create mode 100644 storage/snapshots/session_telemetry_test_lea
+rning.csv
+[root@localhost rlsys-terminal-main]# git push -u origin sprint-
+058-self-learning
+Enumerating objects: 22, done.
+Counting objects: 100% (22/22), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (12/12), done.
+Writing objects: 100% (14/14), 3.50 KiB | 179.00 KiB/s, done.
+Total 14 (delta 6), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (6/6), completed with 6 local obj
+ects.
+remote:
+remote: Create a pull request for 'sprint-058-self-learning' on
+GitHub by visiting:
+remote:      https://github.com/thiagocoder30/rlsys-terminal-mai
+n/pull/new/sprint-058-self-learning
+remote:
+To https://github.com/thiagocoder30/rlsys-terminal-main.git
+ * [new branch]      sprint-058-self-learning -> sprint-058-self
+-learning
+branch 'sprint-058-self-learning' set up to track 'origin/sprint
+-058-self-learning'.
+[root@localhost rlsys-terminal-main]# git checkout main
+Switched to branch 'main'
+Your branch is up to date with 'origin/main'.
+[root@localhost rlsys-terminal-main]# git merge sprint-058-self-
+learning
+Updating b07b7b0..67eb4d0
+Fast-forward
+ package.json                             |  3 +-
+ .../research/SelfLearningEngine.ts       | 55 ++++++++++++++++
+ .../research/SnapshotUpdater.ts          | 54 +++++++++++++++
+ src/research.ts                          | 16 +++++
+ .../session_telemetry_test_learning.csv  |  4 ++
+ 5 files changed, 131 insertions(+), 1 deletion(-)
+ create mode 100644 src/domain/research/SelfLearningEngine.ts
+ create mode 100644 src/infrastructure/research/SnapshotUpdater.
+ts
+ create mode 100644 src/research.ts
+ create mode 100644 storage/snapshots/session_telemetry_test_lea
+rning.csv
+[root@localhost rlsys-terminal-main]# git push origin main
+Total 0 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/thiagocoder30/rlsys-terminal-main.git
+   b07b7b0..67eb4d0  main -> main
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# echo -e "\n${GREEN}${BOLD}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${N
+C}"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[root@localhost rlsys-terminal-main]# echo -e "${GREEN}${BOLD}
+ 🧠 SPRINT 058 CONCLUÍDA: O CIENTISTA AUTÓNOMO!${NC}"
+echo -e "${GREEN}${BOLD}   🧠 SPRINT 058 CONCLUÍDA: O CIENTISTA
+AUTÓNOMO"\n${GREEN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━${NC}"{NC}"
+   🧠 SPRINT 058 CONCLUÍDA: O CIENTISTA AUTÓNOMOn━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{NC}
+[root@localhost rlsys-terminal-main]# echo -e "${GREEN}   • Stre
+am Parser O(1) lê ficheiros CSV de forma segura.${NC}"
+   • Stream Parser O(1) lê ficheiros CSV de forma segura.
+[root@localhost rlsys-terminal-main]# echo -e "${GREEN}   • Self
+LearningEngine recalcula EV e Confiança por Assinatura.${NC}"
+   • SelfLearningEngine recalcula EV e Confiança por Assinatura.
+[root@localhost rlsys-terminal-main]# echo -e "${GREEN}   • Auto
+-Update atômico do ficheiro default_alpha.json.${NC}"
+   • Auto-Update atômico do ficheiro default_alpha.json.
+[root@localhost rlsys-terminal-main]# echo -e "${GREEN}${BOLD}━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}
+"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[root@localhost rlsys-terminal-main]# echo -e "O sistema injetou
+ um CSV de treino (1 derrota e 2 vitórias para a Alice no 32)."
+O sistema injetou um CSV de treino (1 derrota e 2 vitórias para
+a Alice no 32).
+[root@localhost rlsys-terminal-main]# echo -e "Execute o Cientis
+ta agora para ele aprender: ${BOLD}npm run research:update${NC}"
+Execute o Cientista agora para ele aprender: npm run research:up
+date
+[root@localhost rlsys-terminal-main]# ./capture-sprint-buffer.sh
+
+Buffer capturado com sucesso:
+logs/sprint-buffer-20260517-023008.log
+
+Arquivo enviado para Downloads:
+/sdcard/Download/sprint-buffer-20260517-023008.log
+
+Após me enviar o arquivo aqui e eu confirmar a análise, remova c
+om:
+rm 'logs/sprint-buffer-20260517-023008.log' '/sdcard/Download/sp
+rint-buffer-20260517-023008.log'
+[root@localhost rlsys-terminal-main]# npm run research:update
+
+> rl-sys-core@2.9.0 research:update
+> node dist/research.js
+RL.SYS CORE — AUTONOMOUS SCIENTIST (FASE 3)
+
+[CIENTISTA] Iniciando ingestão de telemetria (Stream Mode)...
+[CIENTISTA] Processamento de ficheiros concluído. Refinando cére
+bro...
+[CIENTISTA] Snapshot default_alpha.json atualizado com sucesso.
+Novo EV e Confiança registados.
+
+[PROCESSO CONCLUÍDO] O sistema está pronto para a próxima sessão
+.
+[root@localhost rlsys-terminal-main]# ./capture-sprint-buffer.sh
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
