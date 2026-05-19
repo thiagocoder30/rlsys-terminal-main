@@ -13,3 +13,6 @@ __pycache__/
 
 # Imagens de Validação Técnica e Debug
 *debug*.png
+logs/*.log
+run-sprint-*.sh
+rlsys-terminal-sprint-*.diff
