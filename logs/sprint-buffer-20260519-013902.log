@@ -1,0 +1,666 @@
+[root@localhost rlsys-terminal-main]# #!/bin/bash
+sys-terminal-sprint-036-038-paper-ledger.diff
+
+git checkout main
+git pull origin main
+
+git checkout -b sprint-036-038-paper-ledger
+
+git apply --check rlsys-terminal-sprint-036-038-paper-ledger.dif
+f
+git apply rlsys-terminal-sprint-036-038-paper-ledger.diff
+
+npm ci
+npm run build
+npm test
+
+rm rlsys-terminal-sprint-036-038-paper-ledger.diff
+
+git add .
+git commit -m "feat(ledger): add paper trading telemetry ledger"
+
+git push -u origin sprint-036-038-paper-ledger
+
+git checkout main
+git pull origin main
+git merge sprint-036-038-paper-ledger
+git push origin main
+
+./capture-sprint-buffer.sh[root@localhost rlsys-terminal-main]#
+set -euo pipefail
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# cd "$HOME/rlsys-terminal-m
+ain"
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# [ -f ".venv/bin/activate"
+] && source .venv/bin/activate
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# cp /sdcard/Download/rlsys-
+terminal-sprint-036-038-paper-ledger.diff . 2>/dev/null || true
+[root@localhost rlsys-terminal-main]# test -f rlsys-terminal-spr
+int-036-038-paper-ledger.diff
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# git checkout main
+Already on 'main'
+Your branch is up to date with 'origin/main'.
+[root@localhost rlsys-terminal-main]# git pull origin main
+From https://github.com/thiagocoder30/rlsys-terminal-main
+ * branch            main       -> FETCH_HEAD
+Already up to date.
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# git checkout -b sprint-036
+-038-paper-ledger
+Switched to a new branch 'sprint-036-038-paper-ledger'
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# git apply --check rlsys-te
+rminal-sprint-036-038-paper-ledger.diff
+[root@localhost rlsys-terminal-main]# git apply rlsys-terminal-s
+print-036-038-paper-ledger.diff
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# npm ci
+
+added 115 packages, and audited 116 packages in 22s
+
+19 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+[root@localhost rlsys-terminal-main]# npm run build
+
+> rl-sys-core@2.9.0 build
+> tsc
+
+[root@localhost rlsys-terminal-main]# npm test
+
+> rl-sys-core@2.9.0 test
+> node --test tests/*.test.js
+
+✔ AdaptiveConfidenceEngine allows mature low-noise signal calibr
+ation (24.447384ms)
+✔ AdaptiveConfidenceEngine observes marginal confidence near dyn
+amic threshold (5.740308ms)
+✔ AdaptiveConfidenceEngine blocks noisy low-quality calibration
+(4.858538ms)
+✔ AdaptiveConfidenceEngine rejects malformed input without silen
+t failure (5.366847ms)
+✔ AdvancedWalkForwardService rejects corrupted datasets (38178.1
+91618ms)
+✔ AdvancedWalkForwardService returns blocked research report for
+ clean dataset (463.734154ms)
+✔ AdvancedWalkForwardValidator rejects invalid roulette history
+(21.742307ms)
+✔ AdvancedWalkForwardValidator detects low robustness on balance
+d data (162.694924ms)
+✔ AdvancedWalkForwardValidator surfaces candidate for persistent
+ out-of-sample bias (75.485692ms)
+✔ BayesianEdgeValidator rejects insufficient evidence (23.051231
+ms)
+✔ BayesianEdgeValidator supports strong positive out-of-sample e
+vidence (4.000923ms)
+✔ BenchmarkComparisonService rejects corrupted datasets (3911.59
+7462ms)
+✔ BenchmarkComparisonService returns institutional benchmark rep
+ort with blocked gate (1296.482384ms)
+✔ BootstrapResampler creates deterministic block samples with ch
+ecksums (48.904615ms)
+✔ BootstrapResampler rejects insufficient history (5.619462ms)
+✔ CapitalExposureService returns institutional capital report wi
+th blocked gate (3575.657461ms)
+✔ CapitalExposureService rejects corrupted datasets (4.918ms)
+✔ CapitalExposureSimulator returns bounded capital survival metr
+ics (63.207385ms)
+✔ CapitalExposureSimulator rejects invalid roulette histories (4
+.895231ms)
+✔ CapitalExposureSimulator flags aggressive capital pressure wit
+hout opening operational gate (33.073154ms)
+✔ ConfidenceScorer returns a bounded score and grade (14.072307m
+s)
+✔ ConfigValidator accepts production-safe defaults with warnings
+ only (18.903923ms)
+✔ ConfigValidator rejects invalid ports and log levels (4.655077
+ms)
+✔ DataIntegrityValidator accepts research-sized canonical datase
+ts (42.830769ms)
+✔ DataIntegrityValidator blocks insufficient datasets (4.389846m
+s)
+✔ DatasetEngine parses and normalizes CSV datasets with checksum
+s (10300.410001ms)
+✔ DatasetEngine rejects invalid spin values without throwing (25
+.614692ms)
+✔ DatasetRegistryEngine accepts high quality datasets with deter
+ministic checksums (45.418693ms)
+✔ DatasetRegistryEngine requires review for OCR datasets with we
+ak reliability (8.448ms)
+✔ DatasetRegistryEngine blocks corrupted roulette sample values
+(9.37623ms)
+✔ DatasetRegistryEngine rejects duplicate dataset ids without si
+lent failure (4.623923ms)
+✔ DatasetRegistryEngine blocks oversized dataset batches before
+processing (4.019769ms)
+✔ DatasetRegistryEngine can block synthetic datasets by policy (
+5.168231ms)
+✔ DealerSignatureEngine detects persistent dealer sector signatu
+re (29.745154ms)
+✔ DealerSignatureEngine returns inconclusive for balanced dealer
+ history (6.599923ms)
+✔ DealerSignatureEngine blocks insufficient dealer sample (11.01
+8307ms)
+✔ DealerSignatureEngine rejects malformed roulette values withou
+t silent failure (5.084154ms)
+✔ DealerSignatureEngine blocks oversized batches for low-end har
+dware safety (3.528615ms)
+✔ DealerSignatureEngine is deterministic for repeated analysis (
+7.402923ms)
+✔ DecisionOrchestrator connects ranking to research-only live de
+cision (49.095693ms)
+✔ DecisionOrchestrator keeps observation state when live session
+ is not ready (8.720539ms)
+✔ DecisionOrchestrator returns typed Result error for malformed
+input (5.712231ms)
+✔ DecisionOrchestrator blocks research signal when regime policy
+ blocks signals (22.014307ms)
+✔ DecisionOrchestrator blocks research signal when ensemble repo
+rts strategic conflict (17.801692ms)
+✔ DecisionOrchestrator blocks research signal when temporal deca
+y expires evidence (12.554769ms)
+✔ DecisionOrchestrator blocks research signal when adaptive conf
+idence is too low (13.542076ms)
+✔ DeterministicReplayStudio replays command streams with stable
+checksums (4331.033847ms)
+✔ DeterministicReplayStudio preserves idempotency for duplicate
+frame events (5.908539ms)
+✔ DeterministicReplayStudio replays verified persistence records
+ (16.583692ms)
+✔ DeterministicReplayStudio blocks checkpoint mismatches without
+ throwing (16.77323ms)
+✔ DeterministicReplayStudio rejects malformed requests without s
+ilent failure (8.203462ms)
+✔ EdgePersistenceAnalyzer returns no persistent edge for rotatin
+g balanced data (155.328231ms)
+✔ EdgePersistenceAnalyzer flags stable concentrated evidence as
+persistent research signal (58.078462ms)
+✔ EdgePersistenceAnalyzer estimates decay direction for fading s
+ignals (48.898308ms)
+✔ EmergencyGuard: Permite operacao com telemetria saudavel (16.2
+79461ms)
+✔ EmergencyGuard: Congela por perda de Heartbeat (Morte do Senso
+r) (2.225154ms)
+✔ EmergencyGuard: Congela por cegueira do OCR (Baixa Confianca)
+(2.368231ms)
+✔ EmergencyGuard: Congela por alta latencia (Risco de delay na a
+cao) (2.544385ms)
+✔ EmergencyGuard: Avaliacao O(1) nao aloca memoria se saudavel (
+2.84377ms)
+✔ EVRiskAnalyticsEngine identifies positive edge candidate under
+ bounded risk (119.492924ms)
+✔ EVRiskAnalyticsEngine blocks negative expected value samples (
+6.136462ms)
+✔ EVRiskAnalyticsEngine blocks insufficient samples even when pr
+ofitable (5.23777ms)
+✔ EVRiskAnalyticsEngine exposes deterministic checksums for repe
+ated analytics (6.236ms)
+✔ EVRiskAnalyticsEngine rejects malformed outcomes without silen
+t failure (4.315769ms)
+✔ EVRiskAnalyticsEngine blocks oversized analytics batches befor
+e processing (2.667ms)
+✔ ExplainabilityEngine generates deterministic audit narrative f
+or research signal (58.374538ms)
+✔ ExplainabilityEngine surfaces blockers as primary reason for r
+ejected decisions (10.783231ms)
+✔ ExplainabilityEngine bounds evidence list for low-memory opera
+tor UI (13.922231ms)
+✔ ExplainabilityEngine rejects malformed input without silent fa
+ilure (3.650384ms)
+✔ HealthCheckService reports readiness with writable data direct
+ory (3947.082078ms)
+✔ HypothesisValidator keeps operational gate blocked without str
+ong large-sample evidence (27.769076ms)
+✔ IncrementalStatisticsEngine updates bounded rolling metrics wi
+thout recompute over full history (42.002ms)
+✔ IncrementalStatisticsEngine preserves idempotency for duplicat
+e round events (3.611616ms)
+✔ IncrementalStatisticsEngine detects concentrated low-entropy w
+indows (13.668231ms)
+✔ IncrementalStatisticsEngine replays deterministically with mat
+ching checksum (45.30577ms)
+✔ IncrementalStatisticsEngine rejects malformed roulette values
+without silent failure (4.801923ms)
+✔ InputHardeningEngine accepts bounded manual roulette payloads
+(40.293923ms)
+✔ InputHardeningEngine rejects invalid roulette values before do
+main processing (7.257385ms)
+✔ InputHardeningEngine rejects suspicious tokens and prototype p
+ollution keys (6.117539ms)
+✔ InputHardeningEngine sanitizes long strings without mutating p
+ayload (12.479077ms)
+✔ InputHardeningEngine rejects payloads exceeding bounded array
+policy (60.989846ms)
+✔ InputHardeningEngine returns typed Result error for malformed
+request (3.667924ms)
+✔ InstitutionalBacktestEngine returns bounded institutional metr
+ics and gates (244.434077ms)
+✔ InstitutionalBacktestEngine rejects invalid roulette history (
+13.623616ms)
+✔ InstitutionalBacktestService rejects corrupted datasets and ke
+eps operational gate blocked (12845.318385ms)
+✔ InstitutionalBacktestService returns institutional research re
+port for clean dataset (488.942385ms)
+✔ InternalEventBus delivers events to observers in a typed deter
+ministic report (31.707077ms)
+✔ InternalEventBus preserves idempotency for duplicate event ids
+ (6.973308ms)
+✔ InternalEventBus isolates observer failures without throwing t
+hrough publisher (95.481462ms)
+✔ InternalEventBus rejects malformed events without silent failu
+re (3.994615ms)
+✔ LiveSessionRuntimeService collects rounds before decision read
+iness (3642.814077ms)
+✔ LiveSessionRuntimeService invokes decision layer after 100 rou
+nds while keeping live gate blocked (194.137616ms)
+✔ LiveSessionRuntimeService reports duplicate events idempotentl
+y (4.008077ms)
+✔ LiveSessionRuntimeService rejects malformed round input (5.505
+154ms)
+✔ LiveSessionRuntimeService surfaces cooldown without invoking l
+ive stake (70.536308ms)
+✔ LiveSessionRuntime ingests rounds incrementally with bounded w
+indows (3552.146693ms)
+✔ LiveSessionRuntime is idempotent for duplicated event ids (4.8
+30077ms)
+✔ LiveSessionRuntime rejects invalid roulette values without sil
+ent failure (3.961846ms)
+✔ LiveSessionRuntime exposes deterministic control frame for dec
+ision readiness (14.673308ms)
+✔ LiveSessionRuntime enters cooldown on concentrated rolling win
+dow (13.582ms)
+✔ MetricsRegistry captures counters, timers, uptime and memory (
+7833.671923ms)
+✔ MonteCarloEngine returns bounded institutional risk metrics (3
+1.989077ms)
+(node:17378) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type
+ of file:///root/rlsys-terminal-main/tests/monte-carlo-research-
+studio.test.js is not specified and it doesn't parse as CommonJS
+.
+Reparsing as ES module because module syntax was detected. This
+incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /root/rlsys-t
+erminal-main/package.json.
+(Use `node --trace-warnings ...` to show where the warning was c
+reated)
+✔ MonteCarloResearchStudio accepts robust candidate under varian
+ce stress (79.410153ms)
+✔ MonteCarloResearchStudio blocks fragile candidate when drawdow
+n and ruin risk are excessive (13.793154ms)
+✔ MonteCarloResearchStudio is deterministic for the same seed an
+d inputs (18.550385ms)
+✔ MonteCarloResearchStudio blocks oversized research batches (4.
+080923ms)
+✔ MonteCarloResearchStudio rejects malformed outcomes without si
+lent failure (5.136153ms)
+✔ MonteCarloV2Engine returns bounded bootstrap risk metrics (327
+.997077ms)
+✔ MonteCarloV2Engine surfaces robust candidate without opening o
+perational gate (160.216846ms)
+✔ MonteCarloV2Engine rejects invalid histories (6.480923ms)
+✔ MonteCarloV2Service returns institutional blocked research rep
+ort (4147.821308ms)
+✔ MonteCarloV2Service rejects corrupted datasets (6.54077ms)
+✔ OfflineResearchRunner processes clean datasets with determinis
+tic checksum (3618.851616ms)
+✔ OfflineResearchRunner preserves replay idempotency metrics for
+ duplicate events (7.895615ms)
+✔ OfflineResearchRunner blocks oversized offline batches before
+replay (4.094923ms)
+✔ OfflineResearchRunner rejects malformed datasets without silen
+t failure (3.691538ms)
+✔ OfflineResearchRunner reports no signal-like frames without tr
+eating it as failure (7.894ms)
+✔ CooldownGuard: Inicia inativo (Permissivo) (17.637769ms)
+✔ CooldownGuard: Aplica penalidade correta e bloqueia (3.236693m
+s)
+✔ CooldownGuard: Libera o sistema após expiração do tempo (2.802
+846ms)
+✔ CooldownGuard: Evita bypass - Nao substitui bloqueio maior por
+ um menor (2.824538ms)
+✔ OperatorHudProjectionEngine creates deterministic research-onl
+y HUD projection (107.461ms)
+✔ OperatorHudProjectionEngine surfaces blocked decisions as dang
+er mode (8.020154ms)
+✔ OperatorHudProjectionEngine bounds cards for low-memory operat
+or UI (6.043385ms)
+✔ OperatorHudProjectionEngine rejects malformed input without si
+lent failure (3.171077ms)
+✔ PaperLedgerEngine records NO_GO without changing paper balance
+ (94.185308ms)
+✔ PaperLedgerEngine updates paper PnL and drawdown for theoretic
+al loss (39.435539ms)
+✔ PaperLedgerEngine restores latest balance from JSONL repositor
+y (50.455154ms)
+✔ PaperLedgerEngine ignores duplicate source event without mutat
+ing state twice (26.282077ms)
+✔ PaperLedgerEngine rejects malformed confidence without silent
+failure (10.767846ms)
+✔ PersistenceResearchService rejects corrupted tiny dataset (41.
+214384ms)
+✔ PersistenceResearchService returns research-ready status for p
+ersistent evidence while keeping operational gate blocked (8504.
+04677ms)
+✔ PersistentCooldown: Guarda estado no disco e restaura em nova
+instancia (39.228538ms)
+✔ PersistentCooldown: Remove arquivo do disco quando tempo expir
+a (27.958385ms)
+✔ RegimeClassificationEngine classifies balanced history as stab
+le research regime (36.728692ms)
+✔ RegimeClassificationEngine blocks chaotic concentrated history
+ (6.072539ms)
+✔ RegimeClassificationEngine detects drifting sector pressure wi
+thout opening signals (7.531769ms)
+✔ RegimeClassificationEngine returns typed Result error for malf
+ormed history (4.076077ms)
+✔ RegimeDetector returns bounded stability and windows (38.59469
+3ms)
+✔ RegimeDetector marks very small samples as unstable (3.759384m
+s)
+✔ ReleaseReadinessService returns review when config has warning
+s but no blockers (3583.695462ms)
+✔ ReleaseReadinessService blocks failed readiness checks (3.7746
+93ms)
+✔ ResearchDatasetService returns accepted report for clean resea
+rch dataset (3597.871231ms)
+✔ ResearchDatasetService rejects corrupted dataset (7.467076ms)
+✔ ResearchExperimentOrchestrator promotes governed positive edge
+ to alpha candidate (39.117539ms)
+✔ ResearchExperimentOrchestrator blocks when analytics is negati
+ve or inconclusive (3.850846ms)
+✔ ResearchExperimentOrchestrator blocks mismatched dataset count
+s without silent failure (4.088616ms)
+✔ ResearchExperimentOrchestrator is deterministic for repeated e
+xperiment envelopes (3.581769ms)
+✔ ResearchExperimentOrchestrator blocks insufficient offline fra
+me evidence (4.613231ms)
+✔ ResearchReportingService rejects corrupted datasets with audit
+ envelope (8662.815ms)
+✔ ResearchReportingService consolidates all research modules whi
+le keeping operational gate blocked (676.197923ms)
+✔ DrawdownMonitor: Mantem status HEALTHY em flutuacoes normais (
+11.796154ms)
+✔ DrawdownMonitor: Dispara VELOCITY_ALERT em queda brusca (2.744
+846ms)
+✔ DrawdownMonitor: Garante idempotencia e rejeita rodadas duplic
+adas (1.965153ms)
+✔ RuntimePerformanceBudgetEngine keeps low-end runtime within bu
+dget (27.174615ms)
+✔ RuntimePerformanceBudgetEngine throttles when queue and latenc
+y exceed policy (5.794077ms)
+✔ RuntimePerformanceBudgetEngine blocks live evaluation on criti
+cal thermal state (3.811231ms)
+✔ RuntimePerformanceBudgetEngine produces deterministic checksum
+s for repeated samples (4.392154ms)
+✔ RuntimePerformanceBudgetEngine rejects malformed samples witho
+ut silent failure (3.890231ms)
+✔ RuntimeSanityEngine accepts healthy runtime alignment (19.5184
+62ms)
+✔ RuntimeSanityEngine requires review for moderate divergence (3
+.140077ms)
+✔ RuntimeSanityEngine detects paradigm break under severe diverg
+ence (3.817846ms)
+✔ RuntimeSanityEngine blocks insufficient runtime sample (3.3473
+84ms)
+✔ RuntimeSanityEngine rejects malformed runtime input (3.105462m
+s)
+✔ securityHeaders applies baseline hardening headers (11.833308m
+s)
+✔ valueToState maps roulette values to institutional states (12.
+474692ms)
+✔ SequentialBiasDetector returns low evidence for rotating balan
+ced states (35.190384ms)
+✔ SequentialBiasDetector flags persistent temporal clusters (12.
+579154ms)
+✔ SequentialResearchService rejects corrupted tiny dataset (39.0
+40692ms)
+✔ SequentialResearchService returns a temporal report for persis
+tent dataset (125.235384ms)
+✔ Sessao Saudavel (12.765385ms)
+✔ Disparo Stop Loss (3.086923ms)
+✔ SessionPersistenceEngine creates and verifies deterministic pe
+rsistence records (3799.271077ms)
+✔ SessionPersistenceEngine replays journal for crash recovery wi
+th matching checksum (21.690231ms)
+✔ SessionPersistenceEngine preserves idempotency during replay (
+11.034076ms)
+✔ SessionPersistenceEngine rejects corrupted records without sil
+ent failure (5.451692ms)
+✔ SpatialClusterCorrelationEngine detects contextual spatial clu
+ster (28.277307ms)
+✔ SpatialClusterCorrelationEngine remains deterministic for repe
+ated evaluation (21.783077ms)
+✔ SpatialClusterCorrelationEngine returns inconclusive for balan
+ced contexts (8.534ms)
+✔ SpatialClusterCorrelationEngine blocks insufficient sample (3.
+28723ms)
+✔ SpatialClusterCorrelationEngine rejects malformed roulette val
+ues without silent failure (4.618923ms)
+✔ StatisticalResearchService returns inconclusive research repor
+t for clean uniform dataset (3766.544231ms)
+✔ StatisticalResearchService rejects corrupted tiny dataset (26.
+449539ms)
+✔ StatisticalSignificanceEngine treats balanced roulette distrib
+ution as low evidence (30.083539ms)
+✔ StatisticalSignificanceEngine flags concentrated deviation as
+significant (9.528615ms)
+✔ StrategyBenchmarkEngine rejects invalid histories (21.510538ms
+)
+✔ StrategyBenchmarkEngine returns bounded benchmark metrics (707
+.968615ms)
+✔ StrategyBenchmarkEngine can surface candidate without opening
+operational gate (460.952923ms)
+✔ StrategyComparisonFramework selects a clear risk-adjusted lead
+er (27.859307ms)
+✔ StrategyComparisonFramework returns no clear leader for close
+candidates (5.118308ms)
+✔ StrategyComparisonFramework blocks candidates that fail eligib
+ility policy (5.404077ms)
+✔ StrategyComparisonFramework is deterministic across repeated c
+omparisons (97.723923ms)
+✔ StrategyComparisonFramework rejects malformed input without si
+lent failure (4.516385ms)
+✔ StrategyComparisonFramework blocks oversized comparison batche
+s (2.81523ms)
+✔ StrategyDecisionEngine returns research-only entry candidate f
+or strong evidence (39.851461ms)
+✔ StrategyDecisionEngine blocks NO_GO warmup regardless of other
+ evidence (6.363769ms)
+✔ StrategyDecisionEngine never opens live stake even for candida
+tes (3.788307ms)
+✔ StrategyDecisionEngine blocks unsafe bankroll progression when
+ stake does not fit stop loss budget (5.668ms)
+✔ StrategyDecisionEngine exposes no-stake bankroll guard for obs
+ervation states (12.58923ms)
+✔ StrategyDecisionService returns blocked governance decision fo
+r clean session (9871.354924ms)
+✔ StrategyDecisionService rejects corrupted tiny sessions throug
+h decision blockers (11.326692ms)
+✔ RouletteStats rejects invalid roulette numbers (19.871077ms)
+✔ StrategyEngine locks insufficient samples (5.078077ms)
+✔ StrategyEngine returns institutional analysis shape for valid
+sample (21.989538ms)
+✔ BacktestEngine produces a stable walk-forward summary (269.729
+001ms)
+✔ RiskPolicy blocks strategy without enough walk-forward evidenc
+e (4.130385ms)
+✔ StrategyEnsembleEngine forms consensus from aligned strategy v
+otes (17.770692ms)
+✔ StrategyEnsembleEngine blocks when strategies conflict above p
+olicy limit (7.072846ms)
+✔ StrategyEnsembleEngine rejects malformed votes without silent
+failure (4.561539ms)
+✔ StrategyRankingEngine ranks eligible candidates by Bayesian ev
+idence adjusted for risk (19.400923ms)
+✔ StrategyRankingEngine is deterministic for repeated input orde
+r and tie-breaks by id (79.613693ms)
+✔ StrategyRankingEngine rejects malformed candidates without sil
+ent failure (7.547923ms)
+✔ StressScenarioAnalyzer returns bounded stress metrics and draw
+down surface (121.323154ms)
+✔ StressScenarioAnalyzer rejects invalid roulette histories (6.3
+62308ms)
+✔ StressScenarioAnalyzer flags aggressive capital pressure witho
+ut opening operational gate (60.361923ms)
+✔ StressScenarioService returns institutional stress report with
+ blocked gate (4606.466385ms)
+✔ StressScenarioService rejects corrupted datasets (5.807769ms)
+✔ StructuredLogger emits sanitized JSON logs (3920.028385ms)
+(node:17632) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type
+ of file:///root/rlsys-terminal-main/tests/synthetic-session-gen
+erator.test.js is not specified and it doesn't parse as CommonJS
+.
+Reparsing as ES module because module syntax was detected. This
+incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /root/rlsys-t
+erminal-main/package.json.
+(Use `node --trace-warnings ...` to show where the warning was c
+reated)
+✔ SyntheticSessionGenerator creates deterministic balanced contr
+ol sessions (42.268615ms)
+✔ SyntheticSessionGenerator injects sector bias for physical-edg
+e research (8.327ms)
+✔ SyntheticSessionGenerator creates drifting sessions with multi
+ple segments (11.921923ms)
+✔ SyntheticSessionGenerator blocks oversized batches for low-mem
+ory devices (3.050692ms)
+✔ SyntheticSessionGenerator rejects malformed requests without s
+ilent failure (4.258308ms)
+✔ TemporalDecayEngine keeps fresh signals eligible with bounded
+contribution (15.456769ms)
+✔ TemporalDecayEngine blocks expired evidence before live decisi
+on (3.776538ms)
+✔ TemporalDecayEngine returns observation for aging but non-expi
+red evidence (3.037924ms)
+✔ TemporalDecayEngine rejects malformed signal without silent fa
+ilure (2.933385ms)
+✔ VisionReliabilityInspector accepts complete high-quality warmu
+p extraction (14.519ms)
+✔ VisionReliabilityInspector requires manual review for low item
+ confidence (4.722538ms)
+✔ VisionReliabilityInspector rejects incomplete high-rejection e
+xtraction (2.903385ms)
+✔ VisionWarmupNormalizer extracts valid roulette numbers from JS
+ON markdown (27.727846ms)
+✔ VisionWarmupNormalizer reports rejected OCR values without gue
+ssing (3.940308ms)
+✔ VisionWarmupNormalizer rejects payload without sequence (2.624
+385ms)
+✔ VisionWarmupNormalizer reads object values and exposes reliabi
+lity review (4.296538ms)
+✔ WalkForwardValidationLab accepts robust out-of-sample alpha ca
+ndidate (36.952615ms)
+✔ WalkForwardValidationLab flags train-positive validation-negat
+ive overfit (7.961461ms)
+✔ WalkForwardValidationLab returns inconclusive when validation
+pass rate is weak but not pure overfit (6.294924ms)
+✔ WalkForwardValidationLab is deterministic across repeated runs
+ (11.283077ms)
+✔ WalkForwardValidationLab rejects malformed outcomes without si
+lent failure (4.02ms)
+✔ WalkForwardValidationLab blocks oversized research batches (3.
+360846ms)
+✔ WarmupSessionAnalyzer accepts complete balanced 100-round warm
+up for research (30.083ms)
+✔ WarmupSessionAnalyzer rejects invalid roulette values (5.98830
+7ms)
+✔ WarmupSessionAnalyzer marks incomplete warmup as NO_GO (4.5032
+31ms)
+✔ WarmupSessionService evaluates manual 100-round warmup with bl
+ocked operational gate (3819.635154ms)
+✔ WarmupSessionService rejects corrupted warmup dataset (6.53761
+6ms)
+✔ WarmupSessionService evaluates vision raw JSON without opening
+ operational gate (20.710923ms)
+ℹ tests 246
+ℹ suites 0
+ℹ pass 246
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 50432.112464
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# rm rlsys-terminal-sprint-0
+36-038-paper-ledger.diff
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# git add .
+[root@localhost rlsys-terminal-main]# git commit -m "feat(ledger
+): add paper trading telemetry ledger"
+[sprint-036-038-paper-ledger 6b7ca38] feat(ledger): add paper tr
+ading telemetry ledger
+ 8 files changed, 795 insertions(+)
+ create mode 100644 RELATORIO_TECNICO_SPRINT_036_038.md
+ create mode 100644 dist/domain/ledger/PaperLedgerContracts.js
+ create mode 100644 dist/domain/ledger/PaperLedgerEngine.js
+ create mode 100644 dist/infrastructure/ledger/JsonLinesPaperLed
+gerRepository.js
+ create mode 100644 src/domain/ledger/PaperLedgerContracts.ts
+ create mode 100644 src/domain/ledger/PaperLedgerEngine.ts
+ create mode 100644 src/infrastructure/ledger/JsonLinesPaperLedg
+erRepository.ts
+ create mode 100644 tests/paper-ledger-engine.test.js
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# git push -u origin sprint-
+036-038-paper-ledger
+Enumerating objects: 28, done.
+Counting objects: 100% (28/28), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (21/21), done.
+Writing objects: 100% (21/21), 8.18 KiB | 141.00 KiB/s, done.
+Total 21 (delta 6), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (6/6), completed with 5 local obj
+ects.
+remote:
+remote: Create a pull request for 'sprint-036-038-paper-ledger'
+on GitHub by visiting:
+remote:      https://github.com/thiagocoder30/rlsys-terminal-mai
+n/pull/new/sprint-036-038-paper-ledger
+remote:
+To https://github.com/thiagocoder30/rlsys-terminal-main.git
+ * [new branch]      sprint-036-038-paper-ledger -> sprint-036-0
+38-paper-ledger
+branch 'sprint-036-038-paper-ledger' set up to track 'origin/spr
+int-036-038-paper-ledger'.
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# git checkout main
+Switched to branch 'main'
+Your branch is up to date with 'origin/main'.
+[root@localhost rlsys-terminal-main]# git pull origin main
+From https://github.com/thiagocoder30/rlsys-terminal-main
+ * branch            main       -> FETCH_HEAD
+Already up to date.
+[root@localhost rlsys-terminal-main]# git merge sprint-036-038-p
+aper-ledger
+Updating b5f90b9..6b7ca38
+Fast-forward
+ RELATORIO_TECNICO_SPRINT_036_038.md      |  46 ++++
+ .../ledger/PaperLedgerContracts.js       |   2 +
+ dist/domain/ledger/PaperLedgerEngine.js  | 151 +++++++++++
+ .../JsonLinesPaperLedgerRepository.js    |  93 +++++++
+ .../ledger/PaperLedgerContracts.ts       |  75 ++++++
+ src/domain/ledger/PaperLedgerEngine.ts   | 208 +++++++++++++++
+ .../JsonLinesPaperLedgerRepository.ts    |  77 ++++++
+ tests/paper-ledger-engine.test.js        | 143 ++++++++++
+ 8 files changed, 795 insertions(+)
+ create mode 100644 RELATORIO_TECNICO_SPRINT_036_038.md
+ create mode 100644 dist/domain/ledger/PaperLedgerContracts.js
+ create mode 100644 dist/domain/ledger/PaperLedgerEngine.js
+ create mode 100644 dist/infrastructure/ledger/JsonLinesPaperLed
+gerRepository.js
+ create mode 100644 src/domain/ledger/PaperLedgerContracts.ts
+ create mode 100644 src/domain/ledger/PaperLedgerEngine.ts
+ create mode 100644 src/infrastructure/ledger/JsonLinesPaperLedg
+erRepository.ts
+ create mode 100644 tests/paper-ledger-engine.test.js
+[root@localhost rlsys-terminal-main]# git push origin main
+Total 0 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/thiagocoder30/rlsys-terminal-main.git
+   b5f90b9..6b7ca38  main -> main
+[root@localhost rlsys-terminal-main]#
+[root@localhost rlsys-terminal-main]# ./capture-sprint-buffer.sh
+
