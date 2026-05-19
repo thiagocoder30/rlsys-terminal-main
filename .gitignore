@@ -16,3 +16,9 @@ __pycache__/
 logs/*.log
 run-sprint-*.sh
 rlsys-terminal-sprint-*.diff
+dist/
+build/
+logs/
+*.log
+data/
+.test_ledger_storage/

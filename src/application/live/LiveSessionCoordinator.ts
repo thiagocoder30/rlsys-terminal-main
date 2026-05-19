@@ -1,8 +1,11 @@
 import { SystemHealthGuard, FinancialGuard, CooldownGuard, TacticalEngine, DefenseStatus } from './IntegrationPorts';
 import { CurrentLiveState, DecisionResult, ActionSignal } from '../../domain/decision/DecisionContracts';
 import { PositionSizingEngine } from '../../domain/finance/PositionSizingEngine';
+import { RuntimeEnforcementOrchestrator } from '../../domain/runtime/RuntimeEnforcementOrchestrator';
 
 export class LiveSessionCoordinator {
+  private readonly runtimeEnforcementOrchestrator = new RuntimeEnforcementOrchestrator();
+
   constructor(
     private readonly healthGuard: SystemHealthGuard,
     private readonly financialGuard: FinancialGuard,
@@ -15,9 +18,30 @@ export class LiveSessionCoordinator {
       const normalizedLiveState: CurrentLiveState = typeof liveState === 'number'
         ? { dealerId: 'UNKNOWN', wheelSpeedCategory: 'NORMAL' as CurrentLiveState['wheelSpeedCategory'], targetSector: liveState }
         : liveState;
-      if (this.healthGuard.checkHealth() === DefenseStatus.BLOCKED) return this.buildRejection('SYSTEM_HEALTH_COMPROMISED');
-      if (this.cooldownGuard.isOperatorReady(currentTimeMs) === DefenseStatus.BLOCKED) return this.buildRejection('OPERATOR_IN_COOLDOWN');
-      if (this.financialGuard.authorizeEntry() === DefenseStatus.BLOCKED) return this.buildRejection('FINANCIAL_DRAWDOWN_ACTIVE');
+      const healthStatus = this.healthGuard.checkHealth();
+      const cooldownStatus = this.cooldownGuard.isOperatorReady(currentTimeMs);
+      const financialStatus = this.financialGuard.authorizeEntry();
+
+      const enforcementResult = this.runtimeEnforcementOrchestrator.evaluate({
+        dataIntegrityValid: true,
+        runtimeSanityState: 'SANITY_OK',
+        sessionBreakerState: 'SESSION_OPEN',
+        drawdownLockState: 'DRAWDOWN_OK',
+        runtimeHealthState: healthStatus === DefenseStatus.BLOCKED ? 'DOWN' : 'HEALTHY',
+        cooldownActive: cooldownStatus === DefenseStatus.BLOCKED,
+        financialExposureAllowed: financialStatus !== DefenseStatus.BLOCKED,
+        candidateAvailable: true
+      });
+
+      if (!enforcementResult.ok) {
+        return this.buildRejection(enforcementResult.error);
+      }
+
+      if (!enforcementResult.value.allowed) {
+        return this.buildRejection(
+          `RUNTIME_ENFORCEMENT_${enforcementResult.value.verdict}_${enforcementResult.value.reasons.join('_')}`
+        );
+      }
 
       const decision = this.tacticalEngine.evaluate(normalizedLiveState);
 
