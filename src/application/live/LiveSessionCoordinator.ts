@@ -10,13 +10,16 @@ export class LiveSessionCoordinator {
     private readonly tacticalEngine: TacticalEngine
   ) {}
 
-  public processLiveSpin(liveState: CurrentLiveState, currentTimeMs: number): DecisionResult {
+  public processLiveSpin(liveState: CurrentLiveState | number, currentTimeMs: number = Date.now()): DecisionResult {
     try {
+      const normalizedLiveState: CurrentLiveState = typeof liveState === 'number'
+        ? { dealerId: 'UNKNOWN', wheelSpeedCategory: 'NORMAL' as CurrentLiveState['wheelSpeedCategory'], targetSector: liveState }
+        : liveState;
       if (this.healthGuard.checkHealth() === DefenseStatus.BLOCKED) return this.buildRejection('SYSTEM_HEALTH_COMPROMISED');
       if (this.cooldownGuard.isOperatorReady(currentTimeMs) === DefenseStatus.BLOCKED) return this.buildRejection('OPERATOR_IN_COOLDOWN');
       if (this.financialGuard.authorizeEntry() === DefenseStatus.BLOCKED) return this.buildRejection('FINANCIAL_DRAWDOWN_ACTIVE');
 
-      const decision = this.tacticalEngine.evaluate(liveState);
+      const decision = this.tacticalEngine.evaluate(normalizedLiveState);
 
       // Injeção da Inteligência Financeira
       if (decision.action === ActionSignal.SIGNAL) {
@@ -31,7 +34,7 @@ export class LiveSessionCoordinator {
     }
   }
 
-  public registerOutcome(pnl: number, currentTimeMs: number): void {
+  public registerOutcome(pnl: number, currentTimeMs: number = Date.now()): void {
     this.financialGuard.registerPnL(pnl);
     if (this.financialGuard.authorizeEntry() === DefenseStatus.BLOCKED) {
       this.cooldownGuard.triggerCooldown(30 * 60 * 1000, currentTimeMs);

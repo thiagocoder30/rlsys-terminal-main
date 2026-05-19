@@ -11,15 +11,18 @@ class LiveSessionCoordinator {
         this.cooldownGuard = cooldownGuard;
         this.tacticalEngine = tacticalEngine;
     }
-    processLiveSpin(liveState, currentTimeMs) {
+    processLiveSpin(liveState, currentTimeMs = Date.now()) {
         try {
+            const normalizedLiveState = typeof liveState === 'number'
+                ? { dealerId: 'UNKNOWN', wheelSpeedCategory: 'NORMAL', targetSector: liveState }
+                : liveState;
             if (this.healthGuard.checkHealth() === IntegrationPorts_1.DefenseStatus.BLOCKED)
                 return this.buildRejection('SYSTEM_HEALTH_COMPROMISED');
             if (this.cooldownGuard.isOperatorReady(currentTimeMs) === IntegrationPorts_1.DefenseStatus.BLOCKED)
                 return this.buildRejection('OPERATOR_IN_COOLDOWN');
             if (this.financialGuard.authorizeEntry() === IntegrationPorts_1.DefenseStatus.BLOCKED)
                 return this.buildRejection('FINANCIAL_DRAWDOWN_ACTIVE');
-            const decision = this.tacticalEngine.evaluate(liveState);
+            const decision = this.tacticalEngine.evaluate(normalizedLiveState);
             // Injeção da Inteligência Financeira
             if (decision.action === DecisionContracts_1.ActionSignal.SIGNAL) {
                 const losses = this.financialGuard.getConsecutiveLosses();
@@ -32,7 +35,7 @@ class LiveSessionCoordinator {
             return this.buildRejection('UNEXPECTED_RUNTIME_EXCEPTION');
         }
     }
-    registerOutcome(pnl, currentTimeMs) {
+    registerOutcome(pnl, currentTimeMs = Date.now()) {
         this.financialGuard.registerPnL(pnl);
         if (this.financialGuard.authorizeEntry() === IntegrationPorts_1.DefenseStatus.BLOCKED) {
             this.cooldownGuard.triggerCooldown(30 * 60 * 1000, currentTimeMs);
