@@ -9,6 +9,9 @@ import { TrueEventLoopLagMonitor } from '../../infrastructure/runtime';
 import {
   ReplayPersistenceRepository,
 } from '../../domain/replay/ReplayPersistenceContracts';
+import {
+  RuntimeSessionJournalRepository,
+} from '../../domain/journal/RuntimeSessionJournalContracts';
 
 export type RuntimeKernelCommandType =
   | 'ROUND'
@@ -32,12 +35,6 @@ export interface RuntimeKernelResult {
 /**
  * Institutional text-only runtime kernel.
  *
- * It is intentionally conservative:
- * - fail-closed by default
- * - no betting execution
- * - no heavy UI
- * - no polling loop
- *
  * Complexity per command:
  * - Time: O(1)
  * - Space: O(1)
@@ -57,6 +54,7 @@ export class RuntimeKernel {
     private readonly hudComposer: RuntimeHudTelemetryComposer = new RuntimeHudTelemetryComposer(),
     private readonly hudFormatter: OperatorHudFormatter = new OperatorHudFormatter(),
     private readonly eventLoopLagMonitor: TrueEventLoopLagMonitor = new TrueEventLoopLagMonitor(),
+    private readonly journalRepository: RuntimeSessionJournalRepository | null = null,
   ) {
     this.eventLoopLagMonitor.start();
   }
@@ -89,9 +87,19 @@ export class RuntimeKernel {
     const command = this.parse(raw);
     this.sequence += 1;
 
+    await this.appendJournal('COMMAND', {
+      command: command.raw,
+      commandType: command.type,
+      value: command.value,
+    }, command.type, 'COMMAND_RECEIVED', 'operator command received');
+
     if (command.type === 'QUIT') {
       this.lifecycleState = 'SHUTDOWN';
       this.shutdown();
+
+      await this.appendJournal('SHUTDOWN', {
+        command: command.raw,
+      }, 'SHUTDOWN', 'OPERATOR_QUIT', 'operator requested shutdown');
 
       return {
         shouldContinue: false,
@@ -120,6 +128,8 @@ export class RuntimeKernel {
     );
 
     const operationalVerdict = this.resolveVerdict(command.type, memory.state, stress.verdict);
+    const previousState = this.lifecycleState;
+
     const transition = this.transitionGate.apply({
       currentState: this.lifecycleState,
       operationalVerdict,
@@ -128,6 +138,13 @@ export class RuntimeKernel {
     });
 
     this.lifecycleState = transition.nextState;
+
+    await this.appendJournal('STATE_TRANSITION', {
+      previousState,
+      nextState: this.lifecycleState,
+      accepted: transition.accepted,
+      transitionReason: transition.reason,
+    }, operationalVerdict, 'STATE_TRANSITION', transition.reason);
 
     await this.replayRepository.append({
       eventId: `kernel:${this.sequence}:${this.lifecycleState}:${operationalVerdict}`,
@@ -157,12 +174,41 @@ export class RuntimeKernel {
       stress,
     });
 
+    await this.appendJournal('HUD', {
+      snapshot: composed.snapshot,
+      stressVerdict: composed.stressVerdict,
+    }, operationalVerdict, 'HUD_RENDERED', composed.reason);
+
     return {
       shouldContinue: true,
       lifecycleState: this.lifecycleState,
       output: this.hudFormatter.render(composed.snapshot),
       reason: transition.reason,
     };
+  }
+
+  private async appendJournal(
+    type: 'COMMAND' | 'HUD' | 'STATE_TRANSITION' | 'SHUTDOWN' | 'ERROR',
+    payload: Readonly<Record<string, unknown>>,
+    verdict: string,
+    reason: string,
+    lifecycleReason: string,
+  ): Promise<void> {
+    if (this.journalRepository === null) {
+      return;
+    }
+
+    await this.journalRepository.append({
+      eventId: `journal:${this.sequence}:${type}:${reason}`,
+      sessionId: 'runtime-kernel',
+      sequence: this.sequence,
+      timestampEpochMs: Date.now(),
+      type,
+      lifecycleState: this.lifecycleState,
+      verdict,
+      reason: lifecycleReason,
+      payload,
+    });
   }
 
   private resolveVerdict(

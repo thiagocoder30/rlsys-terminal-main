@@ -1,3 +1,7 @@
+import {
+  RuntimeSessionJournalRepository,
+} from '../../domain/journal/RuntimeSessionJournalContracts';
+
 export type RuntimeShutdownReason =
   | 'OPERATOR_QUIT'
   | 'SIGINT'
@@ -19,18 +23,15 @@ export interface RuntimeShutdownResult {
 
 /**
  * Idempotent shutdown coordinator for the runtime kernel.
- *
- * It guarantees that shutdown side effects are executed once, even when
- * multiple terminal/process signals arrive in sequence.
- *
- * Complexity:
- * - Time: O(1)
- * - Space: O(1)
  */
 export class RuntimeShutdownCoordinator {
   private closed = false;
+  private sequence = 0;
 
-  public constructor(private readonly target: RuntimeShutdownTarget) {}
+  public constructor(
+    private readonly target: RuntimeShutdownTarget,
+    private readonly journalRepository: RuntimeSessionJournalRepository | null = null,
+  ) {}
 
   public shutdown(reason: RuntimeShutdownReason): RuntimeShutdownResult {
     if (this.closed) {
@@ -42,7 +43,9 @@ export class RuntimeShutdownCoordinator {
     }
 
     this.closed = true;
+    this.sequence += 1;
     this.target.shutdown();
+    void this.appendShutdownJournal(reason);
 
     return {
       accepted: true,
@@ -53,5 +56,23 @@ export class RuntimeShutdownCoordinator {
 
   public isClosed(): boolean {
     return this.closed;
+  }
+
+  private async appendShutdownJournal(reason: RuntimeShutdownReason): Promise<void> {
+    if (this.journalRepository === null) {
+      return;
+    }
+
+    await this.journalRepository.append({
+      eventId: `shutdown:${this.sequence}:${reason}`,
+      sessionId: 'runtime-kernel',
+      sequence: this.sequence,
+      timestampEpochMs: Date.now(),
+      type: 'SHUTDOWN',
+      lifecycleState: 'SHUTDOWN',
+      verdict: 'SHUTDOWN',
+      reason,
+      payload: { reason },
+    });
   }
 }
