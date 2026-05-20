@@ -3,13 +3,28 @@ import { stdin as input, stdout as output } from 'node:process';
 import { join } from 'node:path';
 import { RuntimeKernel, RuntimeShutdownCoordinator } from './application/runtime';
 import { JsonLinesReplayRepository } from './infrastructure/replay';
+import { JsonLinesRuntimeSessionJournalRepository } from './infrastructure/journal';
 
 async function main(): Promise<void> {
   const replayPath = join(process.cwd(), 'data', 'replay');
-  const replayRepository = new JsonLinesReplayRepository(replayPath);
-  const kernel = new RuntimeKernel(replayRepository);
-  const shutdown = new RuntimeShutdownCoordinator(kernel);
+  const journalPath = join(process.cwd(), 'data', 'journal');
 
+  const replayRepository = new JsonLinesReplayRepository(replayPath);
+  const journalRepository = new JsonLinesRuntimeSessionJournalRepository(journalPath);
+
+  const kernel = new RuntimeKernel(
+    replayRepository,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    journalRepository,
+  );
+
+  const shutdown = new RuntimeShutdownCoordinator(kernel, journalRepository);
   const terminal = createInterface({ input, output });
 
   const closeTerminal = (): void => {
