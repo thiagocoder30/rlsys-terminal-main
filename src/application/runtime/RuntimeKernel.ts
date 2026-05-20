@@ -5,6 +5,7 @@ import { RuntimeStressHarness } from '../../domain/stress';
 import { RuntimeStressSampler } from '../stress';
 import { RuntimeHudTelemetryComposer } from '../operator';
 import { RuntimeStateTransitionGate } from './RuntimeStateTransitionGate';
+import { TrueEventLoopLagMonitor } from '../../infrastructure/runtime';
 import {
   ReplayPersistenceRepository,
 } from '../../domain/replay/ReplayPersistenceContracts';
@@ -36,7 +37,6 @@ export interface RuntimeKernelResult {
  * - no betting execution
  * - no heavy UI
  * - no polling loop
- * - no browser or websocket
  *
  * Complexity per command:
  * - Time: O(1)
@@ -56,7 +56,14 @@ export class RuntimeKernel {
     private readonly stressHarness: RuntimeStressHarness = new RuntimeStressHarness(),
     private readonly hudComposer: RuntimeHudTelemetryComposer = new RuntimeHudTelemetryComposer(),
     private readonly hudFormatter: OperatorHudFormatter = new OperatorHudFormatter(),
-  ) {}
+    private readonly eventLoopLagMonitor: TrueEventLoopLagMonitor = new TrueEventLoopLagMonitor(),
+  ) {
+    this.eventLoopLagMonitor.start();
+  }
+
+  public shutdown(): void {
+    this.eventLoopLagMonitor.stop();
+  }
 
   public parse(raw: string): RuntimeKernelCommand {
     const normalized = raw.trim().toLowerCase();
@@ -84,6 +91,7 @@ export class RuntimeKernel {
 
     if (command.type === 'QUIT') {
       this.lifecycleState = 'SHUTDOWN';
+      this.shutdown();
 
       return {
         shouldContinue: false,
@@ -94,12 +102,15 @@ export class RuntimeKernel {
     }
 
     const memory = this.memoryMonitor.sample();
+    const lag = this.eventLoopLagMonitor.snapshot();
+    const schedulerLagMs = lag.sampleCount > 0 ? lag.maxLagMs : 0;
+
     const stressSample = this.stressSampler.sample({
       scenario: 'EVENT_LOOP_LAG',
-      iterations: 1,
+      iterations: Math.max(1, lag.sampleCount),
       heapUsedBeforeBytes: memory.heapUsedBytes,
       heapUsedAfterBytes: memory.heapUsedBytes,
-      maxLatencyMs: memory.eventLoopLagMs,
+      maxLatencyMs: schedulerLagMs,
       rejectedEvents: command.type === 'INVALID' ? 1 : 0,
       blockedEvents: command.type === 'INVALID' ? 1 : 0,
     });
@@ -126,7 +137,7 @@ export class RuntimeKernel {
       verdict: operationalVerdict,
       trigger: command.type,
       reason: transition.reason,
-      latencyMs: memory.eventLoopLagMs,
+      latencyMs: schedulerLagMs,
     });
 
     const composed = this.hudComposer.compose({
@@ -139,7 +150,10 @@ export class RuntimeKernel {
       freezeStatus: operationalVerdict === 'FREEZE' ? 'FREEZE_TRIGGERED' : 'OK',
       lastTrigger: command.type,
       lastReason: transition.reason,
-      memory,
+      memory: {
+        ...memory,
+        eventLoopLagMs: schedulerLagMs,
+      },
       stress,
     });
 
