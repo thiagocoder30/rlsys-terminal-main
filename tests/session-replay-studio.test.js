@@ -5,70 +5,37 @@ const {
   SessionReplayStudio
 } = require('../dist/domain/replay/SessionReplayStudio.js');
 
-test('stores replay events', () => {
-  const replay = new SessionReplayStudio();
-
-  replay.append({
+function replayEvent(overrides = {}) {
+  return {
     eventId: 'evt-1',
     sessionId: 'session-1',
     spinIndex: 1,
     verdict: 'NO_GO',
     trigger: 'DRAWDOWN_LOCK',
     reason: 'velocity exceeded',
-    timestamp: Date.now(),
-    latencyMs: 12
-  });
+    timestamp: 1710000000000,
+    latencyMs: 12,
+    ...overrides
+  };
+}
 
-  assert.equal(replay.getEvents().length, 1);
-});
-
-test('returns last verdict', () => {
+test('SessionReplayStudio stores only bounded counters and last verdict', async () => {
   const replay = new SessionReplayStudio();
 
-  replay.append({
-    eventId: 'evt-2',
-    sessionId: 'session-1',
-    spinIndex: 2,
-    verdict: 'FREEZE',
-    trigger: 'HEARTBEAT_FAILURE',
-    reason: 'heartbeat lost',
-    timestamp: Date.now(),
-    latencyMs: 20
-  });
+  await replay.append(replayEvent());
 
-  assert.equal(
-    replay.getLastVerdict(),
-    'FREEZE'
-  );
+  assert.equal(replay.getLastVerdict(), 'NO_GO');
+  assert.equal(replay.countVerdict('NO_GO'), 1);
 });
 
-test('counts verdict occurrences', () => {
+test('SessionReplayStudio counts verdict occurrences without exposing full event array', async () => {
   const replay = new SessionReplayStudio();
 
-  replay.append({
-    eventId: 'evt-3',
-    sessionId: 'session-1',
-    spinIndex: 3,
-    verdict: 'NO_GO',
-    trigger: 'SNAPSHOT_REVOKED',
-    reason: 'snapshot invalid',
-    timestamp: Date.now(),
-    latencyMs: 10
-  });
+  await replay.append(replayEvent({ eventId: 'evt-1', verdict: 'NO_GO' }));
+  await replay.append(replayEvent({ eventId: 'evt-2', spinIndex: 2, verdict: 'NO_GO' }));
+  await replay.append(replayEvent({ eventId: 'evt-3', spinIndex: 3, verdict: 'FREEZE' }));
 
-  replay.append({
-    eventId: 'evt-4',
-    sessionId: 'session-1',
-    spinIndex: 4,
-    verdict: 'NO_GO',
-    trigger: 'DRAWDOWN_LOCK',
-    reason: 'drawdown exceeded',
-    timestamp: Date.now(),
-    latencyMs: 11
-  });
-
-  assert.equal(
-    replay.countVerdict('NO_GO'),
-    2
-  );
+  assert.equal(replay.countVerdict('NO_GO'), 2);
+  assert.equal(replay.countVerdict('FREEZE'), 1);
+  assert.equal(replay.getLastVerdict(), 'FREEZE');
 });

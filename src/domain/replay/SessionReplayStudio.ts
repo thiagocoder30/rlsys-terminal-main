@@ -1,39 +1,48 @@
 import {
-  SessionReplayEvent
+  ReplayVerdict,
+  SessionReplayEvent,
+  SessionReplayRepository
 } from './SessionReplayContracts';
 
+/**
+ * SessionReplayStudio records causal runtime decisions without retaining
+ * the full session history in memory.
+ *
+ * Memory model:
+ * - O(1) for latest verdict
+ * - O(k) for verdict counters, where k is bounded by the fixed verdict enum
+ * - durable history is delegated to an append-only repository
+ */
 export class SessionReplayStudio {
-  private readonly events: SessionReplayEvent[] = [];
+  private lastVerdict: ReplayVerdict | null = null;
+  private readonly verdictCounts = new Map<ReplayVerdict, number>();
 
-  public append(
+  public constructor(
+    private readonly repository?: SessionReplayRepository
+  ) {}
+
+  public async append(
     event: SessionReplayEvent
-  ): void {
-    this.events.push(event);
-  }
+  ): Promise<void> {
+    this.lastVerdict = event.verdict;
 
-  public getEvents(): readonly SessionReplayEvent[] {
-    return this.events;
-  }
+    this.verdictCounts.set(
+      event.verdict,
+      (this.verdictCounts.get(event.verdict) ?? 0) + 1
+    );
 
-  public getLastVerdict(): string | null {
-    if (this.events.length === 0) {
-      return null;
+    if (this.repository !== undefined) {
+      await this.repository.append(event);
     }
+  }
 
-    return this.events[this.events.length - 1].verdict;
+  public getLastVerdict(): ReplayVerdict | null {
+    return this.lastVerdict;
   }
 
   public countVerdict(
-    verdict: string
+    verdict: ReplayVerdict
   ): number {
-    let count = 0;
-
-    for (const event of this.events) {
-      if (event.verdict === verdict) {
-        count++;
-      }
-    }
-
-    return count;
+    return this.verdictCounts.get(verdict) ?? 0;
   }
 }

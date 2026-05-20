@@ -16,3 +16,7 @@ export interface SessionReplayEvent {
   readonly timestamp: number;
   readonly latencyMs: number;
 }
+
+export interface SessionReplayRepository {
+  append(event: SessionReplayEvent): Promise<void>;
+}
