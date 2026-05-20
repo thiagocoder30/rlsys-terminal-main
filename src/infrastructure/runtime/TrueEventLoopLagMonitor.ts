@@ -10,13 +10,7 @@ export interface TrueEventLoopLagSnapshot {
 
 /**
  * Measures real Node.js scheduler drift using timer delay.
- *
- * It does not measure the time between operator commands.
- * It measures how late the event loop executes a scheduled timer.
- *
- * Complexity:
- * - sample update: O(1)
- * - memory: O(1)
+ * It does not measure operator think time between REPL commands.
  */
 export class TrueEventLoopLagMonitor {
   private timer: NodeJS.Timeout | null = null;
@@ -29,20 +23,15 @@ export class TrueEventLoopLagMonitor {
   public constructor(private readonly intervalMs = 250) {}
 
   public start(): void {
-    if (this.timer !== null) {
-      return;
-    }
+    if (this.timer !== null) return;
 
-    const now = performance.now();
-    this.expectedNextTickMs = now + this.intervalMs;
+    this.expectedNextTickMs = performance.now() + this.intervalMs;
     this.timer = setTimeout(() => this.tick(), this.intervalMs);
     this.timer.unref?.();
   }
 
   public stop(): void {
-    if (this.timer === null) {
-      return;
-    }
+    if (this.timer === null) return;
 
     clearTimeout(this.timer);
     this.timer = null;

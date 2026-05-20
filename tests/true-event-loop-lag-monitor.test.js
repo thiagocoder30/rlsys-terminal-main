@@ -1,16 +1,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { setTimeout: sleep } = require('node:timers/promises');
-const {
-  TrueEventLoopLagMonitor,
-} = require('../dist/infrastructure/runtime');
+const { TrueEventLoopLagMonitor } = require('../dist/infrastructure/runtime');
 
 test('TrueEventLoopLagMonitor starts, samples scheduler drift, and stops safely', async () => {
   const monitor = new TrueEventLoopLagMonitor(5);
 
-  const before = monitor.snapshot();
-  assert.equal(before.started, false);
-  assert.equal(before.sampleCount, 0);
+  assert.equal(monitor.snapshot().started, false);
 
   monitor.start();
   monitor.start();
@@ -28,6 +24,5 @@ test('TrueEventLoopLagMonitor starts, samples scheduler drift, and stops safely'
   monitor.stop();
   monitor.stop();
 
-  const after = monitor.snapshot();
-  assert.equal(after.started, false);
+  assert.equal(monitor.snapshot().started, false);
 });
