@@ -39,6 +39,16 @@
         "sprint-059"
       ],
       "description": "Translates bankroll safety verdicts into calm operator-facing guidance."
+    },
+    "sprint-061": {
+      "name": "Conscious Profit Mode",
+      "script": "run-sprint-061.sh",
+      "channel": "stable",
+      "version": "1.0.0",
+      "dependencies": [
+        "sprint-060"
+      ],
+      "description": "Adds profit protection mode that reduces exposure near target and locks at stop win."
     }
   }
 }
