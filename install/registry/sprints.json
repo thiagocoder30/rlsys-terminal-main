@@ -19,6 +19,16 @@
         "sprint-057"
       ],
       "description": "Adds defensive bankroll-based user risk profile calculation."
+    },
+    "sprint-059": {
+      "name": "Bankroll Safety Gate",
+      "script": "run-sprint-059.sh",
+      "channel": "stable",
+      "version": "1.0.0",
+      "dependencies": [
+        "sprint-058"
+      ],
+      "description": "Adds defensive stake validation against bankroll profile, stops, exposure and martingale limits."
     }
   }
 }
