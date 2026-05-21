@@ -9,6 +9,16 @@
       "version": "1.0.0",
       "dependencies": [],
       "description": "Adds institutional sprint registry metadata for remote/local installer execution."
+    },
+    "sprint-058": {
+      "name": "User Risk Profile",
+      "script": "run-sprint-058.sh",
+      "channel": "stable",
+      "version": "1.0.0",
+      "dependencies": [
+        "sprint-057"
+      ],
+      "description": "Adds defensive bankroll-based user risk profile calculation."
     }
   }
 }
