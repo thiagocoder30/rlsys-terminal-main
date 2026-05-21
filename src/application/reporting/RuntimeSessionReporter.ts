@@ -1,6 +1,5 @@
 import {
   RuntimeSessionJournalEvent,
-  RuntimeSessionJournalEventType,
 } from '../../domain/journal/RuntimeSessionJournalContracts';
 import {
   StreamingRuntimeJournalQueryEngine,
@@ -38,8 +37,13 @@ export interface RuntimeSessionReport {
 /**
  * Builds human-readable operational reports from the runtime session journal.
  *
- * It uses the streaming query engine and only aggregates the bounded result set
- * returned by the query layer. This keeps memory bounded on mobile targets.
+ * It relies on the streaming query engine, avoiding full-file reads and keeping
+ * memory bounded by the configured query limit.
+ *
+ * Complexity:
+ * - Query scan: O(n)
+ * - Aggregation: O(limit)
+ * - Memory: O(limit)
  */
 export class RuntimeSessionReporter {
   public constructor(
@@ -50,19 +54,19 @@ export class RuntimeSessionReporter {
   public async report(
     request: RuntimeSessionReportRequest,
   ): Promise<RuntimeSessionReport> {
-    const queryResult = await this.queryEngine.query(request.journalPath, {
+    const result = await this.queryEngine.query(request.journalPath, {
       sessionId: request.sessionId,
       limit: request.limit,
     });
 
     const summary = this.summarize(
       request.sessionId,
-      queryResult.events,
-      queryResult.summary.scannedLines,
-      queryResult.summary.parsedEvents,
-      queryResult.summary.invalidLines,
-      queryResult.summary.matchedEvents,
-      queryResult.summary.truncated,
+      result.events,
+      result.summary.scannedLines,
+      result.summary.parsedEvents,
+      result.summary.invalidLines,
+      result.summary.matchedEvents,
+      result.summary.truncated,
     );
 
     return {
@@ -97,6 +101,7 @@ export class RuntimeSessionReporter {
       if (event.type === 'STATE_TRANSITION') transitionCount += 1;
       if (event.type === 'SHUTDOWN') shutdownCount += 1;
       if (event.type === 'ERROR') errorCount += 1;
+
       if (event.verdict === 'FREEZE') freezeCount += 1;
       if (event.verdict === 'BLOCKED') blockedCount += 1;
 
