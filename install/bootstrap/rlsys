@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+LOADER="$SCRIPT_DIR/rlsys-install.sh"
+
+if [ ! -x "$LOADER" ]; then
+  echo "[ERROR] Remote sprint loader not found or not executable: $LOADER"
+  exit 2
+fi
+
+exec "$LOADER" "$@"
