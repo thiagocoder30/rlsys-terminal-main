@@ -22,3 +22,6 @@ logs/
 *.log
 data/
 .test_ledger_storage/
+
+# Institutional remote sprint artifacts are versioned.
+!install/sprints/run-sprint-*.sh

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "defaultChannel": "stable",
+  "sprints": {
+    "sprint-057": {
+      "name": "Runtime Installer Registry",
+      "script": "run-sprint-057.sh",
+      "channel": "stable",
+      "version": "1.0.0",
+      "dependencies": [],
+      "description": "Adds institutional sprint registry metadata for remote/local installer execution."
+    }
+  }
+}
