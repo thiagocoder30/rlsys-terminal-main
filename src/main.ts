@@ -4,8 +4,11 @@ import { join } from 'node:path';
 import { RuntimeKernel, RuntimeShutdownCoordinator } from './application/runtime';
 import { JsonLinesReplayRepository } from './infrastructure/replay';
 import { JsonLinesRuntimeSessionJournalRepository } from './infrastructure/journal';
+import { RuntimeSessionIdentityFactory } from './domain/session';
 
 async function main(): Promise<void> {
+  const identity = new RuntimeSessionIdentityFactory().create();
+
   const replayPath = join(process.cwd(), 'data', 'replay');
   const journalPath = join(process.cwd(), 'data', 'journal');
 
@@ -22,9 +25,10 @@ async function main(): Promise<void> {
     undefined,
     undefined,
     journalRepository,
+    identity,
   );
 
-  const shutdown = new RuntimeShutdownCoordinator(kernel, journalRepository);
+  const shutdown = new RuntimeShutdownCoordinator(kernel, journalRepository, identity);
   const terminal = createInterface({ input, output });
 
   const closeTerminal = (): void => {
@@ -68,6 +72,7 @@ async function main(): Promise<void> {
 
   console.log('╔════════ RL.SYS CORE ════════╗');
   console.log('║ Institutional Runtime Kernel ║');
+  console.log(`║ Session: ${identity.sessionId} ║`);
   console.log('║ Type 0-36, status, or quit   ║');
   console.log('╚══════════════════════════════╝');
 

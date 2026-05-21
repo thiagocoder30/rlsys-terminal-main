@@ -12,6 +12,7 @@ import {
 import {
   RuntimeSessionJournalRepository,
 } from '../../domain/journal/RuntimeSessionJournalContracts';
+import { RuntimeSessionIdentity } from '../../domain/session';
 
 export type RuntimeKernelCommandType =
   | 'ROUND'
@@ -31,6 +32,11 @@ export interface RuntimeKernelResult {
   readonly output: string;
   readonly reason: string;
 }
+
+const DEFAULT_SESSION_IDENTITY: RuntimeSessionIdentity = {
+  sessionId: 'runtime-kernel',
+  startedAtEpochMs: 0,
+};
 
 /**
  * Institutional text-only runtime kernel.
@@ -55,12 +61,17 @@ export class RuntimeKernel {
     private readonly hudFormatter: OperatorHudFormatter = new OperatorHudFormatter(),
     private readonly eventLoopLagMonitor: TrueEventLoopLagMonitor = new TrueEventLoopLagMonitor(),
     private readonly journalRepository: RuntimeSessionJournalRepository | null = null,
+    private readonly identity: RuntimeSessionIdentity = DEFAULT_SESSION_IDENTITY,
   ) {
     this.eventLoopLagMonitor.start();
   }
 
   public shutdown(): void {
     this.eventLoopLagMonitor.stop();
+  }
+
+  public getSessionId(): string {
+    return this.identity.sessionId;
   }
 
   public parse(raw: string): RuntimeKernelCommand {
@@ -91,6 +102,7 @@ export class RuntimeKernel {
       command: command.raw,
       commandType: command.type,
       value: command.value,
+      sessionId: this.identity.sessionId,
     }, command.type, 'COMMAND_RECEIVED', 'operator command received');
 
     if (command.type === 'QUIT') {
@@ -99,6 +111,7 @@ export class RuntimeKernel {
 
       await this.appendJournal('SHUTDOWN', {
         command: command.raw,
+        sessionId: this.identity.sessionId,
       }, 'SHUTDOWN', 'OPERATOR_QUIT', 'operator requested shutdown');
 
       return {
@@ -144,11 +157,12 @@ export class RuntimeKernel {
       nextState: this.lifecycleState,
       accepted: transition.accepted,
       transitionReason: transition.reason,
+      sessionId: this.identity.sessionId,
     }, operationalVerdict, 'STATE_TRANSITION', transition.reason);
 
     await this.replayRepository.append({
-      eventId: `kernel:${this.sequence}:${this.lifecycleState}:${operationalVerdict}`,
-      sessionId: 'runtime-kernel',
+      eventId: `kernel:${this.identity.sessionId}:${this.sequence}:${this.lifecycleState}:${operationalVerdict}`,
+      sessionId: this.identity.sessionId,
       sequence: this.sequence,
       timestampEpochMs: Date.now(),
       verdict: operationalVerdict,
@@ -177,6 +191,7 @@ export class RuntimeKernel {
     await this.appendJournal('HUD', {
       snapshot: composed.snapshot,
       stressVerdict: composed.stressVerdict,
+      sessionId: this.identity.sessionId,
     }, operationalVerdict, 'HUD_RENDERED', composed.reason);
 
     return {
@@ -199,8 +214,8 @@ export class RuntimeKernel {
     }
 
     await this.journalRepository.append({
-      eventId: `journal:${this.sequence}:${type}:${reason}`,
-      sessionId: 'runtime-kernel',
+      eventId: `journal:${this.identity.sessionId}:${this.sequence}:${type}:${reason}`,
+      sessionId: this.identity.sessionId,
       sequence: this.sequence,
       timestampEpochMs: Date.now(),
       type,
