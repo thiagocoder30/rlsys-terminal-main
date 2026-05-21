@@ -29,6 +29,16 @@
         "sprint-058"
       ],
       "description": "Adds defensive stake validation against bankroll profile, stops, exposure and martingale limits."
+    },
+    "sprint-060": {
+      "name": "Human Operator Messaging",
+      "script": "run-sprint-060.sh",
+      "channel": "stable",
+      "version": "1.0.0",
+      "dependencies": [
+        "sprint-059"
+      ],
+      "description": "Translates bankroll safety verdicts into calm operator-facing guidance."
     }
   }
 }
