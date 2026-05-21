@@ -18,7 +18,19 @@ fi
 mkdir -p "$CACHE_DIR" "$LOG_DIR"
 
 BASE_URL="https://raw.githubusercontent.com/$REPO_OWNER/$REPO_NAME/$REPO_BRANCH"
-SCRIPT_NAME="run-${SPRINT}.sh"
+REGISTRY_FILE="$PROJECT_DIR/install/registry/sprints.json"
+
+if [ -f "$REGISTRY_FILE" ] && command -v node >/dev/null 2>&1; then
+  RESOLVED_SCRIPT="$(node -e "const fs=require('fs'); const r=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); const s=r.sprints[process.argv[2]]; console.log(s && s.script ? s.script : '')" "$REGISTRY_FILE" "$SPRINT")"
+else
+  RESOLVED_SCRIPT=""
+fi
+
+if [ -n "$RESOLVED_SCRIPT" ]; then
+  SCRIPT_NAME="$RESOLVED_SCRIPT"
+else
+  SCRIPT_NAME="run-${SPRINT}.sh"
+fi
 SCRIPT_URL="$BASE_URL/install/sprints/$SCRIPT_NAME"
 MANIFEST_URL="$BASE_URL/install/manifests/${SPRINT}.sha256"
 LOCAL_SCRIPT="$CACHE_DIR/$SCRIPT_NAME"
