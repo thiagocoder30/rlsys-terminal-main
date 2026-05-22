@@ -129,6 +129,16 @@
         "sprint-067"
       ],
       "description": "Adds human-readable session report composer for bankroll, discipline, drawdown and recommended actions."
+    },
+    "sprint-069": {
+      "name": "Guided Operation Mode",
+      "script": "run-sprint-069.sh",
+      "channel": "stable",
+      "version": "1.0.0",
+      "dependencies": [
+        "sprint-068"
+      ],
+      "description": "Adds a lightweight guided operation workflow for assisted user sessions."
     }
   }
 }
