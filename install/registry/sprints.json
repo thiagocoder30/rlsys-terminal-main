@@ -119,6 +119,16 @@
         "sprint-066"
       ],
       "description": "Adds O(1) runtime paper ledger state service for balance, PNL, high water mark and drawdown."
+    },
+    "sprint-068": {
+      "name": "Human Session Report",
+      "script": "run-sprint-068.sh",
+      "channel": "stable",
+      "version": "1.0.0",
+      "dependencies": [
+        "sprint-067"
+      ],
+      "description": "Adds human-readable session report composer for bankroll, discipline, drawdown and recommended actions."
     }
   }
 }
