@@ -89,6 +89,16 @@
         "sprint-063"
       ],
       "description": "Adds atomic JSON persistence for operator risk profile."
+    },
+    "sprint-065": {
+      "name": "Operator Setup Wizard",
+      "script": "run-sprint-065.sh",
+      "channel": "stable",
+      "version": "1.0.0",
+      "dependencies": [
+        "sprint-064"
+      ],
+      "description": "Adds UI-agnostic setup wizard for creating and persisting operator risk profiles."
     }
   }
 }
