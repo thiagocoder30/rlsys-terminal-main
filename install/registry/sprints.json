@@ -79,6 +79,16 @@
         "sprint-062-1"
       ],
       "description": "Composes bankroll safety, profit protection, cooldown and human guidance into a runtime risk decision gateway."
+    },
+    "sprint-064": {
+      "name": "Risk Profile Persistence",
+      "script": "run-sprint-064.sh",
+      "channel": "stable",
+      "version": "1.0.0",
+      "dependencies": [
+        "sprint-063"
+      ],
+      "description": "Adds atomic JSON persistence for operator risk profile."
     }
   }
 }
