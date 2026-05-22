@@ -139,6 +139,16 @@
         "sprint-068"
       ],
       "description": "Adds a lightweight guided operation workflow for assisted user sessions."
+    },
+    "sprint-070": {
+      "name": "Runtime Guided Mode Wiring",
+      "script": "run-sprint-070.sh",
+      "channel": "stable",
+      "version": "1.0.0",
+      "dependencies": [
+        "sprint-069"
+      ],
+      "description": "Adds a runtime-facing coordinator for guided operation mode commands."
     }
   }
 }
