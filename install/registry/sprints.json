@@ -99,6 +99,16 @@
         "sprint-064"
       ],
       "description": "Adds UI-agnostic setup wizard for creating and persisting operator risk profiles."
+    },
+    "sprint-066": {
+      "name": "Bankroll HUD Integration",
+      "script": "run-sprint-066.sh",
+      "channel": "stable",
+      "version": "1.0.0",
+      "dependencies": [
+        "sprint-065"
+      ],
+      "description": "Adds operator-facing bankroll HUD snapshot composer for risk profile and runtime risk decisions."
     }
   }
 }
