@@ -69,6 +69,16 @@
         "sprint-062"
       ],
       "description": "Adds a cooldown command gate adapter compatible with the current RuntimeKernel shape."
+    },
+    "sprint-063": {
+      "name": "Runtime Risk Decision Gateway",
+      "script": "run-sprint-063.sh",
+      "channel": "stable",
+      "version": "1.0.0",
+      "dependencies": [
+        "sprint-062-1"
+      ],
+      "description": "Composes bankroll safety, profit protection, cooldown and human guidance into a runtime risk decision gateway."
     }
   }
 }
