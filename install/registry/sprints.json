@@ -109,6 +109,16 @@
         "sprint-065"
       ],
       "description": "Adds operator-facing bankroll HUD snapshot composer for risk profile and runtime risk decisions."
+    },
+    "sprint-067": {
+      "name": "Paper Ledger Full Wiring",
+      "script": "run-sprint-067.sh",
+      "channel": "stable",
+      "version": "1.0.0",
+      "dependencies": [
+        "sprint-066"
+      ],
+      "description": "Adds O(1) runtime paper ledger state service for balance, PNL, high water mark and drawdown."
     }
   }
 }
