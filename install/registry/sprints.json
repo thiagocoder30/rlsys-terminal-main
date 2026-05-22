@@ -59,6 +59,16 @@
         "sprint-061"
       ],
       "description": "Adds behavioral cooldown guard for repeated losses and revenge-operation attempts."
+    },
+    "sprint-062-1": {
+      "name": "Cooldown Runtime Adapter",
+      "script": "run-sprint-062-1.sh",
+      "channel": "stable",
+      "version": "1.0.0",
+      "dependencies": [
+        "sprint-062"
+      ],
+      "description": "Adds a cooldown command gate adapter compatible with the current RuntimeKernel shape."
     }
   }
 }
