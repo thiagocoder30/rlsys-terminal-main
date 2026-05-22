@@ -44,7 +44,17 @@ echo "Sprint: $SPRINT"
 echo "Script: $SCRIPT_URL"
 echo "Cache: $LOCAL_SCRIPT"
 
-curl -fsSL "$SCRIPT_URL" -o "$LOCAL_SCRIPT"
+LOCAL_REPO_SCRIPT="$PROJECT_DIR/install/sprints/$SCRIPT_NAME"
+
+if [ -f "$LOCAL_REPO_SCRIPT" ]; then
+  echo "== Using local sprint artifact =="
+  echo "Local: $LOCAL_REPO_SCRIPT"
+  cp "$LOCAL_REPO_SCRIPT" "$LOCAL_SCRIPT"
+else
+  echo "== Downloading remote sprint artifact =="
+  curl -fsSL "$SCRIPT_URL" -o "$LOCAL_SCRIPT"
+fi
+
 chmod +x "$LOCAL_SCRIPT"
 
 if curl -fsSL "$MANIFEST_URL" -o "$LOCAL_MANIFEST"; then
