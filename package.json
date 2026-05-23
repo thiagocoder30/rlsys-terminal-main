@@ -16,7 +16,8 @@
     "start:live": "node dist/main.js",
     "start:headless": "node dist/main.js --headless",
     "start:cybernetic": "python3 satellite/main.py | npm run start:headless",
-    "research:update": "node dist/research.js"
+    "research:update": "node dist/research.js",
+    "check:modules": "node install/quality/check-module-compatibility.cjs"
   },
   "keywords": [
     "rl-sys",
