@@ -2,6 +2,10 @@ const { mkdirSync, writeFileSync } = require("node:fs");
 const { dirname } = require("node:path");
 const { RuntimeStabilitySoakHarness } = require("../dist/application/runtime/RuntimeStabilitySoakHarness.js");
 const { RuntimeSoakPressureCalibration } = require("../dist/application/runtime/RuntimeSoakPressureCalibration.js");
+const {
+  RuntimeMemoryPressureClassifierV2,
+  createMobileMemoryPressurePolicyV2,
+} = require("../dist/application/runtime/RuntimeMemoryPressureClassifierV2.js");
 
 function parseArgs(argv) {
   const config = {
@@ -49,30 +53,30 @@ function parseArgs(argv) {
   return config;
 }
 
-function pressureFromHeap(heapUsedBytes, heapTotalBytes) {
-  if (heapTotalBytes <= 0) {
-    return "LOW";
+function createPressureClassifierState() {
+  return {
+    classifier: new RuntimeMemoryPressureClassifierV2(),
+    policy: createMobileMemoryPressurePolicyV2(),
+    baselineHeapUsedBytes: null,
+  };
+}
+
+function pressureFromMemory(memory, state) {
+  if (state.baselineHeapUsedBytes === null) {
+    state.baselineHeapUsedBytes = memory.heapUsed;
   }
 
-  const ratio = heapUsedBytes / heapTotalBytes;
-
-  if (ratio >= 0.95) {
-    return "CRITICAL";
-  }
-
-  if (ratio >= 0.85) {
-    return "HIGH";
-  }
-
-  if (ratio >= 0.7) {
-    return "ELEVATED";
-  }
-
-  return "LOW";
+  return state.classifier.classify({
+    heapUsedBytes: memory.heapUsed,
+    heapTotalBytes: memory.heapTotal,
+    rssBytes: memory.rss,
+    baselineHeapUsedBytes: state.baselineHeapUsedBytes,
+  }, state.policy).pressure;
 }
 
 function createWorkload(pressureSamples) {
   let expectedAtEpochMs = Date.now();
+  const pressureState = createPressureClassifierState();
 
   return {
     async execute(iteration) {
@@ -96,7 +100,7 @@ function createWorkload(pressureSamples) {
 
       expectedAtEpochMs = before + 1;
 
-      const pressure = pressureFromHeap(memory.heapUsed, memory.heapTotal);
+      const pressure = pressureFromMemory(memory, pressureState);
 
       pressureSamples.push({
         iteration,
