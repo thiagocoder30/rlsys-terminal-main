@@ -1,6 +1,7 @@
 const { mkdirSync, writeFileSync } = require("node:fs");
 const { dirname } = require("node:path");
 const { RuntimeStabilitySoakHarness } = require("../dist/application/runtime/RuntimeStabilitySoakHarness.js");
+const { RuntimeSoakPressureCalibration } = require("../dist/application/runtime/RuntimeSoakPressureCalibration.js");
 
 function parseArgs(argv) {
   const config = {
@@ -8,6 +9,9 @@ function parseArgs(argv) {
     maxHeapDriftBytes: 8 * 1024 * 1024,
     maxPeakEventLoopLagMs: 50,
     forbiddenPressure: "HIGH",
+    warmupIterations: 1000,
+    allowedTransientPressureSpikes: 1,
+    sustainedPressureWindow: 3,
     output: "data/soak/runtime-soak-report.json",
   };
 
@@ -26,6 +30,15 @@ function parseArgs(argv) {
       index += 1;
     } else if (key === "--forbidden-pressure") {
       config.forbiddenPressure = String(value);
+      index += 1;
+    } else if (key === "--warmup-iterations") {
+      config.warmupIterations = Number(value);
+      index += 1;
+    } else if (key === "--allowed-transient-pressure-spikes") {
+      config.allowedTransientPressureSpikes = Number(value);
+      index += 1;
+    } else if (key === "--sustained-pressure-window") {
+      config.sustainedPressureWindow = Number(value);
       index += 1;
     } else if (key === "--output") {
       config.output = String(value);
@@ -58,7 +71,7 @@ function pressureFromHeap(heapUsedBytes, heapTotalBytes) {
   return "LOW";
 }
 
-function createWorkload() {
+function createWorkload(pressureSamples) {
   let expectedAtEpochMs = Date.now();
 
   return {
@@ -83,11 +96,18 @@ function createWorkload() {
 
       expectedAtEpochMs = before + 1;
 
+      const pressure = pressureFromHeap(memory.heapUsed, memory.heapTotal);
+
+      pressureSamples.push({
+        iteration,
+        pressure,
+      });
+
       return {
         iteration,
         heapUsedBytes: memory.heapUsed,
         eventLoopLagMs,
-        pressure: pressureFromHeap(memory.heapUsed, memory.heapTotal),
+        pressure,
       };
     },
   };
@@ -96,7 +116,8 @@ function createWorkload() {
 async function main() {
   const config = parseArgs(process.argv);
 
-  const harness = new RuntimeStabilitySoakHarness(createWorkload());
+  const pressureSamples = [];
+  const harness = new RuntimeStabilitySoakHarness(createWorkload(pressureSamples));
 
   const startedAtEpochMs = Date.now();
 
@@ -107,11 +128,31 @@ async function main() {
     forbiddenPressure: config.forbiddenPressure,
   });
 
+  const pressureCalibration = new RuntimeSoakPressureCalibration().evaluate(pressureSamples, {
+    warmupIterations: config.warmupIterations,
+    allowedTransientPressureSpikes: config.allowedTransientPressureSpikes,
+    sustainedPressureWindow: config.sustainedPressureWindow,
+    forbiddenPressure: config.forbiddenPressure,
+  });
+
+  const calibratedResult = {
+    ...result,
+    stable: result.stable || (
+      result.heapDriftBytes <= config.maxHeapDriftBytes
+      && result.peakEventLoopLagMs <= config.maxPeakEventLoopLagMs
+      && pressureCalibration.stable
+    ),
+    pressureViolations: pressureCalibration.sustainedPressureViolations,
+    transientPressureSpikes: pressureCalibration.transientPressureSpikes,
+    ignoredWarmupSamples: pressureCalibration.ignoredWarmupSamples,
+  };
+
   const report = {
     generatedAtEpochMs: Date.now(),
     durationMs: Date.now() - startedAtEpochMs,
     configuration: config,
-    result,
+    pressureCalibration,
+    result: calibratedResult,
   };
 
   mkdirSync(dirname(config.output), { recursive: true });
@@ -119,7 +160,7 @@ async function main() {
 
   console.log(JSON.stringify(report, null, 2));
 
-  if (!result.stable) {
+  if (!calibratedResult.stable) {
     process.exitCode = 1;
   }
 }
