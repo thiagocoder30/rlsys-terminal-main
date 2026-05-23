@@ -20,6 +20,12 @@ test("runtime soak runner writes stable json report", () => {
       "1000",
       "--forbidden-pressure",
       "CRITICAL",
+      "--warmup-iterations",
+      "1",
+      "--allowed-transient-pressure-spikes",
+      "1",
+      "--sustained-pressure-window",
+      "2",
       "--output",
       output,
     ], {
@@ -32,6 +38,9 @@ test("runtime soak runner writes stable json report", () => {
     assert.equal(typeof report.result.heapDriftBytes, "number");
     assert.equal(typeof report.result.peakEventLoopLagMs, "number");
     assert.equal(Array.isArray(report.result.violationMessages), true);
+    assert.equal(typeof report.result.transientPressureSpikes, "number");
+    assert.equal(typeof report.result.ignoredWarmupSamples, "number");
+    assert.equal(typeof report.pressureCalibration.stable, "boolean");
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
