@@ -11,10 +11,7 @@ const {
 } = require("../dist/application/runtime/PaperRuntimeHudGateComposer.js");
 
 test("prepare command does not render operation gate as blocked", () => {
-  const supervisor = new PaperRuntimeSessionSupervisor(
-    new PaperRuntimeOperationalGate(),
-  );
-
+  const supervisor = new PaperRuntimeSessionSupervisor(new PaperRuntimeOperationalGate());
   const hud = new PaperRuntimeHudGateComposer();
 
   const result = supervisor.supervise({
@@ -25,9 +22,7 @@ test("prepare command does not render operation gate as blocked", () => {
     commandIntent: "PREPARE",
   });
 
-  const rendered = hud.compose(result, {
-    compact: true,
-  });
+  const rendered = hud.compose(result, { compact: true });
 
   assert.equal(result.decision, "SESSION_PREPARED");
   assert.equal(result.allowed, true);

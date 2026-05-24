@@ -1,6 +1,4 @@
-export type PaperRuntimeV1CertificationStatus =
-  | "CERTIFIED"
-  | "FAILED";
+export type PaperRuntimeV1CertificationStatus = "CERTIFIED" | "FAILED";
 
 export interface PaperRuntimeV1CertificationInput {
   readonly hasInteractiveLoop: boolean;
@@ -19,10 +17,11 @@ export interface PaperRuntimeV1CertificationResult {
 }
 
 /**
- * Certifies the minimal paper runtime v1.0 operational surface.
+ * Certifies the minimal Paper Runtime v1.0 defensive shell.
  *
- * This is not a gambling-performance certificate. It only certifies that
- * the defensive paper runtime shell has the required governance components.
+ * This is not a real-money authorization certificate. It only certifies that
+ * the paper runtime has the defensive governance surface required for supervised
+ * operation.
  *
  * Complexity:
  * - O(1), fixed checklist.
@@ -32,26 +31,11 @@ export class PaperRuntimeV1Certification {
   public certify(input: PaperRuntimeV1CertificationInput): PaperRuntimeV1CertificationResult {
     const failures: string[] = [];
 
-    if (!input.hasInteractiveLoop) {
-      failures.push("Interactive loop is missing.");
-    }
-
-    if (!input.hasOperationalGate) {
-      failures.push("Operational gate is missing.");
-    }
-
-    if (!input.hasSessionSupervisor) {
-      failures.push("Session supervisor is missing.");
-    }
-
-    if (!input.hasHudComposer) {
-      failures.push("HUD composer is missing.");
-    }
-
-    if (!input.hasReplAdapter) {
-      failures.push("REPL adapter is missing.");
-    }
-
+    if (!input.hasInteractiveLoop) failures.push("Interactive loop is missing.");
+    if (!input.hasOperationalGate) failures.push("Operational gate is missing.");
+    if (!input.hasSessionSupervisor) failures.push("Session supervisor is missing.");
+    if (!input.hasHudComposer) failures.push("HUD composer is missing.");
+    if (!input.hasReplAdapter) failures.push("REPL adapter is missing.");
     if (!input.allowsPrepareWithoutOperationGateConfusion) {
       failures.push("PREPARE command still exposes operation gate confusion.");
     }
