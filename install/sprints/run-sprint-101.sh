@@ -1,4 +1,33 @@
 #!/usr/bin/env bash
+set -euo pipefail
+
+BRANCH="sprint-101-loader-sha256-log-final"
+COMMIT_MSG="fix(bootstrap): preserve sha256 loader contracts and sprint logs"
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+cd "$ROOT_DIR"
+
+git checkout main
+git pull origin main
+git reset --hard
+git clean -fd dist || true
+
+git checkout -B "$BRANCH"
+
+mkdir -p install/bootstrap tests
+
+cat > install/bootstrap/rlsys <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+LOADER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/rlsys-install.sh"
+exec "$LOADER" "$@"
+SH
+
+chmod +x install/bootstrap/rlsys
+
+cat > install/bootstrap/rlsys-install.sh <<'SH'
+#!/usr/bin/env bash
 set -uo pipefail
 
 SPRINT="${1:-}"
@@ -183,3 +212,26 @@ else
 fi
 
 exit "$STATUS"
+SH
+
+chmod +x install/bootstrap/rlsys-install.sh
+
+npm run check:modules
+npm run build
+npm test
+
+git restore --worktree --staged dist 2>/dev/null || true
+git clean -fd dist || true
+
+git add \
+  install/bootstrap/rlsys \
+  install/bootstrap/rlsys-install.sh \
+  install/sprints/run-sprint-101.sh
+
+git commit -m "$COMMIT_MSG"
+
+git checkout main
+git merge --no-ff "$BRANCH" -m "merge: sprint 101 loader sha256 log final"
+git push origin main
+
+echo "== Sprint 101 completed, merged and pushed successfully =="
