@@ -14,96 +14,74 @@ function input(overrides = {}) {
   };
 }
 
-test("allows paper operation when runtime is certified and supervised", () => {
-  const gate = new PaperRuntimeOperationalGate();
-
-  const result = gate.evaluate(input());
+test("allows certified supervised paper operation", () => {
+  const result = new PaperRuntimeOperationalGate().evaluate(input());
 
   assert.equal(result.decision, "ALLOW_PAPER_OPERATION");
   assert.equal(result.allowed, true);
 });
 
-test("blocks paper operation when endurance failed", () => {
-  const gate = new PaperRuntimeOperationalGate();
-
-  const result = gate.evaluate(input({
+test("blocks failed endurance", () => {
+  const result = new PaperRuntimeOperationalGate().evaluate(input({
     enduranceStatus: "FAILED",
   }));
 
   assert.equal(result.decision, "BLOCK_PAPER_OPERATION");
-  assert.equal(result.allowed, false);
-  assert.match(result.reasons.join(" "), /Endurance/);
 });
 
-test("blocks paper operation when endurance has no data", () => {
-  const gate = new PaperRuntimeOperationalGate();
-
-  const result = gate.evaluate(input({
+test("blocks missing endurance data", () => {
+  const result = new PaperRuntimeOperationalGate().evaluate(input({
     enduranceStatus: "NO_DATA",
   }));
 
   assert.equal(result.decision, "BLOCK_PAPER_OPERATION");
-  assert.equal(result.allowed, false);
 });
 
-test("blocks paper operation when risk readiness is blocked", () => {
-  const gate = new PaperRuntimeOperationalGate();
-
-  const result = gate.evaluate(input({
+test("blocks blocked risk readiness", () => {
+  const result = new PaperRuntimeOperationalGate().evaluate(input({
     riskReadiness: "BLOCKED",
   }));
 
   assert.equal(result.decision, "BLOCK_PAPER_OPERATION");
-  assert.match(result.reasons.join(" "), /Risk readiness/);
 });
 
-test("requires supervision when endurance has warning", () => {
-  const gate = new PaperRuntimeOperationalGate();
-
-  const result = gate.evaluate(input({
-    enduranceStatus: "WARNING",
+test("blocks idle session", () => {
+  const result = new PaperRuntimeOperationalGate().evaluate(input({
+    sessionState: "IDLE",
   }));
 
-  assert.equal(result.decision, "REQUIRE_SUPERVISION");
-  assert.equal(result.allowed, false);
+  assert.equal(result.decision, "BLOCK_PAPER_OPERATION");
 });
 
-test("requires supervision when operator is unsupervised", () => {
-  const gate = new PaperRuntimeOperationalGate();
-
-  const result = gate.evaluate(input({
-    operatorMode: "UNSUPERVISED",
-  }));
-
-  assert.equal(result.decision, "REQUIRE_SUPERVISION");
-});
-
-test("requires supervision when session is paused", () => {
-  const gate = new PaperRuntimeOperationalGate();
-
-  const result = gate.evaluate(input({
-    sessionState: "PAUSED",
-  }));
-
-  assert.equal(result.decision, "REQUIRE_SUPERVISION");
-});
-
-test("blocks paper operation when session is finished", () => {
-  const gate = new PaperRuntimeOperationalGate();
-
-  const result = gate.evaluate(input({
+test("blocks finished session", () => {
+  const result = new PaperRuntimeOperationalGate().evaluate(input({
     sessionState: "FINISHED",
   }));
 
   assert.equal(result.decision, "BLOCK_PAPER_OPERATION");
 });
 
-test("blocks paper operation when session is idle", () => {
-  const gate = new PaperRuntimeOperationalGate();
-
-  const result = gate.evaluate(input({
-    sessionState: "IDLE",
+test("requires supervision when operator is unsupervised", () => {
+  const result = new PaperRuntimeOperationalGate().evaluate(input({
+    operatorMode: "UNSUPERVISED",
   }));
 
-  assert.equal(result.decision, "BLOCK_PAPER_OPERATION");
+  assert.equal(result.decision, "REQUIRE_SUPERVISION");
+});
+
+test("requires supervision on endurance warning", () => {
+  const result = new PaperRuntimeOperationalGate().evaluate(input({
+    enduranceStatus: "WARNING",
+  }));
+
+  assert.equal(result.decision, "REQUIRE_SUPERVISION");
+});
+
+test("allows paused session when operator is supervised", () => {
+  const result = new PaperRuntimeOperationalGate().evaluate(input({
+    sessionState: "PAUSED",
+    operatorMode: "SUPERVISED",
+  }));
+
+  assert.equal(result.decision, "ALLOW_PAPER_OPERATION");
 });

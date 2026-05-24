@@ -39,10 +39,10 @@ export interface PaperRuntimeOperationalGateResult {
 }
 
 /**
- * Determines whether paper runtime operation can proceed.
+ * Authorizes only supervised paper operation.
  *
- * This gate intentionally does not decide real-money permission. It only
- * authorizes paper operation under supervision after endurance and risk checks.
+ * This gate never authorizes real-money operation. It only decides whether
+ * a paper session may proceed, requires active supervision, or must be blocked.
  *
  * Complexity:
  * - O(1), fixed rule set.
@@ -50,42 +50,51 @@ export interface PaperRuntimeOperationalGateResult {
  */
 export class PaperRuntimeOperationalGate {
   public evaluate(input: PaperRuntimeOperationalGateInput): PaperRuntimeOperationalGateResult {
-    const reasons: string[] = [];
+    const blockReasons: string[] = [];
 
     if (input.enduranceStatus === "FAILED" || input.enduranceStatus === "NO_DATA") {
-      reasons.push("Endurance certification is not acceptable for paper operation.");
+      blockReasons.push("Endurance certification is not acceptable for paper operation.");
     }
 
     if (input.riskReadiness === "BLOCKED") {
-      reasons.push("Risk readiness is blocked.");
+      blockReasons.push("Risk readiness is blocked.");
     }
 
     if (input.sessionState === "FINISHED") {
-      reasons.push("Session is already finished.");
+      blockReasons.push("Session is already finished.");
     }
 
     if (input.sessionState === "IDLE") {
-      reasons.push("Session is idle and must be prepared before paper operation.");
+      blockReasons.push("Session is idle and must be prepared before paper operation.");
     }
 
-    if (reasons.length > 0) {
+    if (blockReasons.length > 0) {
       return {
         decision: "BLOCK_PAPER_OPERATION",
         allowed: false,
-        reasons,
+        reasons: blockReasons,
       };
     }
 
-    if (
-      input.enduranceStatus === "WARNING"
-      || input.riskReadiness === "CAUTION"
-      || input.operatorMode === "UNSUPERVISED"
-      || input.sessionState === "PAUSED"
-    ) {
+    const supervisionReasons: string[] = [];
+
+    if (input.enduranceStatus === "WARNING") {
+      supervisionReasons.push("Endurance certification has warnings.");
+    }
+
+    if (input.riskReadiness === "CAUTION") {
+      supervisionReasons.push("Risk readiness requires caution.");
+    }
+
+    if (input.operatorMode === "UNSUPERVISED") {
+      supervisionReasons.push("Paper operation requires active human supervision.");
+    }
+
+    if (supervisionReasons.length > 0) {
       return {
         decision: "REQUIRE_SUPERVISION",
         allowed: false,
-        reasons: ["Paper operation requires active human supervision."],
+        reasons: supervisionReasons,
       };
     }
 
