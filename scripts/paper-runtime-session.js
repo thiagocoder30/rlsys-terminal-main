@@ -14,6 +14,14 @@ const {
 const {
   PaperRuntimeInteractiveLoop,
 } = require("../dist/application/runtime/PaperRuntimeInteractiveLoop.js");
+const {
+  PaperRuntimeSessionSnapshotFactory,
+} = require("../dist/application/runtime/PaperRuntimeSessionSnapshot.js");
+const {
+  JsonPaperRuntimeSessionSnapshotRepository,
+} = require("../dist/infrastructure/runtime/JsonPaperRuntimeSessionSnapshotRepository.js");
+
+const SNAPSHOT_PATH = "data/paper-runtime/session-snapshot.json";
 
 function createLoop() {
   return new PaperRuntimeInteractiveLoop(
@@ -40,9 +48,29 @@ function printHelp() {
   ].join("\n"));
 }
 
+function saveSnapshot(loop, gracefulShutdown) {
+  const state = loop.currentState();
+  const snapshot = new PaperRuntimeSessionSnapshotFactory().create({
+    sessionState: state.sessionState,
+    iteration: state.iteration,
+    lastCommand: state.lastCommand,
+    gracefulShutdown,
+  });
+
+  new JsonPaperRuntimeSessionSnapshotRepository(SNAPSHOT_PATH).save(snapshot);
+  return snapshot;
+}
+
 function main() {
   const loop = createLoop();
+  const repository = new JsonPaperRuntimeSessionSnapshotRepository(SNAPSHOT_PATH);
+  const previous = repository.load();
+
   printHelp();
+
+  if (previous !== null) {
+    console.log(`Previous snapshot detected: state=${previous.sessionState} graceful=${previous.gracefulShutdown}`);
+  }
 
   const rl = readline.createInterface({
     input: process.stdin,
@@ -56,13 +84,20 @@ function main() {
     const command = line.trim().toLowerCase();
 
     if (command === "exit" || command === "quit") {
+      saveSnapshot(loop, true);
       rl.close();
       return;
     }
 
     const result = loop.handle(line);
+    saveSnapshot(loop, false);
     console.log(result.output);
     rl.prompt();
+  });
+
+  rl.on("SIGINT", () => {
+    saveSnapshot(loop, false);
+    rl.close();
   });
 
   rl.on("close", () => {
