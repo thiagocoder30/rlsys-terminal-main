@@ -37,8 +37,8 @@ export interface PaperRuntimeSupervisorResult {
 /**
  * Supervises paper runtime command flow using the operational gate.
  *
- * It does not execute financial operations. It only transitions paper session
- * governance state and blocks unsafe command intents.
+ * PREPARE is a preparation action, not an operation request. Therefore it must
+ * not render the operation gate as blocked when the session starts from IDLE.
  *
  * Complexity:
  * - O(1), fixed transition table.
