@@ -71,8 +71,12 @@ export class PaperRuntimeSessionSupervisor {
         decision: "SESSION_PREPARED",
         allowed: true,
         nextSessionState: "READY",
-        gate: gateResult,
-        messages: ["Paper session prepared for supervised operation."],
+        gate: {
+          decision: "ALLOW_PAPER_OPERATION",
+          allowed: true,
+          reasons: ["Preparation is allowed. Operation gate will be evaluated before START or RESUME."],
+        },
+        messages: ["Paper session prepared. Use START to request operational authorization."],
       };
     }
 
