@@ -20,7 +20,8 @@
     "check:modules": "node install/quality/check-module-compatibility.cjs",
     "soak:runtime": "node scripts/runtime-soak-runner.js",
     "certify:runtime": "node scripts/runtime-certify-baseline.js",
-    "paper:runtime": "node scripts/paper-runtime-session.js"
+    "paper:runtime": "node scripts/paper-runtime-session.js",
+    "paper:daily": "node scripts/paper-runtime-daily-operation-cli.js"
   },
   "keywords": [
     "rl-sys",
