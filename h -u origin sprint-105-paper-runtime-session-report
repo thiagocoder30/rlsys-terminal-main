@@ -1,0 +1,5 @@
+[33m5a2dab8[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m merge: sprint 104 paper runtime ledger command wiring
+[33m8eb1c01[m[33m ([m[1;31morigin/sprint-104-paper-runtime-ledger-command-wiring[m[33m, [m[1;32msprint-104-paper-runtime-ledger-command-wiring[m[33m)[m feat(runtime): wire paper runtime ledger commands
+[33m5adf6a4[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m merge: sprint 103 paper runtime snapshot recovery
+[33m0244fe2[m[33m ([m[1;31morigin/sprint-103-paper-runtime-snapshot-recovery[m[33m, [m[1;32msprint-103-paper-runtime-snapshot-recovery[m[33m)[m feat(runtime): add paper runtime snapshot recovery
+[33m69fabd3[m merge: sprint 102 paper runtime safe shutdown snapshot
