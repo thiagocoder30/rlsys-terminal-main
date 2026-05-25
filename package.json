@@ -21,7 +21,8 @@
     "soak:runtime": "node scripts/runtime-soak-runner.js",
     "certify:runtime": "node scripts/runtime-certify-baseline.js",
     "paper:runtime": "node scripts/paper-runtime-session.js",
-    "paper:daily": "node scripts/paper-runtime-daily-operation-cli.js"
+    "paper:daily": "node scripts/paper-runtime-daily-operation-cli.js",
+    "paper:trial": "node scripts/paper-runtime-24h-supervision-trial.js"
   },
   "keywords": [
     "rl-sys",
