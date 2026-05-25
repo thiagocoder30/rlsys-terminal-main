@@ -106,3 +106,18 @@ function main() {
 }
 
 main();
+
+/**
+ * Sprint 103 — Paper Runtime Snapshot Recovery
+ *
+ * Appended at EOF intentionally to preserve the legacy interactive runtime source,
+ * including readline-based contracts already covered by existing tests.
+ */
+try {
+  const { runPaperRuntimeSnapshotRecovery } = require('./paper-runtime-snapshot-recovery');
+  runPaperRuntimeSnapshotRecovery();
+} catch (error) {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`RL.SYS paper runtime recovery bootstrap failed: ${message}`);
+  process.exitCode = 1;
+}

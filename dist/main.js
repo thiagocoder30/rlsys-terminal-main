@@ -1,105 +1,81 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 Object.defineProperty(exports, "__esModule", { value: true });
-const readline = __importStar(require("readline"));
-const AppContainer_1 = require("./infrastructure/di/AppContainer");
-const PythonOcrAdapter_1 = require("./infrastructure/ocr/PythonOcrAdapter");
-// 1. Inicialização do Ecossistema (DDD) via Static Bootstrap
-const bootResult = AppContainer_1.AppContainer.bootstrap({
-    storageDirectory: './data', // Ajuste caso a sua pasta de ficheiros seja diferente
-    targetSnapshotId: 'latest',
-    bootTimeMs: Date.now()
-});
-const coordinator = bootResult.coordinator;
-const ocrAdapter = new PythonOcrAdapter_1.PythonOcrAdapter();
-// 2. Configuração do CLI Interativo
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
-console.log("\n=========================================");
-console.log(" 🎯 RLSYS SATELLITE - MOTOR TÁTICO CLI");
-console.log("=========================================");
-console.log(" - Digite um número (0-36) para girar a roleta.");
-console.log(" - Digite 'ocr' para capturar histórico na nuvem.");
-console.log(" - Digite 'sair' para encerrar.");
-console.log("=========================================\n");
-const askForInput = () => {
-    rl.question("\x1b[33mAguardando comando/número: \x1b[0m", async (input) => {
-        const command = input.trim().toLowerCase();
-        if (command === 'sair' || command === 'exit') {
-            console.log("\n[MAIN] Suspendendo Motor Tático. Até logo!");
-            rl.close();
-            process.exit(0);
+const promises_1 = require("node:readline/promises");
+const node_process_1 = require("node:process");
+const node_path_1 = require("node:path");
+const runtime_1 = require("./application/runtime");
+const replay_1 = require("./infrastructure/replay");
+const journal_1 = require("./infrastructure/journal");
+const session_1 = require("./domain/session");
+async function main() {
+    const identity = new session_1.RuntimeSessionIdentityFactory().create();
+    const replayPath = (0, node_path_1.join)(process.cwd(), 'data', 'replay');
+    const journalPath = (0, node_path_1.join)(process.cwd(), 'data', 'journal');
+    const replayRepository = new replay_1.JsonLinesReplayRepository(replayPath);
+    const journalRepository = new journal_1.JsonLinesRuntimeSessionJournalRepository(journalPath);
+    const kernel = new runtime_1.RuntimeKernel(replayRepository, undefined, undefined, undefined, undefined, undefined, undefined, undefined, journalRepository, identity);
+    const shutdown = new runtime_1.RuntimeShutdownCoordinator(kernel, journalRepository, identity);
+    const terminal = (0, promises_1.createInterface)({ input: node_process_1.stdin, output: node_process_1.stdout });
+    const closeTerminal = () => {
+        terminal.close();
+    };
+    const requestShutdown = (reason) => {
+        const result = shutdown.shutdown(reason);
+        console.log(result.message);
+        closeTerminal();
+        if (reason !== 'REPL_CLOSED') {
+            process.exitCode = 0;
         }
-        if (command === 'ocr') {
-            const historico = await ocrAdapter.extractHistory();
-            if (historico.length > 0) {
-                console.log(`\n[MAIN] Iniciando Ingestão de Cold Start (${historico.length} rodadas)...`);
-                const historicoCronologico = [...historico].reverse();
-                for (const num of historicoCronologico) {
-                    try {
-                        await coordinator.registerOutcome(num);
-                        await coordinator.processLiveSpin(num);
-                    }
-                    catch (err) {
-                        console.error(`[MAIN Erro] Falha ao injetar rodada ${num}:`, err);
-                    }
-                }
-                console.log(`\x1b[32m[MAIN] Cold Start Concluído! Motor Matemático abastecido com ${historico.length} eventos.\x1b[0m\n`);
-            }
-            askForInput();
-            return;
-        }
-        const num = parseInt(command, 10);
-        if (!isNaN(num) && num >= 0 && num <= 36) {
-            try {
-                await coordinator.registerOutcome(num);
-                const decisao = await coordinator.processLiveSpin(num);
-                console.log(`\n\x1b[36m--- DECISÃO DE EDGE ---\x1b[0m`);
-                console.dir(decisao, { depth: null, colors: true });
-                console.log(`\x1b[36m-----------------------\x1b[0m\n`);
-            }
-            catch (err) {
-                console.error(`\x1b[31m[MAIN Erro]\x1b[0m Falha ao processar rodada manual:`, err);
-            }
-        }
-        else {
-            console.log("\x1b[31m[!] Entrada inválida. Digite 0-36 ou 'ocr'.\x1b[0m\n");
-        }
-        askForInput();
+    };
+    process.once('SIGINT', () => requestShutdown('SIGINT'));
+    process.once('SIGTERM', () => requestShutdown('SIGTERM'));
+    process.once('uncaughtException', (error) => {
+        const result = shutdown.shutdown('UNCAUGHT_EXCEPTION');
+        console.error(result.message);
+        console.error(error.message);
+        closeTerminal();
+        process.exitCode = 1;
     });
-};
-askForInput();
+    process.once('unhandledRejection', (reason) => {
+        const result = shutdown.shutdown('UNHANDLED_REJECTION');
+        console.error(result.message);
+        console.error(reason instanceof Error ? reason.message : String(reason));
+        closeTerminal();
+        process.exitCode = 1;
+    });
+    terminal.once('close', () => {
+        if (!shutdown.isClosed()) {
+            shutdown.shutdown('REPL_CLOSED');
+        }
+    });
+    console.log('╔════════ RL.SYS CORE ════════╗');
+    console.log('║ Institutional Runtime Kernel ║');
+    console.log(`║ Session: ${identity.sessionId} ║`);
+    console.log('║ Type 0-36, status, or quit   ║');
+    console.log('╚══════════════════════════════╝');
+    try {
+        let shouldContinue = true;
+        while (shouldContinue && !shutdown.isClosed()) {
+            const command = await terminal.question('rlsys> ');
+            const result = await kernel.handle(command);
+            console.log(result.output);
+            shouldContinue = result.shouldContinue;
+        }
+        if (!shutdown.isClosed()) {
+            shutdown.shutdown('OPERATOR_QUIT');
+        }
+    }
+    catch (error) {
+        if (!shutdown.isClosed()) {
+            shutdown.shutdown('UNKNOWN');
+        }
+        const message = error instanceof Error ? error.message : 'unknown runtime error';
+        console.error('RL.SYS CORE entered fail-closed shutdown.');
+        console.error(message);
+        process.exitCode = 1;
+    }
+    finally {
+        closeTerminal();
+    }
+}
+void main();
