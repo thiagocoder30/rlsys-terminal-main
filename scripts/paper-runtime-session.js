@@ -1,3 +1,5 @@
+'use strict';
+require('./paper-runtime-ledger-command-preload');
 const readline = require("node:readline");
 const {
   PaperRuntimeOperationalGate,
