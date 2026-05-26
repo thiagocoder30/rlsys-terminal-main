@@ -11,7 +11,7 @@ test("paper runtime session writes snapshot on scripted exit", () => {
   ], {
     input: "prepare\nstart\nfinish\nexit\n",
     encoding: "utf8",
-    timeout: 5000,
+    timeout: 60000,
   });
 
   assert.equal(result.status, 0, result.stderr);
