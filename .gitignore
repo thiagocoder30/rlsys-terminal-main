@@ -1,27 +1,57 @@
-# Variáveis de Ambiente Secretas
-.env
+# Dependencies
+node_modules/
 
-# Ambientes Virtuais Isolados (Python)
-venv/
-env/
-
-# Arquivos de Otimização e Cache do Sistema
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Imagens de Validação Técnica e Debug
-*debug*.png
-logs/*.log
-run-sprint-*.sh
-rlsys-terminal-sprint-*.diff
+# Build outputs
 dist/
-build/
-logs/
-*.log
-data/
-.test_ledger_storage/
+coverage/
+.vite/
 
-# Institutional remote sprint artifacts are versioned.
+# Runtime generated artifacts
+logs/*.log
+reports/*.json
+reports/*.txt
+reports/*.log
+data/paper-runtime/*.json
+data/paper-runtime/*.txt
+data/paper-runtime/*.log
+storage/*
+
+# Keep directory placeholders
+!logs/.gitkeep
+!reports/.gitkeep
+!data/paper-runtime/.gitkeep
+!storage/.gitkeep
+
+# Sprint installers
+/*.sh
+!install/
+!install/sprints/
 !install/sprints/run-sprint-*.sh
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# OS/editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Local debug artifacts
+*.tmp
+*.bak
+*.old
+*.orig
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Android/Termux accidental files
+/sdcard/
+/downloads/
