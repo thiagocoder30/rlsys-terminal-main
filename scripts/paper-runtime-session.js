@@ -216,4 +216,4 @@ function main() {
   runInteractiveSession();
 }
 
-main();
+if (require.main === module) { main(); }
