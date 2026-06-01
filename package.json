@@ -24,7 +24,8 @@
     "paper:daily": "node scripts/paper-runtime-daily-operation-cli.js",
     "paper:trial": "node scripts/paper-runtime-24h-supervision-trial.js",
     "paper:readiness": "node scripts/production-readiness-review.js",
-    "warmup:qualify": "node scripts/warmup-qualification-runtime.js"
+    "warmup:qualify": "node scripts/warmup-qualification-runtime.js",
+    "warmup:ingest": "node scripts/warmup-upload-ingestion-cli.js"
   },
   "keywords": [
     "rl-sys",
