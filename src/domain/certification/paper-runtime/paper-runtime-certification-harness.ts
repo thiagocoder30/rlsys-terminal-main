@@ -56,14 +56,8 @@ export interface PaperRuntimeCertificationEvaluation {
 }
 
 export type PaperRuntimeCertificationResult =
-  | {
-      readonly ok: true;
-      readonly value: PaperRuntimeCertificationEvaluation;
-    }
-  | {
-      readonly ok: false;
-      readonly error: PaperRuntimeCertificationEvaluation;
-    };
+  | { readonly ok: true; readonly value: PaperRuntimeCertificationEvaluation }
+  | { readonly ok: false; readonly error: PaperRuntimeCertificationEvaluation };
 
 const EMPTY_METRICS: PaperRuntimeCertificationMetrics = {
   totalSessions: 0,
@@ -77,22 +71,12 @@ const EMPTY_METRICS: PaperRuntimeCertificationMetrics = {
   stabilityScore: 0,
 };
 
-/**
- * PaperRuntimeCertificationHarness consolidates finished PAPER sessions into
- * an institutional certification decision. It is deterministic, O(n), and
- * never authorizes production/live money.
- */
 export class PaperRuntimeCertificationHarness {
-  public evaluate(
-    input: PaperRuntimeCertificationInput,
-  ): PaperRuntimeCertificationResult {
+  public evaluate(input: PaperRuntimeCertificationInput): PaperRuntimeCertificationResult {
     const invalidEvaluation = this.validate(input);
 
     if (invalidEvaluation !== null) {
-      return {
-        ok: false,
-        error: invalidEvaluation,
-      };
+      return { ok: false, error: invalidEvaluation };
     }
 
     const metrics = this.computeMetrics(input.sessions);
@@ -118,8 +102,7 @@ export class PaperRuntimeCertificationHarness {
       metrics.paperCompatibleRatio < input.policy.minimumPaperCompatibleRatio ||
       metrics.blockedRatio > input.policy.maximumBlockedRatio ||
       metrics.runtimeErrorRatio > input.policy.maximumRuntimeErrorRatio ||
-      metrics.averageDrawdownPercent >
-        input.policy.maximumAverageDrawdownPercent ||
+      metrics.averageDrawdownPercent > input.policy.maximumAverageDrawdownPercent ||
       metrics.stabilityScore < input.policy.minimumStabilityScore;
 
     if (hasStabilityRisk) {
@@ -149,9 +132,7 @@ export class PaperRuntimeCertificationHarness {
     };
   }
 
-  private validate(
-    input: PaperRuntimeCertificationInput,
-  ): PaperRuntimeCertificationEvaluation | null {
+  private validate(input: PaperRuntimeCertificationInput): PaperRuntimeCertificationEvaluation | null {
     const invalidPolicy =
       !Number.isFinite(input.policy.minimumSessions) ||
       !Number.isFinite(input.policy.minimumCompletedSessions) ||
@@ -193,9 +174,7 @@ export class PaperRuntimeCertificationHarness {
 
   private isValidSession(session: PaperRuntimeCertificationSession): boolean {
     const totalFromParts =
-      session.paperCompatibleDecisions +
-      session.waitDecisions +
-      session.blockedDecisions;
+      session.paperCompatibleDecisions + session.waitDecisions + session.blockedDecisions;
 
     return (
       session.sessionId.trim().length > 0 &&
@@ -227,9 +206,7 @@ export class PaperRuntimeCertificationHarness {
     let drawdownSum = 0;
 
     for (const session of sessions) {
-      if (session.completed) {
-        completedSessions += 1;
-      }
+      if (session.completed) completedSessions += 1;
 
       totalDecisions += session.totalDecisions;
       paperCompatibleDecisions += session.paperCompatibleDecisions;
@@ -240,15 +217,11 @@ export class PaperRuntimeCertificationHarness {
     }
 
     const safeTotalDecisions = totalDecisions === 0 ? 1 : totalDecisions;
-    const averageDrawdownPercent =
-      sessions.length === 0 ? 0 : drawdownSum / sessions.length;
+    const averageDrawdownPercent = sessions.length === 0 ? 0 : drawdownSum / sessions.length;
     const blockedRatio = blockedDecisions / safeTotalDecisions;
     const runtimeErrorRatio = runtimeErrors / safeTotalDecisions;
     const drawdownPenalty = Math.min(1, averageDrawdownPercent / 100);
-    const stabilityScore = Math.max(
-      0,
-      1 - blockedRatio - runtimeErrorRatio - drawdownPenalty,
-    );
+    const stabilityScore = Math.max(0, 1 - blockedRatio - runtimeErrorRatio - drawdownPenalty);
 
     return {
       totalSessions: sessions.length,
