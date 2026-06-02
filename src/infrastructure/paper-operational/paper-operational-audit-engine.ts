@@ -13,7 +13,7 @@ export type PaperOperationalAuditAction =
   | 'demo'
   | 'e2e-certification';
 
-export type PaperOperationalAuditResult = 'PAPER_COMPATIVEL' | 'AGUARDAR' | 'NAO_UTILIZAR';
+export type PaperOperationalAuditDecision = 'PAPER_COMPATIVEL' | 'AGUARDAR' | 'NAO_UTILIZAR';
 
 export type PaperOperationalAuditReason =
   | 'PAPER_OPERATIONAL_AUDIT_APPENDED'
@@ -29,7 +29,7 @@ export interface PaperOperationalAuditEventInput {
   readonly sessionId: string;
   readonly tradeId?: string;
   readonly action: PaperOperationalAuditAction;
-  readonly result: PaperOperationalAuditResult;
+  readonly result: PaperOperationalAuditDecision;
   readonly occurredAtEpochMs: number;
   readonly payload: Readonly<Record<string, unknown>>;
   readonly previousLedger?: PaperOperationalAuditLedger;
@@ -42,7 +42,7 @@ export interface PaperOperationalAuditEvent {
   readonly sessionId: string;
   readonly tradeId?: string;
   readonly action: PaperOperationalAuditAction;
-  readonly result: PaperOperationalAuditResult;
+  readonly result: PaperOperationalAuditDecision;
   readonly occurredAtEpochMs: number;
   readonly sequence: number;
   readonly previousHash: string;
@@ -72,7 +72,7 @@ export interface PaperOperationalAuditEvaluation {
   readonly explanation: string;
 }
 
-export type PaperOperationalAuditResultEnvelope =
+export type PaperOperationalAuditResult =
   | {
       readonly ok: true;
       readonly value: PaperOperationalAuditEvaluation;
@@ -90,16 +90,16 @@ export type PaperOperationalAuditResultEnvelope =
 /**
  * PaperOperationalAuditEngine
  *
- * Camada institucional de auditoria para operação PAPER. Ela gera eventos
- * imutáveis com hash encadeado, valida replay idempotente e rejeita qualquer
- * sinal de live money dentro do payload.
+ * Camada institucional de auditoria para operação PAPER.
+ * Gera eventos imutáveis com hash encadeado, replay idempotente e rejeição
+ * de qualquer sinal de live money no payload.
  *
- * Complexidade: O(n) no número de eventos auditados.
+ * Complexidade: O(n), onde n é o número de eventos auditados.
  */
 export class PaperOperationalAuditEngine {
   private static readonly GENESIS_HASH = 'GENESIS_PAPER_AUDIT';
 
-  public append(input: PaperOperationalAuditEventInput): PaperOperationalAuditResultEnvelope {
+  public append(input: PaperOperationalAuditEventInput): PaperOperationalAuditResult {
     const invalidReason = this.validateInput(input);
 
     if (invalidReason !== null) {
@@ -183,7 +183,7 @@ export class PaperOperationalAuditEngine {
     };
   }
 
-  public verify(ledger: PaperOperationalAuditLedger): PaperOperationalAuditResultEnvelope {
+  public verify(ledger: PaperOperationalAuditLedger): PaperOperationalAuditResult {
     const invalidLedger = this.validateLedgerShape(ledger);
 
     if (invalidLedger !== null) {
@@ -194,32 +194,14 @@ export class PaperOperationalAuditEngine {
 
     for (const event of ledger.events) {
       if (event.previousHash !== expectedPreviousHash) {
-        return {
-          ok: true,
-          value: {
-            reason: 'PAPER_OPERATIONAL_AUDIT_CHAIN_BROKEN',
-            ledger,
-            productionMoneyAllowed: false,
-            liveMoneyAuthorization: false,
-            explanation: 'Cadeia de auditoria PAPER quebrada por previousHash divergente.',
-          },
-        };
+        return this.chainBroken(ledger, 'Cadeia de auditoria PAPER quebrada por previousHash divergente.');
       }
 
       expectedPreviousHash = event.integrityHash;
     }
 
     if (ledger.lastHash !== expectedPreviousHash || ledger.lastSequence !== ledger.events.length) {
-      return {
-        ok: true,
-        value: {
-          reason: 'PAPER_OPERATIONAL_AUDIT_CHAIN_BROKEN',
-          ledger,
-          productionMoneyAllowed: false,
-          liveMoneyAuthorization: false,
-          explanation: 'Cadeia de auditoria PAPER inconsistente nos metadados finais.',
-        },
-      };
+      return this.chainBroken(ledger, 'Cadeia de auditoria PAPER inconsistente nos metadados finais.');
     }
 
     return {
@@ -238,7 +220,7 @@ export class PaperOperationalAuditEngine {
     input: PaperOperationalAuditEventInput,
     ledger: PaperOperationalAuditLedger,
     existingEvent: PaperOperationalAuditEvent,
-  ): PaperOperationalAuditResultEnvelope {
+  ): PaperOperationalAuditResult {
     const expectedHash = this.computeHash({
       eventId: input.eventId,
       sessionId: input.sessionId,
@@ -277,6 +259,19 @@ export class PaperOperationalAuditEngine {
         productionMoneyAllowed: false,
         liveMoneyAuthorization: false,
         explanation: 'Evento de auditoria PAPER repetido como replay idempotente.',
+      },
+    };
+  }
+
+  private chainBroken(ledger: PaperOperationalAuditLedger, explanation: string): PaperOperationalAuditResult {
+    return {
+      ok: true,
+      value: {
+        reason: 'PAPER_OPERATIONAL_AUDIT_CHAIN_BROKEN',
+        ledger,
+        productionMoneyAllowed: false,
+        liveMoneyAuthorization: false,
+        explanation,
       },
     };
   }
@@ -472,7 +467,7 @@ export class PaperOperationalAuditEngine {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
 
-  private fail(reason: PaperOperationalAuditReason, message: string): PaperOperationalAuditResultEnvelope {
+  private fail(reason: PaperOperationalAuditReason, message: string): PaperOperationalAuditResult {
     return {
       ok: false,
       error: {
