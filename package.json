@@ -7,7 +7,7 @@
     "start": "node dist/main.js",
     "build": "tsc",
     "dev": "tsc -w & node --watch dist/main.js",
-    "test": "node --test tests/*.test.js",
+    "test": "node install/quality/run-all-tests.cjs",
     "check": "npm run build && npm test",
     "audit:deps": "npm audit --omit=dev",
     "release:check": "npm run check && npm run audit:deps",

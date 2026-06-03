@@ -229,11 +229,11 @@ class InstitutionalLearningGovernanceSnapshotEngine {
   }
 
   resolveDecision(governanceScore, blockers) {
-    if (blockers.length > 0 && governanceScore < this.thresholds.readyScore) {
+    if (blockers.length > 0) {
       return DECISIONS.BLOCK_LEARNING;
     }
 
-    if (governanceScore >= this.thresholds.readyScore && blockers.length === 0) {
+    if (governanceScore >= this.thresholds.readyScore) {
       return DECISIONS.PAPER_LEARNING_READY;
     }
 
