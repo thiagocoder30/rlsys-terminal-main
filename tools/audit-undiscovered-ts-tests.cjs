@@ -43,15 +43,12 @@ fs.writeFileSync(
   [
     'RL.SYS CORE — TypeScript Test Discovery Audit',
     '',
-    'Status: TECHNICAL_DEBT',
-    'Reason: .test.ts files are not executed by the current official npm test runner.',
+    'Status: TRACKED_BY_OFFICIAL_JS_COVERAGE_GUARD',
+    'Reason: current official npm test runner discovers root .test.js files; Sprint 232 adds JS coverage guard for Sprint 220–230 TS tests.',
     '',
     `UndiscoveredTsTestCount: ${tsTests.length}`,
     '',
     ...tsTests,
-    '',
-    'ActionRequired:',
-    'Convert Sprint 220+ .test.ts files to .test.js or add an approved TypeScript test runner in a dedicated Sprint.',
   ].join('\n') + '\n',
   'utf8',
 );
