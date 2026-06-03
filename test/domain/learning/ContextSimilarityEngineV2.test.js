@@ -154,21 +154,47 @@ test('returns no reliable context when history is empty', () => {
   assert.ok(result.blockers.includes('INSUFFICIENT_HISTORICAL_CONTEXTS'));
 });
 
-test('returns observe when context is valid but below strong similarity', () => {
+test('returns observe when context is reliable but below configured strong similarity', () => {
   const engine = new ContextSimilarityEngineV2({
     minimumReliableSimilarity: 0.3,
-    strongSimilarity: 0.95,
+    strongSimilarity: 1,
     minimumCandidateCount: 1,
     maximumResults: 5,
   });
 
+  const currentContext = createCurrentContext();
+
+  const moderateHistoricalContext = {
+    id: 'historical-moderate',
+    tableId: 'table-alpha',
+    strategyId: 'fusion',
+    graphConfidence: 0.58,
+    consensusScore: 0.56,
+    riskScore: 0.54,
+    operatorScore: 0.57,
+    features: {
+      momentum: 0.58,
+      volatility: 0.52,
+      sectorPressure: 0.55,
+      biasCluster: 0.57,
+    },
+    signals: [
+      'CONTROLLED_RISK',
+    ],
+  };
+
   const result = engine.evaluate({
     sessionId: 'session-237',
-    currentContext: createCurrentContext(),
-    historicalContexts: createHistoricalContexts(),
+    currentContext,
+    historicalContexts: [
+      moderateHistoricalContext,
+    ],
   });
 
   assert.equal(result.decision, SIMILARITY_DECISIONS.OBSERVE_CONTEXT);
+  assert.equal(result.blockers.length, 0);
+  assert.ok(result.bestSimilarity >= 0.3);
+  assert.ok(result.bestSimilarity < 1);
 });
 
 test('limits returned matches according to maximumResults', () => {
