@@ -1,0 +1,21 @@
+RL.SYS CORE — Legacy Hidden Tests Audit
+Sprint: 243
+Name: Repository Professionalization & Hygiene Cleanup V3
+Timestamp: 2026-06-03T20:51:47+00:00
+
+Policy:
+Diagnostic only. Legacy nested tests are listed but not executed in this hygiene sprint.
+
+Reason:
+This sprint professionalizes repository hygiene without changing the official test contract.
+A dedicated Hidden Regression Closure sprint should migrate or retire these tests intentionally.
+
+Nested legacy tests discovered:
+tests/decision/decision-lookup.test.js
+tests/di/app-container.test.js
+tests/knowledge/snapshot-compiler.test.js
+tests/knowledge/snapshot-loader.test.js
+tests/knowledge/snapshot-schema.test.js
+tests/live/session-coordinator.test.js
+tests/research/bias-analyzer.test.js
+tests/research/multi-dealer.test.js
