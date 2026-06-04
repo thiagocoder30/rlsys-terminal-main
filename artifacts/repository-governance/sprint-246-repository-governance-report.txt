@@ -1,0 +1,15 @@
+RL.SYS CORE Repository Governance Report
+Status: PASS
+RepositoryGovernanceScore: 100
+TrackedFileCount: 979
+TrackedGeneratedFileCount: 0
+NestedLegacyTestCount: 0
+MissingRequiredFileCount: 0
+SourceJsCount: 37
+InstitutionalTestCount: 41
+TopLevelLegacyTestCount: 229
+PaperOnly: true
+ProductionMoneyAllowed: false
+LiveMoneyAuthorization: false
+AutomaticExecutionAllowed: false
+HumanSupervisionRequired: true
