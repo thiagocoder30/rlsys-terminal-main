@@ -1,0 +1,7 @@
+RL.SYS CORE Test Discovery Audit
+OfficialPolicy: tests top-level plus institutional recursive tests
+NestedLegacyPolicy: diagnostic-only
+OfficialTestFileCount: 269
+TopLevelLegacyTestCount: 229
+InstitutionalTestCount: 40
+NestedLegacyTestCount: 0

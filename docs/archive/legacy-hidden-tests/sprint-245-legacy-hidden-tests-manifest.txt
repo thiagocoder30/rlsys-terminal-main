@@ -1,0 +1,18 @@
+RL.SYS CORE — Legacy Hidden Tests Archive Manifest
+Sprint: 245
+Name: Legacy Nested Regression Closure
+Timestamp: 2026-06-04T21:46:51+00:00
+
+Reason:
+These files were outside the official test contract and created invisible regression debt.
+They are archived instead of deleted so institutional history remains auditável.
+
+OriginalPath -> ArchivePath
+tests/decision/decision-lookup.test.js -> docs/archive/legacy-hidden-tests/tests/decision/decision-lookup.test.js
+tests/di/app-container.test.js -> docs/archive/legacy-hidden-tests/tests/di/app-container.test.js
+tests/knowledge/snapshot-compiler.test.js -> docs/archive/legacy-hidden-tests/tests/knowledge/snapshot-compiler.test.js
+tests/knowledge/snapshot-loader.test.js -> docs/archive/legacy-hidden-tests/tests/knowledge/snapshot-loader.test.js
+tests/knowledge/snapshot-schema.test.js -> docs/archive/legacy-hidden-tests/tests/knowledge/snapshot-schema.test.js
+tests/live/session-coordinator.test.js -> docs/archive/legacy-hidden-tests/tests/live/session-coordinator.test.js
+tests/research/bias-analyzer.test.js -> docs/archive/legacy-hidden-tests/tests/research/bias-analyzer.test.js
+tests/research/multi-dealer.test.js -> docs/archive/legacy-hidden-tests/tests/research/multi-dealer.test.js

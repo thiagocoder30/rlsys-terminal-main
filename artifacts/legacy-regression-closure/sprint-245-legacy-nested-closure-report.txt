@@ -1,0 +1,25 @@
+RL.SYS CORE — Legacy Nested Regression Closure Report
+Sprint: 245
+Name: Legacy Nested Regression Closure
+Timestamp: 2026-06-04T21:46:51+00:00
+
+Policy:
+Nested tests under tests subdirectories are no longer allowed.
+Top-level tests under tests remain part of the official legacy contract.
+Institutional tests under test remain part of the official recursive contract.
+
+PreClosureNestedLegacyTestCount:
+8
+
+PreClosureNestedLegacyTests:
+tests/decision/decision-lookup.test.js
+tests/di/app-container.test.js
+tests/knowledge/snapshot-compiler.test.js
+tests/knowledge/snapshot-loader.test.js
+tests/knowledge/snapshot-schema.test.js
+tests/live/session-coordinator.test.js
+tests/research/bias-analyzer.test.js
+tests/research/multi-dealer.test.js
+
+PostClosureNestedLegacyTestCount:
+0
