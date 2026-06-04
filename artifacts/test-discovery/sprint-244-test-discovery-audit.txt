@@ -1,0 +1,16 @@
+RL.SYS CORE Test Discovery Audit
+OfficialPolicy: tests top-level plus institutional recursive tests
+NestedLegacyPolicy: diagnostic-only
+OfficialTestFileCount: 268
+TopLevelLegacyTestCount: 229
+InstitutionalTestCount: 39
+NestedLegacyTestCount: 8
+NestedLegacyTests:
+ - tests/decision/decision-lookup.test.js
+ - tests/di/app-container.test.js
+ - tests/knowledge/snapshot-compiler.test.js
+ - tests/knowledge/snapshot-loader.test.js
+ - tests/knowledge/snapshot-schema.test.js
+ - tests/live/session-coordinator.test.js
+ - tests/research/bias-analyzer.test.js
+ - tests/research/multi-dealer.test.js
