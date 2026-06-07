@@ -1,0 +1,14 @@
+RL.SYS CORE Paper Runtime Pipeline Adapter Report
+Status: PASS
+AdapterFile: src/application/runtime/PaperRuntimePipelineAdapter.ts
+AdapterTest: test/domain/runtime/PaperRuntimePipelineAdapter.test.js
+GlobalTestTotal: 1363
+GlobalTestPass: 1363
+GlobalTestFail: 0
+PaperOnly: true
+ProductionMoneyAllowed: false
+LiveMoneyAuthorization: false
+AutomaticExecutionAllowed: false
+AutomaticSuggestionAllowed: true
+AutomaticBetExecutionAllowed: false
+HumanSupervisionRequired: true
