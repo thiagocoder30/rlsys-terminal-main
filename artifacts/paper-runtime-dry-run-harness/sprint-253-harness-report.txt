@@ -1,0 +1,14 @@
+RL.SYS CORE Paper Runtime Dry Run Harness Report
+Status: PASS
+HarnessFile: src/application/runtime/PaperRuntimeDryRunHarness.ts
+HarnessTest: test/domain/runtime/PaperRuntimeDryRunHarness.test.js
+GlobalTestTotal: 1368
+GlobalTestPass: 1368
+GlobalTestFail: 0
+PaperOnly: true
+ProductionMoneyAllowed: false
+LiveMoneyAuthorization: false
+AutomaticExecutionAllowed: false
+AutomaticSuggestionAllowed: true
+AutomaticBetExecutionAllowed: false
+HumanSupervisionRequired: true
