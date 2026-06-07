@@ -1,0 +1,28 @@
+RL.SYS CORE Dependency Governance Report
+Status: PASS
+DependencyGovernanceScore: 96
+PackageName: rl-sys-core
+PackageVersion: 2.9.0
+PackageType: unspecified
+PackageJsonValid: true
+PackageLockValid: true
+DependencyCount: 6
+DevDependencyCount: 5
+OptionalDependencyCount: 0
+PeerDependencyCount: 0
+MissingRequiredScriptCount: 0
+AuditJsonAvailable: true
+AuditInfo: 0
+AuditLow: 0
+AuditModerate: 2
+AuditHigh: 0
+AuditCritical: 0
+AuditTotal: 2
+PaperOnly: true
+ProductionMoneyAllowed: false
+LiveMoneyAuthorization: false
+AutomaticExecutionAllowed: false
+HumanSupervisionRequired: true
+
+Advisory:
+ - Moderate vulnerabilities detected. Track remediation, but do not block this sprint unless high or critical risk appears.

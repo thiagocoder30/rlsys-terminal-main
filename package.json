@@ -26,7 +26,8 @@
     "paper:readiness": "node scripts/production-readiness-review.js",
     "warmup:qualify": "node scripts/warmup-qualification-runtime.js",
     "warmup:ingest": "node scripts/warmup-upload-ingestion-cli.js",
-    "test:audit": "node install/quality/audit-test-discovery.cjs"
+    "test:audit": "node install/quality/audit-test-discovery.cjs",
+    "deps:audit": "node install/quality/dependency-governance-engine.cjs artifacts/dependency-governance/sprint-247-npm-audit.json"
   },
   "keywords": [
     "rl-sys",
