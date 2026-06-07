@@ -1,0 +1,22 @@
+RL.SYS CORE Architecture Governance Report
+Status: PASS
+ArchitectureGovernanceScore: 100
+SourceFileCount: 37
+QualityFileCount: 9
+InstitutionalTestCount: 43
+LegacyTopLevelTestCount: 229
+GovernedFileCount: 318
+FlagGovernedFileCount: 46
+InstitutionalFlagViolationCount: 0
+DomainDependencyViolationCount: 0
+MissingRequiredFileCount: 0
+PackageViolationCount: 0
+ViolationCount: 0
+PackageType: unspecified
+PaperOnly: true
+ProductionMoneyAllowed: false
+LiveMoneyAuthorization: false
+AutomaticExecutionAllowed: false
+AutomaticSuggestionAllowed: true
+AutomaticBetExecutionAllowed: false
+HumanSupervisionRequired: true
