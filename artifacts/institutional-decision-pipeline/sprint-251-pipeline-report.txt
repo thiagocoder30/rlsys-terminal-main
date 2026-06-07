@@ -1,0 +1,14 @@
+RL.SYS CORE Institutional Decision Pipeline Report
+Status: PASS
+PipelineFile: src/application/pipeline/InstitutionalDecisionPipeline.ts
+PipelineTest: test/domain/pipeline/InstitutionalDecisionPipeline.test.js
+GlobalTestTotal: 1358
+GlobalTestPass: 1358
+GlobalTestFail: 0
+PaperOnly: true
+ProductionMoneyAllowed: false
+LiveMoneyAuthorization: false
+AutomaticExecutionAllowed: false
+AutomaticSuggestionAllowed: true
+AutomaticBetExecutionAllowed: false
+HumanSupervisionRequired: true
