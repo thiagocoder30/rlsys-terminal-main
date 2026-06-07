@@ -1,0 +1,27 @@
+RL.SYS CORE Technical Debt Report
+Status: PASS
+TechnicalDebtScore: 88
+MaintainabilityScore: 100
+RepositoryReadinessScore: 96
+SourceFileCount: 37
+InstitutionalTestFileCount: 44
+TopLevelLegacyTestCount: 229
+NestedLegacyTestCount: 0
+QualityFileCount: 10
+GovernedFileCount: 91
+TotalLineCount: 18248
+TodoCount: 6
+LongLineCount: 0
+OversizedFileCount: 0
+ConsoleUsageCount: 0
+SourceToTestRatio: 7.38
+PackageScriptCount: 26
+MissingScriptCount: 0
+HardViolationCount: 0
+PaperOnly: true
+ProductionMoneyAllowed: false
+LiveMoneyAuthorization: false
+AutomaticExecutionAllowed: false
+AutomaticSuggestionAllowed: true
+AutomaticBetExecutionAllowed: false
+HumanSupervisionRequired: true
