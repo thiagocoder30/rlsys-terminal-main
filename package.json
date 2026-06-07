@@ -29,7 +29,8 @@
     "test:audit": "node install/quality/audit-test-discovery.cjs",
     "deps:audit": "node install/quality/dependency-governance-engine.cjs artifacts/dependency-governance/sprint-247-npm-audit.json",
     "arch:audit": "node install/quality/architecture-governance-engine.cjs",
-    "debt:audit": "node install/quality/technical-debt-engine.cjs"
+    "debt:audit": "node install/quality/technical-debt-engine.cjs",
+    "cert:audit": "node install/quality/repository-certification-engine.cjs --audit-json artifacts/dependency-governance/sprint-250-npm-audit.json"
   },
   "keywords": [
     "rl-sys",

@@ -1,0 +1,34 @@
+RL.SYS CORE Repository Certification Report
+Status: CERTIFIED
+RepositoryCertified: true
+PaperPlatformReadyCandidate: true
+RepositoryCertificationScore: 99
+FailedCheckCount: 0
+GlobalTestTotal: 1353
+GlobalTestPass: 1353
+GlobalTestFail: 0
+OldGlobalTestBaseline: 1349
+RepositoryGovernanceScore: 100
+DependencyGovernanceScore: 96
+ArchitectureGovernanceScore: 100
+TechnicalDebtScore: 88
+MaintainabilityScore: 100
+RepositoryReadinessScore: 96
+AuditHigh: 0
+AuditCritical: 0
+AuditModerate: 2
+PaperOnly: true
+ProductionMoneyAllowed: false
+LiveMoneyAuthorization: false
+AutomaticExecutionAllowed: false
+AutomaticSuggestionAllowed: true
+AutomaticBetExecutionAllowed: false
+HumanSupervisionRequired: true
+
+CertificationChecks:
+ - RepositoryGovernance: PASS (100)
+ - DependencyGovernance: PASS (96)
+ - ArchitectureGovernance: PASS (100)
+ - TechnicalDebt: PASS (96)
+ - GlobalTests: PASS (100)
+ - PaperOnlyInstitutionalFlags: PASS (100)
