@@ -1,0 +1,61 @@
+RL.SYS CORE — SPRINT SUCCESS SUMMARY
+========================================
+Sprint: 260
+Name: Operator Decision Presentation Adapter
+Status: SUCCESS
+
+Base HEAD:
+7f64634
+
+Branch:
+sprint-260-operator-decision-presentation-adapter
+
+Previous HEAD Before Commit:
+7f64634
+
+Files Created:
+src/application/runtime/OperatorDecisionPresentationAdapter.ts
+test/domain/runtime/OperatorDecisionPresentationAdapter.test.js
+
+Tests Executed:
+- npm run build
+- node --test test/domain/runtime/OperatorDecisionPresentationAdapter.test.js
+- relevant pipeline/runtime regressions when present
+- npm test
+
+Architecture:
+Added OperatorDecisionPresentationAdapter to translate existing institutional decisions into concise operator-facing per-spin messages.
+
+Delivered Operator Statuses:
+- FAVORAVEL
+- AGUARDAR
+- NAO_UTILIZAR
+
+Delivered Operator Fields:
+- strategyName
+- status
+- confidencePercent
+- riskLevel
+- headline
+- actionLabel
+- explanation
+- reasons
+- warnings
+- blockers
+- operatorDecisionRequired
+- supervisedRecommendationOnly
+- institutionalAnalysisMode
+
+Important:
+This Sprint does not recreate decision intelligence.
+It presents existing institutional pipeline decisions for operator use.
+
+Not Changed:
+- RuntimeKernel
+- InstitutionalDecisionPipeline
+- PaperRuntimePipelineAdapter
+- Certification ledger/history/trend semantics
+- External platform integration
+
+Next Recommended Sprint:
+261 — Per-Spin Recommendation Session Reporter
