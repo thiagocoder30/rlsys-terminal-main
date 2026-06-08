@@ -1,0 +1,62 @@
+RL.SYS CORE — SPRINT SUCCESS SUMMARY
+========================================
+Sprint: 261
+Name: Per-Spin Recommendation Session Reporter
+Status: SUCCESS
+
+Base HEAD:
+27fa72c
+
+Branch:
+sprint-261-per-spin-recommendation-session-reporter
+
+Previous HEAD Before Commit:
+27fa72c
+
+Files Created:
+src/application/runtime/PerSpinRecommendationSessionReporter.ts
+test/domain/runtime/PerSpinRecommendationSessionReporter.test.js
+
+Tests Executed:
+- npm run build
+- node --test test/domain/runtime/PerSpinRecommendationSessionReporter.test.js
+- node --test test/domain/runtime/OperatorDecisionPresentationAdapter.test.js
+- relevant pipeline/runtime regressions when present
+- npm test
+
+Architecture:
+Added PerSpinRecommendationSessionReporter to consolidate operator-facing per-spin recommendation presentations into a session-level report.
+
+Delivered Session Metrics:
+- totalRecommendations
+- favorableCount
+- waitCount
+- noUseCount
+- averageConfidencePercent
+- controlledRiskCount
+- moderateRiskCount
+- elevatedRiskCount
+- latestRecommendation
+- timeline
+- operatorSummary
+
+Trends Delivered:
+- SESSION_FAVORABLE_DOMINANT
+- SESSION_WAIT_DOMINANT
+- SESSION_NO_USE_DOMINANT
+- SESSION_MIXED
+- SESSION_EMPTY
+
+Important:
+This Sprint does not recreate decision intelligence.
+It reports presentations already produced by OperatorDecisionPresentationAdapter.
+
+Not Changed:
+- RuntimeKernel
+- InstitutionalDecisionPipeline
+- PaperRuntimePipelineAdapter
+- OperatorDecisionPresentationAdapter semantics
+- External platform integration
+
+Next Recommended Sprint:
+262 — Operator Recommendation Export Formatter
