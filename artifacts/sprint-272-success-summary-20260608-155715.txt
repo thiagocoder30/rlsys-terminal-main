@@ -1,0 +1,65 @@
+RL.SYS CORE — SPRINT SUCCESS SUMMARY
+========================================
+Sprint: 272
+Name: First Paper Session Bankroll Risk Integration
+Status: SUCCESS
+
+Base HEAD:
+e81e9d2
+
+Branch:
+sprint-272-first-paper-session-bankroll-risk-integration
+
+Previous HEAD Before Commit:
+e81e9d2
+
+Files Created:
+src/application/runtime/FirstPaperSessionBankrollRiskIntegration.ts
+test/domain/runtime/FirstPaperSessionBankrollRiskIntegration.test.js
+
+Tests Executed:
+- npm run build
+- node --test test/domain/runtime/FirstPaperSessionBankrollRiskIntegration.test.js
+- node --test test/domain/runtime/FirstPaperSessionFinalReadinessVerdict.test.js
+- node --test test/domain/runtime/OperatorLocalizationAdapter.test.js
+- node --test test/domain/runtime/OperatorGuidedSessionPackage.test.js
+- node --test test/domain/runtime/FirstPaperSessionExecutionBundle.test.js
+- node --test test/domain/runtime/FirstPaperSessionRunbookComposer.test.js
+- node --test test/domain/runtime/FirstPaperSessionChecklistExporter.test.js
+- node --test test/domain/runtime/FirstRealPlatformPaperSessionProtocol.test.js
+- risk regressions when present
+- npm test
+
+Architecture:
+Added FirstPaperSessionBankrollRiskIntegration to connect first PAPER session final readiness with existing bankroll risk engines.
+
+Reused Existing Engines:
+- OperatorRiskProfileCalculator
+- BankrollSafetyGate
+
+Delivered Fields:
+- bankroll
+- riskMode
+- baseStake
+- stopWinAmount
+- stopLossAmount
+- currentSessionPnl
+- remainingLossBudget
+- remainingProfitTarget
+- bankrollStatus
+- canStartPaperSession
+
+Important:
+This Sprint does not create new stop-win/stop-loss rules.
+It integrates existing bankroll risk policies with the first PAPER session readiness flow.
+
+Not Changed:
+- RuntimeKernel
+- InstitutionalDecisionPipeline
+- PaperRuntimePipelineAdapter
+- OperatorRiskProfileCalculator policy ratios
+- BankrollSafetyGate semantics
+- External platform integration
+
+Next Recommended Sprint:
+273 — Bankroll Risk Localized Operator Presenter
