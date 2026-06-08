@@ -1,0 +1,14 @@
+RL.SYS CORE Paper Validation Campaign Engine Report
+Status: PASS
+CampaignEngineFile: src/application/runtime/PaperValidationCampaignEngine.ts
+CampaignEngineTest: test/domain/runtime/PaperValidationCampaignEngine.test.js
+GlobalTestTotal: 1373
+GlobalTestPass: 1373
+GlobalTestFail: 0
+PaperOnly: true
+ProductionMoneyAllowed: false
+LiveMoneyAuthorization: false
+AutomaticExecutionAllowed: false
+AutomaticSuggestionAllowed: true
+AutomaticBetExecutionAllowed: false
+HumanSupervisionRequired: true
