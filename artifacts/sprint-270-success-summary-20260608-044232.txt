@@ -1,0 +1,51 @@
+RL.SYS CORE — SPRINT SUCCESS SUMMARY
+========================================
+Sprint: 270
+Name: Operator Localization Adapter
+Status: SUCCESS
+
+Base HEAD:
+8d49bc8
+
+Branch:
+sprint-270-operator-localization-adapter
+
+Previous HEAD Before Commit:
+8d49bc8
+
+Files Created:
+src/application/runtime/OperatorLocalizationAdapter.ts
+test/domain/runtime/OperatorLocalizationAdapter.test.js
+
+Tests Executed:
+- npm run build
+- node --test test/domain/runtime/OperatorLocalizationAdapter.test.js
+- node --test test/domain/runtime/OperatorGuidedSessionPackage.test.js
+- node --test test/domain/runtime/FirstPaperSessionExecutionBundle.test.js
+- node --test test/domain/runtime/FirstPaperSessionRunbookComposer.test.js
+- node --test test/domain/runtime/FirstPaperSessionChecklistExporter.test.js
+- node --test test/domain/runtime/FirstRealPlatformPaperSessionProtocol.test.js
+- node --test test/domain/runtime/TriplicacaoStrategyRuntimeBinder.test.js
+- node --test test/domain/runtime/PerSpinOperatorCliSession.test.js
+- node --test test/domain/runtime/OperatorRecommendationExportFormatter.test.js
+- node --test test/domain/runtime/PerSpinRecommendationSessionReporter.test.js
+- node --test test/domain/runtime/OperatorDecisionPresentationAdapter.test.js
+- npm test
+
+Architecture:
+Added OperatorLocalizationAdapter to translate internal institutional tokens into operator-friendly pt-BR labels and explanations.
+
+Important:
+Domain enums remain in English for deterministic code/tests.
+Only operator-facing labels and descriptions are localized.
+
+Not Changed:
+- RuntimeKernel
+- InstitutionalDecisionPipeline
+- PaperRuntimePipelineAdapter
+- OperatorGuidedSessionPackage
+- FirstPaperSessionExecutionBundle
+- External platform integration
+
+Next Recommended Sprint:
+271 — First Paper Session Final Readiness Verdict
