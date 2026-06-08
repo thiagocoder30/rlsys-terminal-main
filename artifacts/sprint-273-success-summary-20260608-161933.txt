@@ -1,0 +1,52 @@
+RL.SYS CORE — SPRINT SUCCESS SUMMARY
+========================================
+Sprint: 273
+Name: Persistent Daily Bankroll Risk Lock
+Status: SUCCESS
+
+Base HEAD:
+802ad3b
+
+Branch:
+sprint-273-persistent-daily-bankroll-risk-lock
+
+Previous HEAD Before Commit:
+802ad3b
+
+Files Created:
+src/application/runtime/PersistentDailyBankrollRiskLock.ts
+test/domain/runtime/PersistentDailyBankrollRiskLock.test.js
+
+Tests Executed:
+- npm run build
+- node --test test/domain/runtime/PersistentDailyBankrollRiskLock.test.js
+- node --test test/domain/runtime/FirstPaperSessionBankrollRiskIntegration.test.js
+- node --test test/domain/runtime/FirstPaperSessionFinalReadinessVerdict.test.js
+- node --test test/domain/runtime/OperatorLocalizationAdapter.test.js
+- node --test test/domain/runtime/OperatorGuidedSessionPackage.test.js
+- node --test test/domain/runtime/FirstPaperSessionExecutionBundle.test.js
+- npm test
+
+Architecture:
+Added PersistentDailyBankrollRiskLock to create and evaluate serializable daily bankroll risk locks after stop-win/stop-loss bankroll blocks.
+
+Delivered:
+- STOP_WIN_REACHED lock
+- STOP_LOSS_REACHED lock
+- BANKROLL_BLOCKED fallback lock
+- unlockAtEpochMs evaluation
+- restart/recovery-ready serializable snapshot
+
+Important:
+This Sprint does not recalculate stop-win/stop-loss.
+It persists the consequence of an existing BankrollSafetyGate BLOCKED verdict.
+
+Not Changed:
+- RuntimeKernel
+- InstitutionalDecisionPipeline
+- BankrollSafetyGate
+- OperatorRiskProfileCalculator
+- External platform integration
+
+Next Recommended Sprint:
+274 — Daily Risk Lock Repository Adapter
