@@ -1,0 +1,48 @@
+RL.SYS CORE — SPRINT SUCCESS SUMMARY
+========================================
+Sprint: 257
+Name: Certification Ledger Export Engine
+Status: SUCCESS
+
+Base HEAD:
+2913429
+
+Branch:
+sprint-257-certification-ledger-export-engine
+
+Previous HEAD Before Commit:
+2913429
+
+Build:
+PASS
+
+SprintSpecificTest:
+PASS
+
+PreviousCertificationRegressionTests:
+PASS
+
+GlobalNpmTests:
+PASS
+
+Architecture:
+Added CertificationLedgerExportEngine to export PAPER certification reports into deterministic append-only NDJSON ledger entries with SHA-256 checksum.
+
+Persistence:
+append-only NDJSON
+O(1) history memory usage
+No full ledger rewrite
+No RuntimeKernel changes
+
+Governance:
+paperOnly=true
+productionMoneyAllowed=false
+liveMoneyAuthorization=false
+automaticExecutionAllowed=false
+automaticSuggestionAllowed=true
+automaticBetExecutionAllowed=false
+humanSupervisionRequired=true
+
+Files:
+src/application/runtime/CertificationLedgerExportEngine.ts
+test/domain/runtime/CertificationLedgerExportEngine.test.js
