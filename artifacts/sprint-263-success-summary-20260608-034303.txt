@@ -1,0 +1,54 @@
+RL.SYS CORE — SPRINT SUCCESS SUMMARY
+========================================
+Sprint: 263
+Name: Per-Spin Operator CLI Session
+Status: SUCCESS
+
+Base HEAD:
+9ed06ab
+
+Branch:
+sprint-263-per-spin-operator-cli-session
+
+Previous HEAD Before Commit:
+9ed06ab
+
+Files Created:
+src/application/runtime/PerSpinOperatorCliSession.ts
+test/domain/runtime/PerSpinOperatorCliSession.test.js
+
+Tests Executed:
+- npm run build
+- node --test test/domain/runtime/PerSpinOperatorCliSession.test.js
+- node --test test/domain/runtime/PerSpinRecommendationSessionReporter.test.js
+- node --test test/domain/runtime/OperatorDecisionPresentationAdapter.test.js
+- node --test test/domain/runtime/OperatorRecommendationExportFormatter.test.js when present
+- relevant pipeline/runtime regressions when present
+- npm test
+
+Architecture:
+Added PerSpinOperatorCliSession to compose CLI-ready per-spin operator frames from existing institutional decisions.
+
+Delivered CLI Fields:
+- Status
+- Confidence
+- Risk
+- Action
+- Explanation
+- Session summary
+- Per-spin rendered text
+
+Important:
+This Sprint does not recreate decision intelligence.
+It consumes existing operator presentation and session reporter components.
+
+Not Changed:
+- RuntimeKernel
+- InstitutionalDecisionPipeline
+- PaperRuntimePipelineAdapter
+- OperatorDecisionPresentationAdapter semantics
+- PerSpinRecommendationSessionReporter semantics
+- External platform integration
+
+Next Recommended Sprint:
+264 — Triplicacao Strategy Runtime Binder
