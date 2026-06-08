@@ -1,0 +1,48 @@
+RL.SYS CORE — SPRINT SUCCESS SUMMARY
+========================================
+Sprint: 262
+Name: Operator Recommendation Export Formatter
+Status: SUCCESS
+
+Base HEAD:
+767f143
+
+Branch:
+sprint-262-operator-recommendation-export-formatter
+
+Previous HEAD Before Commit:
+767f143
+
+Files Created:
+src/application/runtime/OperatorRecommendationExportFormatter.ts
+test/domain/runtime/OperatorRecommendationExportFormatter.test.js
+
+Tests Executed:
+- npm run build
+- node --test test/domain/runtime/OperatorRecommendationExportFormatter.test.js
+- node --test test/domain/runtime/PerSpinRecommendationSessionReporter.test.js
+- node --test test/domain/runtime/OperatorDecisionPresentationAdapter.test.js
+- relevant pipeline/runtime regressions when present
+- npm test
+
+Architecture:
+Added OperatorRecommendationExportFormatter to export per-spin recommendation session reports into TEXT and JSON.
+
+Formats Delivered:
+- TEXT
+- JSON
+
+Important:
+This Sprint does not recreate decision intelligence.
+It formats reports already produced by PerSpinRecommendationSessionReporter.
+
+Not Changed:
+- RuntimeKernel
+- InstitutionalDecisionPipeline
+- PaperRuntimePipelineAdapter
+- OperatorDecisionPresentationAdapter semantics
+- PerSpinRecommendationSessionReporter semantics
+- External platform integration
+
+Next Recommended Sprint:
+263 — Per-Spin Operator CLI Session
