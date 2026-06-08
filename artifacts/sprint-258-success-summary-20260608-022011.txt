@@ -1,0 +1,65 @@
+RL.SYS CORE — SPRINT SUCCESS SUMMARY
+========================================
+Sprint: 258
+Name: Institutional Certification History Engine
+Status: SUCCESS
+
+Base HEAD:
+14751d6
+
+Branch:
+sprint-258-institutional-certification-history-engine
+
+Previous HEAD Before Commit:
+14751d6
+
+Files Created:
+src/application/runtime/InstitutionalCertificationHistoryEngine.ts
+test/domain/runtime/InstitutionalCertificationHistoryEngine.test.js
+
+Tests Executed:
+- npm run build
+- node --test test/domain/runtime/InstitutionalCertificationHistoryEngine.test.js
+- node --test test/domain/runtime/CertificationLedgerExportEngine.test.js
+- node --test test/domain/runtime/PaperCertificationReportExporter.test.js
+- node --test test/domain/runtime/InstitutionalPaperCertificationEngine.test.js
+- node --test test/domain/runtime/PaperValidationCampaignEngine.test.js
+- npm test
+
+Architecture:
+Added InstitutionalCertificationHistoryEngine to summarize append-only certification ledger NDJSON lines into institutional PAPER certification history.
+
+Metrics Delivered:
+- totalCertifications
+- certifiedCount
+- reviewCount
+- blockedCount
+- latestCertification
+- certificationTrend
+- firstGeneratedAtEpochMs
+- latestGeneratedAtEpochMs
+
+Memory Policy:
+O(n) time
+O(1) internal history memory
+No full ledger rewrite
+No RuntimeKernel changes
+
+Governance Preserved:
+paperOnly=true
+productionMoneyAllowed=false
+liveMoneyAuthorization=false
+automaticExecutionAllowed=false
+automaticSuggestionAllowed=true
+automaticBetExecutionAllowed=false
+humanSupervisionRequired=true
+
+Not Changed:
+- RuntimeKernel
+- automatic bet execution
+- live money authorization
+- PaperCertificationReportExporter semantics
+- CertificationLedgerExportEngine semantics
+
+Next Recommended Sprint:
+259 — Certification Trend Analyzer
