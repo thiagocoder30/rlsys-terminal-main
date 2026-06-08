@@ -1,0 +1,14 @@
+RL.SYS CORE Paper Certification Report Exporter Report
+Status: PASS
+ExporterFile: src/application/runtime/PaperCertificationReportExporter.ts
+ExporterTest: test/domain/runtime/PaperCertificationReportExporter.test.js
+GlobalTestTotal: 1383
+GlobalTestPass: 1383
+GlobalTestFail: 0
+PaperOnly: true
+ProductionMoneyAllowed: false
+LiveMoneyAuthorization: false
+AutomaticExecutionAllowed: false
+AutomaticSuggestionAllowed: true
+AutomaticBetExecutionAllowed: false
+HumanSupervisionRequired: true
