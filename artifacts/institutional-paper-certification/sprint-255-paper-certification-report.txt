@@ -1,0 +1,14 @@
+RL.SYS CORE Institutional Paper Certification Engine Report
+Status: PASS
+CertificationEngineFile: src/application/runtime/InstitutionalPaperCertificationEngine.ts
+CertificationEngineTest: test/domain/runtime/InstitutionalPaperCertificationEngine.test.js
+GlobalTestTotal: 1378
+GlobalTestPass: 1378
+GlobalTestFail: 0
+PaperOnly: true
+ProductionMoneyAllowed: false
+LiveMoneyAuthorization: false
+AutomaticExecutionAllowed: false
+AutomaticSuggestionAllowed: true
+AutomaticBetExecutionAllowed: false
+HumanSupervisionRequired: true
