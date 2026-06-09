@@ -1,0 +1,53 @@
+RL.SYS CORE — SPRINT SUCCESS SUMMARY
+========================================
+Sprint: 285
+Name: Paper Entry Ledger Operator CLI Reporter
+Status: SUCCESS
+Base HEAD: 41c4699
+Branch: sprint-285-paper-entry-ledger-operator-cli-reporter
+
+CLI:
+scripts/paper-entry-ledger-cli-reporter.js
+
+Test:
+test/domain/runtime/PaperEntryLedgerOperatorCliReporter.test.js
+
+Tests Executed:
+- npm run build
+- node --test test/domain/runtime/PaperEntryLedgerOperatorCliReporter.test.js
+- PaperEntryLedgerQueryService regression
+- JsonPaperEntryLedgerRepositoryAdapter regression
+- PaperEntrySupervisionLedgerExporter regression
+- OperatorEntrySupervisionController regression
+- CLI smoke test on empty default ledger
+- npm test
+
+Delivered:
+- Operator CLI reporter for paper entry ledger
+- latest mode
+- session mode
+- query mode
+- stats mode
+- text output
+- JSON output
+- bounded query limit
+- defensive error handling
+- PAPER-only governance output
+
+Operational Usage:
+node scripts/paper-entry-ledger-cli-reporter.js --mode latest --format text --limit 10
+node scripts/paper-entry-ledger-cli-reporter.js --mode stats --format json
+node scripts/paper-entry-ledger-cli-reporter.js --mode session --sessionId paper-session-id --format text
+
+Architecture:
+- CLI depends on compiled application service and infrastructure adapter
+- Query logic remains in application layer
+- Persistence remains infrastructure detail
+- no live money authorization
+- no automatic execution
+- no automatic bet execution
+- human supervision remains required
+
+Next Recommended Sprint:
+286 — First Paper Trading Readiness Command
+========================================
