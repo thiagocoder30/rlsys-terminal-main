@@ -1,0 +1,46 @@
+RL.SYS CORE — SPRINT SUCCESS SUMMARY
+========================================
+Sprint: 284
+Name: Paper Entry Ledger Query Service
+Status: SUCCESS
+Base HEAD: a5110e2
+Branch: sprint-284-paper-entry-ledger-query-service
+
+Service:
+src/application/ledger/PaperEntryLedgerQueryService.ts
+
+Test:
+test/domain/runtime/PaperEntryLedgerQueryService.test.js
+
+Tests Executed:
+- npm run build
+- node --test test/domain/runtime/PaperEntryLedgerQueryService.test.js
+- JsonPaperEntryLedgerRepositoryAdapter regression
+- PaperEntrySupervisionLedgerExporter regression
+- OperatorEntrySupervisionController regression
+- npm test
+
+Delivered:
+- Application-layer Paper Entry Ledger Query Service
+- latest query
+- session query
+- status/operator decision filters
+- confidence and time-window filters
+- bounded result limit
+- truncation summary
+- repository stats composition
+- operator text report
+- PAPER-only governance flags in query reports
+
+Architecture:
+- service depends only on PaperEntryLedgerRepositoryPort
+- JSONL adapter remains an infrastructure detail
+- query path is O(n) time and O(limit) returned-space
+- no live money authorization
+- no automatic execution
+- no automatic bet execution
+- human supervision remains required
+
+Next Recommended Sprint:
+285 — Paper Entry Ledger Operator CLI Reporter
+========================================
