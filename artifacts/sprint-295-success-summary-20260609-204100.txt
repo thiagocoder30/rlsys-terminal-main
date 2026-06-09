@@ -1,0 +1,58 @@
+RL.SYS CORE — SPRINT SUCCESS SUMMARY
+========================================
+Sprint: 295
+Name: Paper Trading Repeat Session Starter
+Status: SUCCESS
+Base HEAD: bfda4b7
+Branch: sprint-295-paper-trading-repeat-session-starter
+
+Starter:
+src/application/runtime/PaperTradingRepeatSessionStarter.ts
+
+CLI:
+scripts/paper-trading-repeat-session-starter.js
+
+Test:
+test/domain/runtime/PaperTradingRepeatSessionStarter.test.js
+
+Tests Executed:
+- npm run build
+- node --test test/domain/runtime/PaperTradingRepeatSessionStarter.test.js
+- PaperTradingAcceptanceGate regression
+- FirstCompletePaperSessionCertification regression
+- FirstPaperSessionClosingProtocol regression
+- FirstPaperSessionManualExecutionProtocol regression
+- FirstPaperSessionFinalPreflightOrchestrator regression
+- CLI smoke test repeat session starter
+- npm test
+
+Delivered:
+- Paper Trading Repeat Session Starter
+- PAPER_REPEAT_READY / PAPER_REPEAT_NEEDS_REVIEW / PAPER_REPEAT_BLOCKED classification
+- acceptance gate integration
+- repeat session id generation
+- real platform observed flag
+- real money blocked gate
+- automatic execution blocked gate
+- operator ready gate
+- append-only JSONL start record CLI persistence
+- text CLI output
+- JSON CLI output
+- paper-only governance output
+
+Operational Usage:
+node scripts/paper-trading-repeat-session-starter.js --sessionId first-paper-session --operatorConfirmedLaunch true --operatorConfirmedClose true --operatorReady true --format text
+node scripts/paper-trading-repeat-session-starter.js --sessionId first-paper-session --operatorConfirmedLaunch true --operatorConfirmedClose true --operatorReady true --format json
+
+Architecture:
+- repeat session starter composes PaperTradingAcceptanceGate
+- acceptance gate composes first complete paper session certification
+- starts repeat supervised PAPER session only
+- no live money authorization
+- no automatic execution
+- no automatic bet execution
+- human supervision remains required
+
+Next Recommended Step:
+Run PAPER_TEST_001 on a real observed platform with no real money and no automatic execution.
+========================================
