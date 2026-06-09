@@ -1,0 +1,58 @@
+RL.SYS CORE — SPRINT SUCCESS SUMMARY
+========================================
+Sprint: 286
+Name: First Paper Trading Readiness Command
+Status: SUCCESS
+Base HEAD: 26d46bc
+Branch: sprint-286-first-paper-trading-readiness-command
+
+Command:
+src/application/runtime/FirstPaperTradingReadinessCommand.ts
+
+CLI:
+scripts/first-paper-trading-readiness-command.js
+
+Test:
+test/domain/runtime/FirstPaperTradingReadinessCommand.test.js
+
+Tests Executed:
+- npm run build
+- node --test test/domain/runtime/FirstPaperTradingReadinessCommand.test.js
+- PaperEntryLedgerOperatorCliReporter regression
+- PaperEntryLedgerQueryService regression
+- JsonPaperEntryLedgerRepositoryAdapter regression
+- PaperEntrySupervisionLedgerExporter regression
+- OperatorEntrySupervisionController regression
+- CLI smoke test on default missing ledger
+- npm test
+
+Delivered:
+- First Paper Trading Readiness application command
+- PAPER_READY / NEEDS_REVIEW / BLOCKED classification
+- empty first-session ledger readiness
+- ledger access check
+- query service access check
+- HUD denial ratio review check
+- operator rejection ratio review check
+- paper-only governance check
+- text report
+- JSON CLI report
+- terminal command for operator pre-flight
+
+Operational Usage:
+node scripts/first-paper-trading-readiness-command.js --format text
+node scripts/first-paper-trading-readiness-command.js --format json
+node scripts/first-paper-trading-readiness-command.js --file data/paper-runtime/paper-entry-ledger.jsonl --format text
+
+Architecture:
+- command depends on PaperEntryLedgerRepositoryPort
+- query composition uses PaperEntryLedgerQueryService
+- JSONL persistence remains infrastructure detail
+- no live money authorization
+- no automatic execution
+- no automatic bet execution
+- human supervision remains required
+
+Next Recommended Sprint:
+287 — First Paper Trading Session Launch Checklist
+========================================
