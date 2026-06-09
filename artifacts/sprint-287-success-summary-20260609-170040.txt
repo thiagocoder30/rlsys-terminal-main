@@ -1,0 +1,55 @@
+RL.SYS CORE — SPRINT SUCCESS SUMMARY
+========================================
+Sprint: 287
+Name: First Paper Trading Session Launch Checklist & Command
+Status: SUCCESS
+Base HEAD: a8999f9
+Branch: sprint-287-first-paper-trading-session-launch-checklist
+
+Checklist:
+src/application/runtime/FirstPaperTradingSessionLaunchChecklist.ts
+
+CLI:
+scripts/first-paper-trading-session-launch-checklist.js
+
+Test:
+test/domain/runtime/FirstPaperTradingSessionLaunchChecklist.test.js
+
+Tests Executed:
+- npm run build
+- node --test test/domain/runtime/FirstPaperTradingSessionLaunchChecklist.test.js
+- FirstPaperTradingReadinessCommand regression
+- PaperEntryLedgerOperatorCliReporter regression
+- PaperEntryLedgerQueryService regression
+- JsonPaperEntryLedgerRepositoryAdapter regression
+- CLI smoke test launch checklist
+- npm test
+
+Delivered:
+- First Paper Trading Session Launch Checklist
+- PAPER_SESSION_READY / PAPER_SESSION_NEEDS_REVIEW / PAPER_SESSION_BLOCKED classification
+- readiness command integration
+- sessionId validation
+- operator launch confirmation gate
+- paper runtime availability gate
+- snapshot path review gate
+- ledger path configuration gate
+- paper-only governance gate
+- JSON CLI report
+- text CLI report
+
+Operational Usage:
+node scripts/first-paper-trading-session-launch-checklist.js --sessionId first-paper-session --operatorConfirmedLaunch true --format text
+node scripts/first-paper-trading-session-launch-checklist.js --sessionId first-paper-session --operatorConfirmedLaunch true --format json
+
+Architecture:
+- launch checklist composes FirstPaperTradingReadinessCommand
+- persistence remains behind PaperEntryLedgerRepositoryPort
+- no live money authorization
+- no automatic execution
+- no automatic bet execution
+- human supervision remains required
+
+Next Recommended Sprint:
+288 — First Supervised Paper Trading Session Recorder
+========================================
