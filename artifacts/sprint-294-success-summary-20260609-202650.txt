@@ -1,0 +1,57 @@
+RL.SYS CORE — SPRINT SUCCESS SUMMARY
+========================================
+Sprint: 294
+Name: Paper Trading Acceptance Gate
+Status: SUCCESS
+Base HEAD: 7c46c67
+Branch: sprint-294-paper-trading-acceptance-gate
+
+Gate:
+src/application/runtime/PaperTradingAcceptanceGate.ts
+
+CLI:
+scripts/paper-trading-acceptance-gate.js
+
+Test:
+test/domain/runtime/PaperTradingAcceptanceGate.test.js
+
+Tests Executed:
+- npm run build
+- node --test test/domain/runtime/PaperTradingAcceptanceGate.test.js
+- FirstCompletePaperSessionCertification regression
+- FirstPaperSessionClosingProtocol regression
+- FirstPaperSessionManualExecutionProtocol regression
+- FirstPaperSessionFinalPreflightOrchestrator regression
+- FirstPaperSessionOperatorRunbookCommand regression
+- CLI smoke test paper trading acceptance gate
+- npm test
+
+Delivered:
+- Paper Trading Acceptance Gate
+- PAPER_ACCEPTED / PAPER_NEEDS_REVIEW / PAPER_REJECTED classification
+- certification status integration
+- certification score threshold
+- repeat PAPER sessions acceptance flag
+- human review flag
+- rejection flag
+- text CLI output
+- JSON CLI output
+- paper-only governance output
+- explicit no live-money/no-profit certification
+
+Operational Usage:
+node scripts/paper-trading-acceptance-gate.js --sessionId first-paper-session --operatorConfirmedLaunch true --operatorConfirmedClose true --format text
+node scripts/paper-trading-acceptance-gate.js --sessionId first-paper-session --operatorConfirmedLaunch true --operatorConfirmedClose true --format json
+
+Architecture:
+- acceptance gate composes FirstCompletePaperSessionCertification
+- accepts repeat supervised PAPER only
+- does not certify profit
+- does not certify live money
+- no automatic execution
+- no automatic bet execution
+- human supervision remains required
+
+Next Recommended Sprint:
+295 — Paper Trading Repeat Session Starter
+========================================
