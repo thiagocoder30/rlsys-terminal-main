@@ -1,0 +1,54 @@
+RL.SYS CORE — SPRINT SUCCESS SUMMARY
+========================================
+Sprint: 297
+Name: Operator Guided HUD
+Status: SUCCESS
+Base HEAD: 3cd5b53
+Branch: sprint-297-operator-guided-hud
+
+HUD:
+src/application/runtime/OperatorGuidedHud.ts
+
+CLI:
+scripts/paper-test-operator-console-guided.js
+
+Test:
+test/domain/runtime/OperatorGuidedHud.test.js
+
+Tests Executed:
+- npm run build
+- node --test test/domain/runtime/OperatorGuidedHud.test.js
+- PaperTestOperatorConsole regression
+- PaperTradingRepeatSessionStarter regression
+- PaperTradingAcceptanceGate regression
+- FirstCompletePaperSessionCertification regression
+- FirstPaperSessionClosingProtocol regression
+- CLI smoke test guided HUD
+- npm test
+
+Delivered:
+- Operator Guided HUD
+- Portuguese operator-facing UX
+- current phase detection
+- next recommended action
+- available command list by phase
+- command result explanation
+- governance-safe HUD text
+- guided console wrapper
+- paper-only safeguards
+
+Operational Usage:
+node scripts/paper-test-operator-console-guided.js --repeatSessionId PAPER_TEST_001
+
+Architecture:
+- guided HUD wraps PaperTestOperatorConsole
+- presentation layer only
+- no business-rule changes
+- no live money authorization
+- no automatic execution
+- no automatic bet execution
+- human supervision remains required
+
+Next Recommended Step:
+Run PAPER_TEST_001 with guided HUD on a real observed platform, no real money, no automatic execution.
+========================================
