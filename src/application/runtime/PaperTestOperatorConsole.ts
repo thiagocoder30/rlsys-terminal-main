@@ -13,6 +13,9 @@ import {
 import {
   FirstCompletePaperSessionCertification,
 } from './FirstCompletePaperSessionCertification.js';
+import {
+  WarmupScreenshotImportGateway,
+} from './WarmupScreenshotImportGateway.js';
 
 export type PaperTestOperatorConsoleStatus =
   | 'CONSOLE_READY'
@@ -91,6 +94,7 @@ export class PaperTestOperatorConsole {
   private readonly starter: PaperTradingRepeatSessionStarter;
   private readonly closing: FirstPaperSessionClosingProtocol;
   private readonly certification: FirstCompletePaperSessionCertification;
+  private readonly screenshotGateway: WarmupScreenshotImportGateway;
   private readonly dataDir: string;
 
   private state: PaperTestOperatorConsoleState;
@@ -101,6 +105,11 @@ export class PaperTestOperatorConsole {
     this.closing = new FirstPaperSessionClosingProtocol(this.repository);
     this.certification = new FirstCompletePaperSessionCertification(this.repository);
     this.dataDir = config.dataDir || join(process.cwd(), 'data', 'paper-runtime');
+    this.screenshotGateway = new WarmupScreenshotImportGateway({
+      screenshotDir: join(this.dataDir, 'warmup-screenshots'),
+      outputDir: this.dataDir,
+      minimumRounds: 100,
+    });
 
     this.state = Object.freeze({
       sessionId: config.sessionId || 'first-paper-session',
@@ -155,6 +164,10 @@ export class PaperTestOperatorConsole {
 
     if (parsed.command === 'warmup-paste') {
       return this.warmupPaste(parsed.args.join(' '));
+    }
+
+    if (parsed.command === 'warmup-screenshot') {
+      return this.warmupScreenshot(parsed.args[0] || 'latest');
     }
 
     if (parsed.command === 'qualify') {
@@ -275,6 +288,43 @@ export class PaperTestOperatorConsole {
     }
 
     return this.ingestWarmup(payload, 'paste');
+  }
+
+  private warmupScreenshot(screenshotPath: string): PaperTestOperatorConsoleResult {
+    if (!this.state.started) {
+      return this.failure('Start the console before importing warmup screenshot.');
+    }
+
+    const imported = this.screenshotGateway.import({
+      screenshotPath: screenshotPath.trim().length > 0 ? screenshotPath.trim() : 'latest',
+    });
+
+    if (!imported.ok) {
+      return this.failure(imported.error.message);
+    }
+
+    if (imported.value.status === 'WARMUP_SCREENSHOT_NEEDS_EXTRACTION') {
+      return this.success(
+        'warmup-screenshot',
+        [
+          'Print localizado, mas ainda precisa de extração Gemini.',
+          `Screenshot: ${imported.value.screenshotPath}`,
+          `Comando: ${imported.value.extractorCommand}`,
+          'Depois rode novamente: warmup-screenshot latest',
+        ].join('\n'),
+        'Rode o comando de extração Gemini e depois repita warmup-screenshot latest.',
+      );
+    }
+
+    if (imported.value.status === 'WARMUP_SCREENSHOT_BLOCKED') {
+      return this.failure(imported.value.message);
+    }
+
+    if (imported.value.outputWarmupPath === null) {
+      return this.failure('Warmup screenshot import did not generate output warmup file.');
+    }
+
+    return this.warmupFile(imported.value.outputWarmupPath);
   }
 
   private ingestWarmup(payload: string, source: string): PaperTestOperatorConsoleResult {
@@ -488,6 +538,7 @@ export class PaperTestOperatorConsole {
       '  start',
       '  warmup-file <arquivo>',
       '  warmup-paste <rodadas separadas por vírgula/espaço>',
+      '  warmup-screenshot latest',
       '  qualify',
       '  round <0-36|P|V|PRETO|VERMELHO>',
       '  suggestion',
@@ -534,7 +585,7 @@ export class PaperTestOperatorConsole {
 
   private nextAction(): string {
     if (!this.state.started) return 'Digite start.';
-    if (!this.state.warmupLoaded) return 'Digite warmup-file <arquivo> ou warmup-paste <rodadas>.';
+    if (!this.state.warmupLoaded) return 'Digite warmup-screenshot latest, warmup-file <arquivo> ou warmup-paste <rodadas>.';
     if (!this.state.warmupQualified) return 'Digite qualify.';
     if (!this.state.finished) return 'Digite round <valor>, suggestion, win/loss/skip, ledger ou finish.';
     if (!this.state.certified) return 'Digite certify.';
