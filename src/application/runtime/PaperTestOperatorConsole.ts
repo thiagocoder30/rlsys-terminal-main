@@ -1,3 +1,4 @@
+import { AnalyticsDecisionEngine } from './AnalyticsDecisionEngine.js';
 import { WarmupGeminiExtractorIntegration } from './WarmupGeminiExtractorIntegration.js';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -411,25 +412,65 @@ export class PaperTestOperatorConsole {
   }
 
   private suggestion(): PaperTestOperatorConsoleResult {
-    if (!this.state.warmupQualified) {
-      return this.failure('Qualify warmup before requesting suggestion.');
+    if (!this.state.started) {
+      return this.failure('Start the console before requesting suggestion.');
     }
 
-    const liveCount = this.state.liveRounds.length;
-    const recommendation = liveCount < 3 ? 'AGUARDAR' : 'AGUARDAR';
+    if (!this.state.warmupLoaded || !this.state.warmupQualified) {
+      return this.failure('Warmup must be loaded and qualified before requesting suggestion.');
+    }
+
+    const decision = new AnalyticsDecisionEngine().evaluate({
+      warmupRounds: this.loadWarmupRoundsFromDisk(),
+      liveRounds: this.state.liveRounds,
+      minimumLiveRounds: 6,
+    });
+
+    const separator = String.fromCharCode(10);
+    const message = [
+      `Recommendation: ${decision.recommendation}`,
+      `Reason: ${decision.message}`,
+      `Confidence: ${decision.confidence.toFixed(2)}`,
+      `Risk: ${decision.risk.toFixed(2)}`,
+      `Triplicacao: totalTrios=${decision.triplicacao.totalTrios} dominant=${decision.triplicacao.dominantPattern} ratio=${decision.triplicacao.dominantRatio.toFixed(2)} TC=${decision.triplicacao.tc} NTC=${decision.triplicacao.ntc} TA=${decision.triplicacao.ta} NTA=${decision.triplicacao.nta} zeroTrios=${decision.triplicacao.zeroTrios}`,
+      `Heatmap: hot=${decision.heatmap.hotNumbers.join(',') || 'none'} cold=${decision.heatmap.coldNumbers.join(',') || 'none'} zeroFrequency=${decision.heatmap.zeroFrequency.toFixed(3)}`,
+      `Consensus: ${decision.consensus.classification} engines=${decision.consensus.enginesAligned}/${decision.consensus.enginesTotal}`,
+      `WarmupRounds: ${this.state.totalWarmupRounds}`,
+      `LiveRounds: ${this.state.liveRounds.length}`,
+      'LiveMoneyAuthorization: false',
+      'AutomaticBetExecutionAllowed: false',
+    ].join(separator);
 
     return this.success(
       'suggestion',
-      [
-        `Recommendation: ${recommendation}`,
-        `Reason: Console defensivo inicial. Sugestões reais devem permanecer supervisionadas e PAPER.`,
-        `WarmupRounds: ${this.state.totalWarmupRounds}`,
-        `LiveRounds: ${liveCount}`,
-        'LiveMoneyAuthorization: false',
-        'AutomaticBetExecutionAllowed: false',
-      ].join('\n'),
-      'Digite round <valor> para continuar observando, ou confirm/reject somente se houver evidência institucional externa.',
+      message,
+      decision.recommendation === 'PAPER_SINAL_FORTE' || decision.recommendation === 'PAPER_SINAL_FRACO'
+        ? 'Avalie manualmente. Use confirm/reject somente em PAPER.'
+        : 'Digite round <valor> para continuar observando.',
     );
+  }
+
+  private loadWarmupRoundsFromDisk(): readonly string[] {
+    const candidates = [
+      join(this.dataDir, 'warmup-screenshots', 'warmup-screenshot-imported-rounds.txt'),
+      join(this.dataDir, 'warmup-rounds.txt'),
+      join(this.dataDir, 'warmup.txt'),
+    ];
+
+    for (const candidate of candidates) {
+      try {
+        const payload = readFileSync(candidate, 'utf8');
+        const rounds = payload
+          .split(/[^0-9]+/u)
+          .filter((part) => part.trim().length > 0);
+
+        if (rounds.length > 0) return Object.freeze(rounds);
+      } catch {
+        // try next candidate
+      }
+    }
+
+    return Object.freeze([]);
   }
 
   private confirm(): PaperTestOperatorConsoleResult {
