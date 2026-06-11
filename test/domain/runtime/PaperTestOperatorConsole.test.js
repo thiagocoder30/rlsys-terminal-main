@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { mkdtemp, writeFile, rm } = require('node:fs/promises');
+const { mkdtemp, writeFile, mkdir, rm } = require('node:fs/promises');
 const { spawnSync } = require('node:child_process');
 const { join } = require('node:path');
 const { tmpdir } = require('node:os');
@@ -100,6 +100,69 @@ test('paper test operator console supports warmup file', async () => {
   }
 });
 
+
+test('paper test operator console supports warmup alias using latest synchronized screenshot sidecar', async () => {
+  const { dir, consoleEngine } = await tempConsole();
+
+  try {
+    const screenshotDir = join(dir, 'warmup-screenshots');
+    await mkdir(screenshotDir, { recursive: true });
+
+    const oldScreenshot = join(screenshotDir, 'Screenshot_20260610_111750.jpg');
+    const latestScreenshot = join(screenshotDir, 'Screenshot_20260611_112804.jpg');
+
+    await writeFile(oldScreenshot, 'old image placeholder', 'utf8');
+    await writeFile(join(screenshotDir, 'Screenshot_20260610_111750.extracted.json'), JSON.stringify({
+      rounds: warmupPayload(100).split(','),
+    }), 'utf8');
+
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    await writeFile(latestScreenshot, 'latest image placeholder', 'utf8');
+    await writeFile(join(screenshotDir, 'Screenshot_20260611_112804.extracted.json'), JSON.stringify({
+      rounds: warmupPayload(200).split(','),
+    }), 'utf8');
+
+    await consoleEngine.execute('start', 1760000010000);
+
+    const result = await consoleEngine.execute('warmup', 1760000010000);
+
+    assert.equal(result.ok, true);
+    assert.equal(result.command, 'warmup');
+    assert.equal(result.state.warmupLoaded, true);
+    assert.equal(result.state.totalWarmupRounds, 201);
+    assert.match(result.message, /Fonte=file:/);
+    assert.match(result.message, /warmup-screenshot-imported-rounds.txt/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('paper test operator console supports explicit warmup-latest alias', async () => {
+  const { dir, consoleEngine } = await tempConsole();
+
+  try {
+    const screenshotDir = join(dir, 'warmup-screenshots');
+    await mkdir(screenshotDir, { recursive: true });
+
+    const latestScreenshot = join(screenshotDir, 'Screenshot_20260611_112804.jpg');
+    await writeFile(latestScreenshot, 'latest image placeholder', 'utf8');
+    await writeFile(join(screenshotDir, 'Screenshot_20260611_112804.extracted.json'), JSON.stringify({
+      rounds: warmupPayload(150).split(','),
+    }), 'utf8');
+
+    await consoleEngine.execute('start', 1760000010000);
+
+    const result = await consoleEngine.execute('warmup-latest', 1760000010000);
+
+    assert.equal(result.ok, true);
+    assert.equal(result.state.warmupLoaded, true);
+    assert.equal(result.state.totalWarmupRounds, 151);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('paper test operator console blocks round before warmup qualification', async () => {
   const { dir, consoleEngine } = await tempConsole();
 
@@ -137,6 +200,7 @@ test('paper test operator console help is self explanatory and governance safe',
     const result = await consoleEngine.execute('help', 1760000010000);
 
     assert.equal(result.ok, true);
+    assert.match(result.message, /warmup/);
     assert.match(result.message, /warmup-file/);
     assert.match(result.message, /round/);
     assert.match(result.message, /certify/);
@@ -167,6 +231,7 @@ test('paper test operator console CLI starts and exits', async () => {
 
     assert.equal(result.status, 0);
     assert.match(result.stdout, /PAPER TEST OPERATOR CONSOLE/);
+    assert.match(result.stdout, /warmup/);
     assert.match(result.stdout, /warmup-file/);
     assert.match(result.stdout, /Paper Test Operator Console closed/);
   } finally {
