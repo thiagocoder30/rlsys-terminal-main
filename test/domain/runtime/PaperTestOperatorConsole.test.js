@@ -163,6 +163,31 @@ test('paper test operator console supports explicit warmup-latest alias', async 
   }
 });
 
+
+test('paper test operator console suggestion usa AnalyticsDecisionEngine', async () => {
+  const { dir, consoleEngine } = await tempConsole();
+
+  try {
+    const filePath = join(dir, 'warmup.txt');
+    await writeFile(filePath, warmupPayload(), 'utf8');
+
+    await consoleEngine.execute('start', 1760000010000);
+    await consoleEngine.execute(`warmup-file ${filePath}`, 1760000010000);
+    await consoleEngine.execute('qualify', 1760000010000);
+
+    const result = await consoleEngine.execute('suggestion', 1760000010000);
+
+    assert.equal(result.ok, true);
+    assert.match(result.message, /Recommendation:/);
+    assert.match(result.message, /Triplicacao:/);
+    assert.match(result.message, /Heatmap:/);
+    assert.match(result.message, /Consensus:/);
+    assert.doesNotMatch(result.message, /Console defensivo inicial/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('paper test operator console blocks round before warmup qualification', async () => {
   const { dir, consoleEngine } = await tempConsole();
 
