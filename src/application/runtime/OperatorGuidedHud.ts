@@ -200,7 +200,7 @@ export class OperatorGuidedHud {
 
   private nextActionFor(state: PaperTestOperatorConsoleState): string {
     if (!state.started) return 'Digite: start';
-    if (!state.warmupLoaded) return 'Digite: warmup-file <arquivo> ou warmup-paste <rodadas>';
+    if (!state.warmupLoaded) return 'Digite: warmup';
     if (!state.warmupQualified) return 'Digite: qualify';
     if (state.finished && !state.certified) return 'Digite: certify';
     if (state.finished && state.certified) return 'Digite: exit';
@@ -212,7 +212,7 @@ export class OperatorGuidedHud {
     const common = ['help', 'status', 'ledger', 'exit'];
 
     if (phase === 'INICIALIZACAO') return Object.freeze(['start', ...common]);
-    if (phase === 'WARMUP') return Object.freeze(['warmup-file <arquivo>', 'warmup-paste <rodadas>', ...common]);
+    if (phase === 'WARMUP') return Object.freeze(['warmup', 'warmup-latest', 'warmup-file <arquivo>', 'warmup-paste <rodadas>', ...common]);
     if (phase === 'QUALIFICACAO') return Object.freeze(['qualify', ...common]);
     if (phase === 'OBSERVACAO') return Object.freeze(['round <valor>', 'suggestion', 'confirm', 'reject', 'finish', ...common]);
     if (phase === 'REGISTRO') return Object.freeze(['win', 'loss', 'skip', 'reject', ...common]);

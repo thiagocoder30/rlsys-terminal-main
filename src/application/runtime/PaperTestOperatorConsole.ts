@@ -158,6 +158,10 @@ export class PaperTestOperatorConsole {
       return this.start(generatedAtEpochMs);
     }
 
+    if (parsed.command === 'warmup' || parsed.command === 'warmup-latest') {
+      return this.warmupLatest();
+    }
+
     if (parsed.command === 'warmup-file') {
       return this.warmupFile(parsed.args.join(' '));
     }
@@ -259,8 +263,12 @@ export class PaperTestOperatorConsole {
     return this.success(
       'start',
       `PAPER_TEST_001 iniciado. Status=${started.value.status}. Dinheiro real bloqueado. Execução automática bloqueada.`,
-      'Carregue o warmup com warmup-file <arquivo> ou warmup-paste <rodadas>.',
+      'Digite warmup para importar automaticamente o print mais recente sincronizado.',
     );
+  }
+
+  private warmupLatest(): PaperTestOperatorConsoleResult {
+    return this.warmupScreenshot('latest');
   }
 
   private warmupFile(filePath: string): PaperTestOperatorConsoleResult {
@@ -310,9 +318,9 @@ export class PaperTestOperatorConsole {
           'Print localizado, mas ainda precisa de extração Gemini.',
           `Screenshot: ${imported.value.screenshotPath}`,
           `Comando: ${imported.value.extractorCommand}`,
-          'Depois rode novamente: warmup-screenshot latest',
+          'Depois rode novamente: warmup',
         ].join('\n'),
-        'Rode o comando de extração Gemini e depois repita warmup-screenshot latest.',
+        'Rode o comando de extração Gemini e depois repita warmup.',
       );
     }
 
@@ -536,6 +544,8 @@ export class PaperTestOperatorConsole {
       'Commands:',
       '  help',
       '  start',
+      '  warmup',
+      '  warmup-latest',
       '  warmup-file <arquivo>',
       '  warmup-paste <rodadas separadas por vírgula/espaço>',
       '  warmup-screenshot latest',
@@ -585,7 +595,7 @@ export class PaperTestOperatorConsole {
 
   private nextAction(): string {
     if (!this.state.started) return 'Digite start.';
-    if (!this.state.warmupLoaded) return 'Digite warmup-screenshot latest, warmup-file <arquivo> ou warmup-paste <rodadas>.';
+    if (!this.state.warmupLoaded) return 'Digite warmup para importar automaticamente o print mais recente sincronizado.';
     if (!this.state.warmupQualified) return 'Digite qualify.';
     if (!this.state.finished) return 'Digite round <valor>, suggestion, win/loss/skip, ledger ou finish.';
     if (!this.state.certified) return 'Digite certify.';
