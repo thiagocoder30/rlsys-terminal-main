@@ -1,3 +1,4 @@
+import { WarmupGeminiExtractorIntegration } from './WarmupGeminiExtractorIntegration.js';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
@@ -268,6 +269,16 @@ export class PaperTestOperatorConsole {
   }
 
   private warmupLatest(): PaperTestOperatorConsoleResult {
+    const gemini = new WarmupGeminiExtractorIntegration().importLatest({
+      repoRoot: process.cwd(),
+      screenshotDir: join(this.dataDir, 'warmup-screenshots'),
+      minRounds: 100,
+    });
+
+    if (gemini.ok && gemini.importedRoundsPath) {
+      return this.warmupFile(gemini.importedRoundsPath);
+    }
+
     return this.warmupScreenshot('latest');
   }
 
