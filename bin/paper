@@ -1,19 +1,30 @@
 #!/usr/bin/env bash
-# ==============================================================================
-# RL.SYS CORE — PAPER HUD UNIFICADO (Single Source of Truth)
-# ==============================================================================
 set -euo pipefail
 
-# Loop determinístico para resolver symlinks nativos e apontar para a origem real
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ]; do
   DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
   SOURCE="$(readlink "$SOURCE")"
   [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
 done
-DIR="$( cd -P "$( dirname "$SOURCE" )/.." >/dev/null 2>&1 && pwd )"
+ROOT="$( cd -P "$( dirname "$SOURCE" )/.." >/dev/null 2>&1 && pwd )"
 
-cd "$DIR"
+cd "$ROOT"
 
-# Delegação transparente para o motor de runtime garantindo contexto unificado
-exec npm run paper:runtime "$@"
+# Pre-flight Check: Detectar e processar warmup pendente automaticamente
+LATEST_JPG=$(ls -t data/paper-runtime/warmup-screenshots/*.jpg 2>/dev/null | head -n 1 || echo "")
+
+if [ -n "$LATEST_JPG" ]; then
+    JSON_TARGET="${LATEST_JPG%.jpg}.extracted.json"
+    if [ ! -f "$JSON_TARGET" ]; then
+        echo "================================================="
+        echo " ⚡ PRE-FLIGHT: Warmup pendente detectado"
+        echo " 🔍 Extraindo: $(basename "$LATEST_JPG")..."
+        echo "================================================="
+        python3 scripts/extrator_gemini.py "$LATEST_JPG" "$JSON_TARGET"
+        echo "✅ Extração concluída com sucesso."
+    fi
+fi
+
+# Executa o console
+exec node "$ROOT/scripts/paper-test-operator-console-guided.js" --repeatSessionId PAPER_TEST_001 "$@"
