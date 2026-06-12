@@ -1,3 +1,5 @@
+import { PaperTradingLedger } from '../../domain/ledger/PaperTradingLedger.js';
+import { RuntimeEnforcementOrchestrator } from '../../domain/enforcement/RuntimeEnforcementOrchestrator.js';
 import { OcrCoverageProfiler } from '../ocr/OcrCoverageProfiler.js';
 import { AnalyticsDecisionEngine } from './AnalyticsDecisionEngine.js';
 import { WarmupGeminiExtractorIntegration } from './WarmupGeminiExtractorIntegration.js';
@@ -431,6 +433,23 @@ ${audit.message}`);
 
     if (!this.state.warmupLoaded || !this.state.warmupQualified) {
       return this.failure('Warmup must be loaded and qualified before requesting suggestion.');
+    }
+
+    
+    const ledgerPath = join(this.dataDir, 'paper-ledger.jsonl');
+    const ledger = new PaperTradingLedger(ledgerPath);
+    const orchestrator = new RuntimeEnforcementOrchestrator();
+
+    const currentLosses = ledger.calculateCurrentDrawdown();
+    const cooldownContext = { 
+      consecutiveLosses: currentLosses, 
+      roundsSinceLastAction: this.state.liveRounds.length 
+    };
+
+    const enforcementResult = orchestrator.evaluateContext(cooldownContext);
+
+    if (!enforcementResult.isAllowed) {
+      return this.failure(enforcementResult.reason);
     }
 
     const decision = new AnalyticsDecisionEngine().evaluate({
