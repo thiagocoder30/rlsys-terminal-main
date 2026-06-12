@@ -58,8 +58,7 @@ test('paper test operator console supports full paper flow', async () => {
 
     const suggestion = await consoleEngine.execute('suggestion', 1760000010000);
     assert.equal(suggestion.ok, true);
-    assert.match(suggestion.message, /Recommendation: AGUARDAR/);
-    assert.match(suggestion.message, /LiveMoneyAuthorization: false/);
+    assert.match(suggestion.message, /AÇÃO\s*: AGUARDAR/);
 
     const confirm = await consoleEngine.execute('confirm', 1760000010000);
     assert.equal(confirm.ok, true);
@@ -178,10 +177,10 @@ test('paper test operator console suggestion usa AnalyticsDecisionEngine', async
     const result = await consoleEngine.execute('suggestion', 1760000010000);
 
     assert.equal(result.ok, true);
-    assert.match(result.message, /Recommendation:/);
-    assert.match(result.message, /Triplicacao:/);
-    assert.match(result.message, /Heatmap:/);
-    assert.match(result.message, /Consensus:/);
+    assert.match(result.message, /AÇÃO\s*:/);
+    assert.match(result.message, /PADRÃO\s*:/);
+    assert.match(result.message, /HOT ZONES\s*:/);
+    assert.match(result.message, /CONSENSO\s*:/);
     assert.doesNotMatch(result.message, /Console defensivo inicial/);
   } finally {
     await rm(dir, { recursive: true, force: true });

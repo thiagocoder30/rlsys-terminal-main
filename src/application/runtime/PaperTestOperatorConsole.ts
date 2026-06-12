@@ -427,6 +427,7 @@ ${audit.message}`);
   }
 
   private suggestion(): PaperTestOperatorConsoleResult {
+    this.enforceMemoryBudget();
     if (!this.state.started) {
       return this.failure('Start the console before requesting suggestion.');
     }
@@ -460,17 +461,15 @@ ${audit.message}`);
 
     const separator = String.fromCharCode(10);
     const message = [
-      `Recommendation: ${decision.recommendation}`,
-      `Reason: ${decision.message}`,
-      `Confidence: ${decision.confidence.toFixed(2)}`,
-      `Risk: ${decision.risk.toFixed(2)}`,
-      `Triplicacao: totalTrios=${decision.triplicacao.totalTrios} dominant=${decision.triplicacao.dominantPattern} ratio=${decision.triplicacao.dominantRatio.toFixed(2)} TC=${decision.triplicacao.tc} NTC=${decision.triplicacao.ntc} TA=${decision.triplicacao.ta} NTA=${decision.triplicacao.nta} zeroTrios=${decision.triplicacao.zeroTrios}`,
-      `Heatmap: hot=${decision.heatmap.hotNumbers.join(',') || 'none'} cold=${decision.heatmap.coldNumbers.join(',') || 'none'} zeroFrequency=${decision.heatmap.zeroFrequency.toFixed(3)}`,
-      `Consensus: ${decision.consensus.classification} engines=${decision.consensus.enginesAligned}/${decision.consensus.enginesTotal}`,
-      `WarmupRounds: ${this.state.totalWarmupRounds}`,
-      `LiveRounds: ${this.state.liveRounds.length}`,
-      'LiveMoneyAuthorization: false',
-      'AutomaticBetExecutionAllowed: false',
+      '========================================',
+      ' 🛡️  RL.SYS CORE — OPERATIONAL HUD',
+      '========================================',
+      ` 🎯 AÇÃO      : ${decision.recommendation}`,
+      ` 📊 CONFIANÇA : ${(decision.confidence * 100).toFixed(0)}% (Risco: ${(decision.risk * 100).toFixed(0)}%)`,
+      ` 🧩 PADRÃO    : ${decision.triplicacao.dominantPattern} [Trio Ratio: ${(decision.triplicacao.dominantRatio * 100).toFixed(0)}%]`,
+      ` 🔥 HOT ZONES : [${decision.heatmap.hotNumbers.join(', ') || '-'}]`,
+      ` ⚙️  CONSENSO  : ${decision.consensus.classification} (${decision.consensus.enginesAligned}/${decision.consensus.enginesTotal})`,
+      '========================================'
     ].join(separator);
 
     return this.success(
@@ -763,4 +762,17 @@ ${audit.message}`);
 
     return '';
   }
+
+  /**
+   * Garante limite O(1) de consumo no Array de Histórico (Helio P22 / 2GB RAM Target).
+   */
+  private enforceMemoryBudget(): void {
+    const MAX_RAM_BUDGET_ROUNDS = 150;
+    if (this.state && Array.isArray(this.state.liveRounds) && this.state.liveRounds.length > MAX_RAM_BUDGET_ROUNDS) {
+      (this.state as any).liveRounds = Object.freeze(
+        this.state.liveRounds.slice(-MAX_RAM_BUDGET_ROUNDS)
+      );
+    }
+  }
+
 }
