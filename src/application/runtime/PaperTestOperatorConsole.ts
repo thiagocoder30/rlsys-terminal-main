@@ -1,3 +1,4 @@
+import { OcrCoverageProfiler } from '../ocr/OcrCoverageProfiler.js';
 import { AnalyticsDecisionEngine } from './AnalyticsDecisionEngine.js';
 import { WarmupGeminiExtractorIntegration } from './WarmupGeminiExtractorIntegration.js';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -372,6 +373,18 @@ export class PaperTestOperatorConsole {
   }
 
   private qualify(): PaperTestOperatorConsoleResult {
+
+    const rawJsonPath = join(this.dataDir, 'warmup-screenshots', '.extracted.json');
+    const profiler = new OcrCoverageProfiler();
+    const rounds = this.loadWarmupRoundsFromDisk();
+    
+    const audit = profiler.evaluate(rawJsonPath, rounds.length);
+
+    if (!audit.isApproved) {
+      return this.failure(`[OCR AUDIT LOCK] Qualificação Abortada!
+${audit.message}`);
+    }
+
     if (!this.state.warmupLoaded) {
       return this.failure('Load warmup before qualification.');
     }
