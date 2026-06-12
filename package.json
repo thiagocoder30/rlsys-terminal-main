@@ -32,7 +32,8 @@
     "debt:audit": "node install/quality/technical-debt-engine.cjs",
     "cert:audit": "node install/quality/repository-certification-engine.cjs --audit-json artifacts/dependency-governance/sprint-250-npm-audit.json",
     "build:guard": "node install/quality/check-clean-build-artifacts.cjs",
-    "warmup:gemini-extract": "node install/runtime/warmup-gemini-extract-latest.cjs"
+    "warmup:gemini-extract": "node install/runtime/warmup-gemini-extract-latest.cjs",
+    "paper": "node scripts/paper-runtime-session.js"
   },
   "keywords": [
     "rl-sys",

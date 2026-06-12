@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# RL.SYS CORE — PAPER HUD UNIFICADO (Single Source of Truth)
+# ==============================================================================
+set -euo pipefail
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
+cd "$DIR"
+
+# Delegação transparente para o motor de runtime garantindo contexto unificado
+exec npm run paper:runtime "$@"
