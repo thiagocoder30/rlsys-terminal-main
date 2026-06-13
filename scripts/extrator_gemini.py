@@ -4,6 +4,7 @@ import json
 import mimetypes
 import os
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -11,7 +12,6 @@ import urllib.request
 def fail(message: str, code: int = 1) -> None:
     print(json.dumps({"ok": False, "error": message}, ensure_ascii=False, indent=2))
     sys.exit(code)
-
 
 def mime_for(path: str) -> str:
     guessed, _ = mimetypes.guess_type(path)
@@ -74,13 +74,27 @@ def main() -> None:
         method="POST",
     )
 
-    try:
-        with urllib.request.urlopen(request, timeout=60) as response:
-            raw = response.read().decode("utf-8")
-    except urllib.error.HTTPError as error:
-        fail(f"Erro HTTP Gemini: {error.code} {error.read().decode('utf-8', errors='ignore')}")
-    except Exception as error:
-        fail(f"Erro ao chamar Gemini: {error}")
+    max_retries = 3
+    raw = ""
+    
+    for attempt in range(1, max_retries + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=60) as response:
+                raw = response.read().decode("utf-8")
+                break  # Sucesso, sai do loop
+        except urllib.error.HTTPError as error:
+            error_body = error.read().decode('utf-8', errors='ignore')
+            # Se for Erro 429 (Rate Limit) e ainda temos tentativas, aplicamos o backoff
+            if error.code == 429 and attempt < max_retries:
+                sys.stderr.write(f"\n[!] Cota da API excedida (429). Aguardando 35 segundos para auto-recuperação (Tentativa {attempt}/{max_retries})...\n")
+                time.sleep(35)
+                continue
+            fail(f"Erro HTTP Gemini: {error.code} {error_body}")
+        except Exception as error:
+            fail(f"Erro ao chamar Gemini: {error}")
+
+    if not raw:
+        fail("Falha inesperada: Nenhuma resposta obtida do Gemini após as tentativas.")
 
     data = json.loads(raw)
     text = data["candidates"][0]["content"]["parts"][0]["text"]
@@ -110,7 +124,6 @@ def main() -> None:
         output_file.write("\n")
 
     print(json.dumps(report, ensure_ascii=False, indent=2))
-
 
 if __name__ == "__main__":
     main()
