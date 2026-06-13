@@ -2,12 +2,13 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
 const readline = require('node:readline');
+const { spawnSync } = require('node:child_process');
 
 const { AnalyticsDecisionEngine } = require('../dist/application/runtime/AnalyticsDecisionEngine.js');
 const { TriplicacaoAdvancedProbabilityEngine } = require('../dist/domain/analytics/TriplicacaoAdvancedProbabilityEngine.js');
 const { FusionHeatmapIntegrationEngine } = require('../dist/application/runtime/FusionHeatmapIntegrationEngine.js');
+const { InstitutionalContextScoreEngine } = require('../src/application/runtime/InstitutionalContextScoreEngine.js');
 
 const repoRoot = process.cwd();
 const screenshotDir = path.join(repoRoot, 'data', 'paper-runtime', 'warmup-screenshots');
@@ -15,92 +16,88 @@ const importedTxtPath = path.join(screenshotDir, 'warmup-screenshot-imported-rou
 
 console.clear();
 console.log('======================================================');
-console.log(' 🎰 RL.SYS LIVE PAPER ORCHESTRATOR (SPRINT 348)');
+console.log(' 🛡️ RL.SYS COPILOTO INSTITUCIONAL (SPRINT 349)');
 console.log('======================================================');
 
-console.log('[1/3] Invocando Inteligência Visual (Gemini OCR)...');
-const extractProc = spawnSync('npm', ['run', 'warmup:gemini-extract'], { stdio: 'inherit' });
+let warmupRounds = [];
 
-if (extractProc.status !== 0) {
-  console.error('\n[X] Falha na extração OCR. Verifique se existe imagem na pasta warmup-screenshots e se a GEMINI_API_KEY está configurada.');
-  process.exit(1);
+if (fs.existsSync(importedTxtPath)) {
+  warmupRounds = fs.readFileSync(importedTxtPath, 'utf8')
+    .split(',')
+    .map(n => n.trim())
+    .filter(n => n.length > 0)
+    .map(Number);
+  console.log(`[+] Warmup carregado da base: ${warmupRounds.length} rodadas.`);
+} else {
+  console.log('[!] Nenhum Warmup detectado. Executando extrator Gemini...');
+  spawnSync('npm', ['run', 'warmup:gemini-extract'], { stdio: 'inherit' });
+  if (fs.existsSync(importedTxtPath)) {
+    warmupRounds = fs.readFileSync(importedTxtPath, 'utf8')
+      .split(',').map(n => n.trim()).filter(n => n.length > 0).map(Number);
+  }
 }
 
-if (!fs.existsSync(importedTxtPath)) {
-  console.error('\n[X] Arquivo de warmup extraído não encontrado.');
-  process.exit(1);
-}
-
-const warmupRounds = fs.readFileSync(importedTxtPath, 'utf8')
-  .split(',')
-  .map(n => n.trim())
-  .filter(n => n.length > 0)
-  .map(Number);
-
-console.log(`\n[2/3] Warmup carregado: ${warmupRounds.length} rodadas válidas.`);
-
-const legacyEngine = new AnalyticsDecisionEngine();
 const advancedTriplicacaoEngine = new TriplicacaoAdvancedProbabilityEngine();
 const fusionHeatmapEngine = new FusionHeatmapIntegrationEngine();
+const contextEngine = new InstitutionalContextScoreEngine();
 
 let liveRounds = [];
+let sessionStartTime = Date.now();
+
+function calculateSimulatedScores(allRounds) {
+  // 1. MESA (Table Score)
+  const advTriplicacao = advancedTriplicacaoEngine.analyze(allRounds);
+  const advHeatmap = fusionHeatmapEngine.analyze(allRounds);
+  
+  let tableScore = 50; // Neutro padrão
+  if (advHeatmap.mode === 'FUSION_READY' && advTriplicacao.selectedPatternKind !== 'NONE') tableScore = 85;
+  else if (advHeatmap.mode === 'BLOCKED') tableScore = 30;
+
+  // 2. DADOS (Data Score)
+  const dataScore = allRounds.length >= 100 ? 95 : 40;
+
+  // 3. DISCIPLINA (Fadiga Operacional)
+  const sessionMinutes = (Date.now() - sessionStartTime) / 60000;
+  let disciplineScore = 100 - (liveRounds.length * 1.5) - (sessionMinutes * 0.5);
+  disciplineScore = Math.max(10, Math.min(100, disciplineScore)); // Clamp
+
+  // 4. RISCO (Mockup inicial, futuramente conectado ao Bankroll Guard)
+  const riskScore = 90; // Drawdown Seguro provisório
+
+  return { tableScore, riskScore, disciplineScore, dataScore, advPattern: advTriplicacao.selectedPatternKind };
+}
 
 function renderTerminalHud() {
   const allRounds = [...warmupRounds, ...liveRounds];
-  
-  // Avaliação Oficial (Legado)
-  const legacyResult = legacyEngine.evaluate({
-    warmupRounds: warmupRounds.map(String),
-    liveRounds: liveRounds.map(String),
-    minimumLiveRounds: 6
-  });
-
-  // Avaliação Avançada (Novos Motores)
-  const advTriplicacao = advancedTriplicacaoEngine.analyze(allRounds);
-  const advHeatmap = fusionHeatmapEngine.analyze(allRounds);
-
-  const advPattern = advTriplicacao.selectedPatternKind || 'NONE';
-  const metric = (advTriplicacao.metrics || []).find(m => m.patternKind === advPattern);
-  const advOccurrences = metric ? metric.occurrences : 0;
-
-  const hotNumbers = advHeatmap.heatmap?.hotNumbers?.map(n => n.number).join(', ') || '-';
-  const mode = advHeatmap.mode || 'UNKNOWN';
-  const signal = advHeatmap.signalStrength || 'NONE';
-  const dispersion = advHeatmap.dispersionScore || 0;
+  const scores = calculateSimulatedScores(allRounds);
+  const context = contextEngine.evaluate(scores);
 
   console.clear();
   console.log('======================================================');
-  console.log(' 🎰 RL.SYS LIVE PAPER HUD');
+  console.log(' 🛡️ RL.SYS CORE - COPILOTO INSTITUCIONAL');
   console.log('======================================================');
-  console.log(` WARMUP: ${warmupRounds.length} | LIVE: ${liveRounds.length} | ÚLTIMAS: ${liveRounds.slice(-5).join(', ') || '-'}`);
-  console.log('------------------------------------------------------');
+  console.log(` MESA ............. ${Math.round(scores.tableScore)}/100  [${context.pillars.table}]`);
+  console.log(` RISCO ............ ${Math.round(scores.riskScore)}/100  [${context.pillars.risk}]`);
+  console.log(` DISCIPLINA ....... ${Math.round(scores.disciplineScore)}/100  [${context.pillars.discipline}]`);
+  console.log(` DADOS ............ ${Math.round(scores.dataScore)}/100  [${context.pillars.data}]`);
+  console.log('');
+  console.log(` CONTEXTO GERAL ... ${context.score}/100`);
+  console.log('');
   
-  console.log(' [ MOTOR LEGADO (Oficial Atual) ]');
-  console.log(` STATUS:      ${legacyResult.recommendation}`);
-  console.log(` CONFIANÇA:   ${(legacyResult.confidence * 100).toFixed(1)}% | RISCO: ${(legacyResult.risk * 100).toFixed(1)}%`);
-  console.log('------------------------------------------------------');
-
-  console.log(' [ MOTORES AVANÇADOS (Nova Geração) ]');
-  console.log(` TRIPLICAÇÃO: ${advPattern} (Ocorrências: ${advOccurrences})`);
-  console.log(` FUSION MODO: ${mode} (Sinal: ${signal})`);
-  console.log(` QUENTES:     ${hotNumbers} (Dispersão: ${dispersion.toFixed(1)})`);
+  const statusColor = context.status === 'CONTEXTO FAVORÁVEL' ? '\x1b[32m' : (context.status === 'CONTEXTO DESFAVORÁVEL' ? '\x1b[31m' : '\x1b[33m');
+  console.log(` STATUS: ${statusColor}${context.status}\x1b[0m`);
   
-  let advStatus = 'AGUARDAR (Mín. 6 rodadas Live)';
-  if (liveRounds.length >= 6) {
-    if (mode === 'FUSION_READY' && advPattern !== 'NONE') {
-       advStatus = '🚀 PAPER SINAL FORTE - ENTRAR';
-    } else {
-       advStatus = '⏳ PAPER_OBSERVAR';
-    }
+  if (context.vetoReason) {
+    console.log(` 🛑 VETO ATIVO: ${context.vetoReason}`);
   }
-  
-  console.log(`\n CONCENSO AVANÇADO: ${advStatus}`);
+
   console.log('======================================================');
+  console.log(` INFO DE MESA: Triplicação [${scores.advPattern || 'N/A'}] | Total Rodadas: ${allRounds.length}`);
+  console.log('------------------------------------------------------');
 }
 
 renderTerminalHud();
 
-console.log('\n[3/3] Ambiente Paper Real ativo.');
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
@@ -112,7 +109,7 @@ rl.prompt();
 rl.on('line', (line) => {
   const cmd = line.trim().toLowerCase();
   if (cmd === 'exit' || cmd === 'quit') {
-    console.log('Encerrando sessão Live Paper...');
+    console.log('Sessão encerrada. Proteção de capital ativada.');
     rl.close();
     return;
   }
@@ -122,7 +119,7 @@ rl.on('line', (line) => {
     liveRounds.push(num);
     renderTerminalHud();
   } else {
-    console.log('Entrada inválida. Digite um número de 0 a 36 ou "exit".');
+    console.log('Entrada inválida. Digite um número ou "exit".');
   }
   rl.prompt();
 });
