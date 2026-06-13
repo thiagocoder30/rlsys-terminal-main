@@ -1,4 +1,5 @@
 import { TriplicacaoAdvancedProbabilityEngine } from '../../domain/analytics/TriplicacaoAdvancedProbabilityEngine.js';
+import { FusionHeatmapIntegrationEngine } from './FusionHeatmapIntegrationEngine.js';
 
 export type AnalyticsDecisionRecommendation =
   | 'AGUARDAR'
@@ -52,18 +53,20 @@ export class AnalyticsDecisionEngine {
     const minimumLiveRounds = input.minimumLiveRounds && input.minimumLiveRounds > 0 ? input.minimumLiveRounds : 6;
     const allRounds = Object.freeze([...warmup, ...live]);
     
-    // Motor Legado (Source of Truth)
+    // --------------------------------------------------------------
+    // SOURCE OF TRUTH (Motor Legado - Intocável)
+    // --------------------------------------------------------------
     const triplicacao = this.computeTriplicacao(allRounds);
     const heatmap = this.computeHeatmap(allRounds);
 
-    // --- SPRINT 344: TYPE-SAFE SHADOW COMPUTATION ---
+    // --------------------------------------------------------------
+    // SHADOW RUN 1: TRIPLICAÇÃO (Com Parity Gate Determinístico)
+    // --------------------------------------------------------------
     try {
       const advancedEngine = new TriplicacaoAdvancedProbabilityEngine();
       const advancedAnalysis = advancedEngine.analyze(allRounds);
 
       const advancedPattern = advancedAnalysis.selectedPatternKind ?? 'NONE';
-      
-      // O motor avançado não expõe o ratio diretamente, calculamos a partir das métricas rigorosas dele
       let advancedRatio = 0;
       if (advancedPattern !== 'NONE') {
         const metric = advancedAnalysis.metrics.find((m) => m.patternKind === advancedPattern);
@@ -77,20 +80,45 @@ export class AnalyticsDecisionEngine {
         ratioDrift: Math.abs(triplicacao.dominantRatio - advancedRatio),
       };
 
-      const EPSILON = 1e-6;
-
-      if (parityCheck.patternMismatch || parityCheck.ratioDrift > EPSILON) {
-        console.warn('[RL.SYS SHADOW DRIFT]', { 
+      if (parityCheck.patternMismatch || parityCheck.ratioDrift > 1e-6) {
+        console.warn('[RL.SYS SHADOW DRIFT - TRIPLICACAO]', { 
           parityCheck, 
           legacy: { pattern: triplicacao.dominantPattern, ratio: triplicacao.dominantRatio },
           advanced: { pattern: advancedPattern, ratio: advancedRatio }
         });
       }
     } catch (error) {
-      console.warn('[RL.SYS SHADOW ERROR] Falha na execução paralela:', error);
+      console.warn('[RL.SYS SHADOW ERROR - TRIPLICACAO]', error);
     }
-    // ------------------------------------------------
 
+    // --------------------------------------------------------------
+    // SHADOW RUN 2: FUSION HEATMAP (Auditoria Observacional Pura)
+    // --------------------------------------------------------------
+    try {
+      const fusionEngine = new FusionHeatmapIntegrationEngine();
+      const fusionReport = fusionEngine.analyze(allRounds);
+
+      console.warn('[RL.SYS FUSION SHADOW]', {
+        legacyHot: heatmap.hotNumbers,
+        fusionHot: fusionReport.heatmap.hotNumbers.map(h => h.number),
+        
+        legacyCold: heatmap.coldNumbers,
+        fusionCold: fusionReport.heatmap.coldNumbers.map(h => h.number),
+
+        fusionPressure: fusionReport.fusionPressureScore,
+        recencyPressure: fusionReport.recencyPressureScore,
+        dispersion: fusionReport.dispersionScore,
+
+        mode: fusionReport.mode,
+        signal: fusionReport.signalStrength,
+      });
+    } catch (error) {
+      console.warn('[RL.SYS FUSION SHADOW ERROR]', error);
+    }
+
+    // --------------------------------------------------------------
+    // DECISÃO INSTITUCIONAL (Baseada exclusivamente no Legado)
+    // --------------------------------------------------------------
     if (warmup.length < 100) {
       return this.result({
         recommendation: 'AGUARDAR',
@@ -187,18 +215,10 @@ export class AnalyticsDecisionEngine {
   }
 
   private computeTriplicacao(rounds: readonly number[]): AnalyticsDecisionEngineResult['triplicacao'] {
-    let tc = 0;
-    let ntc = 0;
-    let ta = 0;
-    let nta = 0;
-    let zeroTrios = 0;
-
+    let tc = 0; let ntc = 0; let ta = 0; let nta = 0; let zeroTrios = 0;
     for (let index = rounds.length - 1; index >= 2; index -= 3) {
       const trio = [rounds[index], rounds[index - 1], rounds[index - 2]];
-      if (trio.includes(0)) {
-        zeroTrios += 1;
-        continue;
-      }
+      if (trio.includes(0)) { zeroTrios += 1; continue; }
       const colors = trio.map((value) => REDS.has(value) ? 'R' : 'B');
       if (colors[0] === colors[1] && colors[1] === colors[2]) tc += 1;
       else if (colors[0] === colors[1] && colors[1] !== colors[2]) ntc += 1;
@@ -251,9 +271,7 @@ export class AnalyticsDecisionEngine {
   }
 
   private result(input: Omit<AnalyticsDecisionEngineResult, 'paperOnly' | 'liveMoneyAuthorization' | 'automaticBetExecutionAllowed'>): AnalyticsDecisionEngineResult {
-    return Object.freeze({
-      ...input, paperOnly: true, liveMoneyAuthorization: false, automaticBetExecutionAllowed: false,
-    });
+    return Object.freeze({ ...input, paperOnly: true, liveMoneyAuthorization: false, automaticBetExecutionAllowed: false });
   }
 
   private clamp(value: number, min: number, max: number): number {
