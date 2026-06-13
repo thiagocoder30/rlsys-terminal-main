@@ -1,3 +1,5 @@
+import { TriplicacaoAdvancedProbabilityEngine } from '../../domain/analytics/TriplicacaoAdvancedProbabilityEngine.js';
+
 export type AnalyticsDecisionRecommendation =
   | 'AGUARDAR'
   | 'PAPER_OBSERVAR'
@@ -49,8 +51,45 @@ export class AnalyticsDecisionEngine {
     const live = this.parseRounds(input.liveRounds);
     const minimumLiveRounds = input.minimumLiveRounds && input.minimumLiveRounds > 0 ? input.minimumLiveRounds : 6;
     const allRounds = Object.freeze([...warmup, ...live]);
+    
+    // Motor Legado (Source of Truth)
     const triplicacao = this.computeTriplicacao(allRounds);
     const heatmap = this.computeHeatmap(allRounds);
+
+    // --- SPRINT 344: TYPE-SAFE SHADOW COMPUTATION ---
+    try {
+      const advancedEngine = new TriplicacaoAdvancedProbabilityEngine();
+      const advancedAnalysis = advancedEngine.analyze(allRounds);
+
+      const advancedPattern = advancedAnalysis.selectedPatternKind ?? 'NONE';
+      
+      // O motor avançado não expõe o ratio diretamente, calculamos a partir das métricas rigorosas dele
+      let advancedRatio = 0;
+      if (advancedPattern !== 'NONE') {
+        const metric = advancedAnalysis.metrics.find((m) => m.patternKind === advancedPattern);
+        if (metric && triplicacao.totalTrios > 0) {
+          advancedRatio = metric.occurrences / triplicacao.totalTrios;
+        }
+      }
+
+      const parityCheck = {
+        patternMismatch: triplicacao.dominantPattern !== advancedPattern,
+        ratioDrift: Math.abs(triplicacao.dominantRatio - advancedRatio),
+      };
+
+      const EPSILON = 1e-6;
+
+      if (parityCheck.patternMismatch || parityCheck.ratioDrift > EPSILON) {
+        console.warn('[RL.SYS SHADOW DRIFT]', { 
+          parityCheck, 
+          legacy: { pattern: triplicacao.dominantPattern, ratio: triplicacao.dominantRatio },
+          advanced: { pattern: advancedPattern, ratio: advancedRatio }
+        });
+      }
+    } catch (error) {
+      console.warn('[RL.SYS SHADOW ERROR] Falha na execução paralela:', error);
+    }
+    // ------------------------------------------------
 
     if (warmup.length < 100) {
       return this.result({
@@ -156,27 +195,18 @@ export class AnalyticsDecisionEngine {
 
     for (let index = rounds.length - 1; index >= 2; index -= 3) {
       const trio = [rounds[index], rounds[index - 1], rounds[index - 2]];
-
       if (trio.includes(0)) {
         zeroTrios += 1;
         continue;
       }
-
       const colors = trio.map((value) => REDS.has(value) ? 'R' : 'B');
-
       if (colors[0] === colors[1] && colors[1] === colors[2]) tc += 1;
       else if (colors[0] === colors[1] && colors[1] !== colors[2]) ntc += 1;
       else if (colors[0] !== colors[1] && colors[1] !== colors[2] && colors[0] === colors[2]) ta += 1;
       else if (colors[0] !== colors[1] && colors[1] === colors[2]) nta += 1;
     }
 
-    const pairs = [
-      ['TC', tc],
-      ['NTC', ntc],
-      ['TA', ta],
-      ['NTA', nta],
-    ] as const;
-
+    const pairs = [['TC', tc], ['NTC', ntc], ['TA', ta], ['NTA', nta]] as const;
     const totalTrios = tc + ntc + ta + nta;
     let dominantPattern: 'TC' | 'NTC' | 'TA' | 'NTA' | 'NONE' = 'NONE';
     let dominantCount = 0;
@@ -189,20 +219,13 @@ export class AnalyticsDecisionEngine {
     }
 
     return Object.freeze({
-      totalTrios,
-      tc,
-      ntc,
-      ta,
-      nta,
-      zeroTrios,
-      dominantPattern,
+      totalTrios, tc, ntc, ta, nta, zeroTrios, dominantPattern,
       dominantRatio: totalTrios > 0 ? dominantCount / totalTrios : 0,
     });
   }
 
   private computeHeatmap(rounds: readonly number[]): AnalyticsDecisionEngineResult['heatmap'] {
     const counts = new Map<number, number>();
-
     for (const number of ROULETTE_NUMBERS) counts.set(number, 0);
     for (const round of rounds) counts.set(round, (counts.get(round) ?? 0) + 1);
 
@@ -220,8 +243,7 @@ export class AnalyticsDecisionEngine {
 
   private parseRounds(values: readonly string[]): readonly number[] {
     return Object.freeze(
-      values
-        .flatMap((value) => String(value).split(/[^0-9]+/u))
+      values.flatMap((value) => String(value).split(/[^0-9]+/u))
         .filter((part) => part.trim().length > 0)
         .map((value) => Number(value))
         .filter((value) => Number.isInteger(value) && value >= 0 && value <= 36),
@@ -230,10 +252,7 @@ export class AnalyticsDecisionEngine {
 
   private result(input: Omit<AnalyticsDecisionEngineResult, 'paperOnly' | 'liveMoneyAuthorization' | 'automaticBetExecutionAllowed'>): AnalyticsDecisionEngineResult {
     return Object.freeze({
-      ...input,
-      paperOnly: true,
-      liveMoneyAuthorization: false,
-      automaticBetExecutionAllowed: false,
+      ...input, paperOnly: true, liveMoneyAuthorization: false, automaticBetExecutionAllowed: false,
     });
   }
 
