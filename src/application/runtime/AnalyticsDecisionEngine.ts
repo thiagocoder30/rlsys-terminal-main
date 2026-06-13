@@ -1,14 +1,10 @@
-import { AnalyticsShadowAuditor } from '../observability/AnalyticsShadowAuditor.js';
-import { NullTelemetrySink } from '../observability/NullTelemetrySink.js';
-import type { TelemetrySink } from '../observability/AnalyticsShadowTelemetry.js';
 import { TriplicacaoAdvancedProbabilityEngine } from '../../domain/analytics/TriplicacaoAdvancedProbabilityEngine.js';
 import { FusionHeatmapIntegrationEngine } from './FusionHeatmapIntegrationEngine.js';
+import { AnalyticsShadowAuditor, type AnalyticsShadowAuditorInput } from '../observability/AnalyticsShadowAuditor.js';
+import { NullTelemetrySink } from '../observability/NullTelemetrySink.js';
+import type { TelemetrySink } from '../observability/AnalyticsShadowTelemetry.js';
 
-export type AnalyticsDecisionRecommendation =
-  | 'AGUARDAR'
-  | 'PAPER_OBSERVAR'
-  | 'PAPER_SINAL_FRACO'
-  | 'PAPER_SINAL_FORTE';
+export type AnalyticsDecisionRecommendation = 'AGUARDAR' | 'PAPER_OBSERVAR' | 'PAPER_SINAL_FRACO' | 'PAPER_SINAL_FORTE';
 
 export interface AnalyticsDecisionInput {
   readonly warmupRounds: readonly string[];
@@ -53,59 +49,35 @@ export class AnalyticsDecisionEngine {
   private readonly auditor = new AnalyticsShadowAuditor();
   private readonly telemetrySink: TelemetrySink;
 
-  public constructor(
-    telemetrySink: TelemetrySink = NullTelemetrySink.INSTANCE,
-  ) {
-    this.telemetrySink = telemetrySink;
+  // STRICT DIP: Domínio não enxerga disco, env ou infra. Depende apenas de abstrações.
+  public constructor(telemetrySink?: TelemetrySink) {
+    this.telemetrySink = telemetrySink ?? NullTelemetrySink.INSTANCE;
   }
+
   public evaluate(input: AnalyticsDecisionInput): AnalyticsDecisionEngineResult {
     const warmup = this.parseRounds(input.warmupRounds);
     const live = this.parseRounds(input.liveRounds);
     const minimumLiveRounds = input.minimumLiveRounds && input.minimumLiveRounds > 0 ? input.minimumLiveRounds : 6;
     const allRounds = Object.freeze([...warmup, ...live]);
     
-    // --------------------------------------------------------------
-    // SOURCE OF TRUTH (Motor Legado - Intocável)
-    // --------------------------------------------------------------
     const triplicacao = this.computeTriplicacao(allRounds);
     const heatmap = this.computeHeatmap(allRounds);
 
-    this.runShadowAuditing(
-      allRounds,
-      triplicacao,
-      heatmap,
-    );
+    this.runShadowAuditing(allRounds, triplicacao, heatmap);
 
-    // --------------------------------------------------------------
-    // DECISÃO INSTITUCIONAL (Baseada exclusivamente no Legado)
-    // --------------------------------------------------------------
     if (warmup.length < 100) {
       return this.result({
-        recommendation: 'AGUARDAR',
-        confidence: 0,
-        risk: 1,
-        triplicacao,
-        heatmap,
+        recommendation: 'AGUARDAR', confidence: 0, risk: 1, triplicacao, heatmap,
         consensus: { enginesAligned: 0, enginesTotal: 3, classification: 'NO_GO' },
-        message: `Warmup insuficiente para decisão institucional. Warmup=${warmup.length}. Mínimo=100.`,
+        message: 'Warmup insuficiente.',
       });
     }
 
     if (live.length < minimumLiveRounds) {
       return this.result({
-        recommendation: 'AGUARDAR',
-        confidence: 0.18,
-        risk: 0.82,
-        triplicacao,
-        heatmap,
+        recommendation: 'AGUARDAR', confidence: 0.18, risk: 0.82, triplicacao, heatmap,
         consensus: { enginesAligned: 1, enginesTotal: 3, classification: 'WEAK_CONTEXT' },
-        message: [
-          'AGUARDAR — contexto ao vivo insuficiente.',
-          `Warmup=${warmup.length}`,
-          `LiveRounds=${live.length}`,
-          `MínimoLive=${minimumLiveRounds}`,
-          'Triplicação/Heatmap calculados, mas sem autorização PAPER.',
-        ].join(String.fromCharCode(10)),
+        message: 'Contexto insuficiente.',
       });
     }
 
@@ -115,148 +87,71 @@ export class AnalyticsDecisionEngine {
     const enginesAligned = [triplicacaoSignal, heatmapSignal, liveSignal].filter(Boolean).length;
 
     const confidence = this.clamp(
-      (triplicacao.dominantRatio * 0.45)
-      + (Math.min(heatmap.hotNumbers.length, 5) / 5 * 0.25)
-      + (Math.min(live.length, 20) / 20 * 0.30),
-      0,
-      0.99,
+      (triplicacao.dominantRatio * 0.45) + (Math.min(heatmap.hotNumbers.length, 5) / 5 * 0.25) + (Math.min(live.length, 20) / 20 * 0.30),
+      0, 0.99
     );
-
     const risk = this.clamp(1 - confidence, 0.01, 1);
 
     if (enginesAligned >= 3 && confidence >= 0.68) {
       return this.result({
-        recommendation: 'PAPER_SINAL_FORTE',
-        confidence,
-        risk,
-        triplicacao,
-        heatmap,
+        recommendation: 'PAPER_SINAL_FORTE', confidence, risk, triplicacao, heatmap,
         consensus: { enginesAligned, enginesTotal: 3, classification: 'PAPER_ONLY' },
-        message: [
-          'PAPER_SINAL_FORTE — somente PAPER, supervisão humana obrigatória.',
-          `Confiança=${confidence.toFixed(2)}`,
-          `Risco=${risk.toFixed(2)}`,
-          `Triplicação dominante=${triplicacao.dominantPattern}`,
-        ].join(String.fromCharCode(10)),
+        message: 'PAPER_SINAL_FORTE',
       });
     }
 
     if (enginesAligned >= 2 && confidence >= 0.50) {
       return this.result({
-        recommendation: 'PAPER_SINAL_FRACO',
-        confidence,
-        risk,
-        triplicacao,
-        heatmap,
+        recommendation: 'PAPER_SINAL_FRACO', confidence, risk, triplicacao, heatmap,
         consensus: { enginesAligned, enginesTotal: 3, classification: 'WATCHLIST' },
-        message: [
-          'PAPER_SINAL_FRACO — watchlist. Não executar dinheiro real.',
-          `Confiança=${confidence.toFixed(2)}`,
-          `Risco=${risk.toFixed(2)}`,
-          `Motores alinhados=${enginesAligned}/3`,
-        ].join(String.fromCharCode(10)),
+        message: 'PAPER_SINAL_FRACO',
       });
     }
 
     return this.result({
-      recommendation: 'PAPER_OBSERVAR',
-      confidence,
-      risk,
-      triplicacao,
-      heatmap,
+      recommendation: 'PAPER_OBSERVAR', confidence, risk, triplicacao, heatmap,
       consensus: { enginesAligned, enginesTotal: 3, classification: 'WEAK_CONTEXT' },
-      message: [
-        'AGUARDAR — evidência insuficiente para sinal PAPER.',
-        `Confiança=${confidence.toFixed(2)}`,
-        `Risco=${risk.toFixed(2)}`,
-        `Motores alinhados=${enginesAligned}/3`,
-      ].join(String.fromCharCode(10)),
+      message: 'AGUARDAR',
     });
   }
 
-
   private runShadowAuditing(
     allRounds: readonly number[],
-    triplicacao: AnalyticsDecisionEngineResult['triplicacao'],
-    heatmap: AnalyticsDecisionEngineResult['heatmap'],
+    legacyTriplicacao: AnalyticsDecisionEngineResult['triplicacao'],
+    legacyHeatmap: AnalyticsDecisionEngineResult['heatmap']
   ): void {
     try {
-      const advancedEngine =
-        new TriplicacaoAdvancedProbabilityEngine();
-
-      const advancedAnalysis =
-        advancedEngine.analyze(allRounds);
-
-      const advancedPattern =
-        advancedAnalysis.selectedPatternKind ?? 'NONE';
-
+      const advancedAnalysis = new TriplicacaoAdvancedProbabilityEngine().analyze(allRounds);
+      const advancedPattern = advancedAnalysis.selectedPatternKind ?? 'NONE';
       let advancedRatio = 0;
-
       if (advancedPattern !== 'NONE') {
-        const metric =
-          advancedAnalysis.metrics.find(
-            (m) => m.patternKind === advancedPattern,
-          );
-
-        if (metric && triplicacao.totalTrios > 0) {
-          advancedRatio =
-            metric.occurrences /
-            triplicacao.totalTrios;
-        }
+        const metric = advancedAnalysis.metrics.find((m) => m.patternKind === advancedPattern);
+        if (metric && legacyTriplicacao.totalTrios > 0) advancedRatio = metric.occurrences / legacyTriplicacao.totalTrios;
       }
 
-      const telemetry =
-        this.auditor.capture({
-          legacyPattern:
-            triplicacao.dominantPattern,
-          advancedPattern,
-          legacyRatio:
-            triplicacao.dominantRatio,
-          advancedRatio,
-        });
-
-      this.telemetrySink.write(telemetry);
-
-      const fusionEngine =
-        new FusionHeatmapIntegrationEngine();
-
-      const fusionReport =
-        fusionEngine.analyze(allRounds);
-
-      console.warn(
-        '[RL.SYS FUSION SHADOW]',
-        {
-          legacyHot: heatmap.hotNumbers,
-          fusionHot:
-            fusionReport.heatmap.hotNumbers.map(
-              h => h.number,
-            ),
-
-          legacyCold: heatmap.coldNumbers,
-          fusionCold:
-            fusionReport.heatmap.coldNumbers.map(
-              h => h.number,
-            ),
-
-          fusionPressure:
-            fusionReport.fusionPressureScore,
-
-          recencyPressure:
-            fusionReport.recencyPressureScore,
-
-          dispersion:
-            fusionReport.dispersionScore,
-
-          mode: fusionReport.mode,
-          signal:
-            fusionReport.signalStrength,
+      const fusionReport = new FusionHeatmapIntegrationEngine().analyze(allRounds);
+      
+      // Construção tipada estritamente para eliminar o TS2353
+      const telemetryInput: AnalyticsShadowAuditorInput = {
+        triplicacao: {
+          legacyPattern: legacyTriplicacao.dominantPattern,
+          legacyRatio: legacyTriplicacao.dominantRatio,
+          advancedPattern: advancedPattern,
+          advancedRatio: advancedRatio,
         },
-      );
+        heatmap: {
+          legacyHotNumbers: legacyHeatmap.hotNumbers,
+          fusionHotNumbers: fusionReport.heatmap.hotNumbers.map((h) => h.number),
+          fusionPressure: fusionReport.fusionPressureScore,
+          recencyPressure: fusionReport.recencyPressureScore,
+          dispersionScore: fusionReport.dispersionScore,
+          mode: fusionReport.mode,
+        }
+      };
+
+      this.telemetrySink.write(this.auditor.capture(telemetryInput));
     } catch (error) {
-      console.warn(
-        '[RL.SYS AUDITOR ERROR]',
-        error,
-      );
+      console.warn('[RL.SYS AUDITOR ERROR]', error);
     }
   }
 
@@ -271,19 +166,13 @@ export class AnalyticsDecisionEngine {
       else if (colors[0] !== colors[1] && colors[1] !== colors[2] && colors[0] === colors[2]) ta += 1;
       else if (colors[0] !== colors[1] && colors[1] === colors[2]) nta += 1;
     }
-
     const pairs = [['TC', tc], ['NTC', ntc], ['TA', ta], ['NTA', nta]] as const;
     const totalTrios = tc + ntc + ta + nta;
     let dominantPattern: 'TC' | 'NTC' | 'TA' | 'NTA' | 'NONE' = 'NONE';
     let dominantCount = 0;
-
     for (const [pattern, count] of pairs) {
-      if (count > dominantCount) {
-        dominantPattern = pattern;
-        dominantCount = count;
-      }
+      if (count > dominantCount) { dominantPattern = pattern; dominantCount = count; }
     }
-
     return Object.freeze({
       totalTrios, tc, ntc, ta, nta, zeroTrios, dominantPattern,
       dominantRatio: totalTrios > 0 ? dominantCount / totalTrios : 0,
@@ -294,12 +183,10 @@ export class AnalyticsDecisionEngine {
     const counts = new Map<number, number>();
     for (const number of ROULETTE_NUMBERS) counts.set(number, 0);
     for (const round of rounds) counts.set(round, (counts.get(round) ?? 0) + 1);
-
     const ranked = [...counts.entries()].sort((left, right) => {
       if (right[1] !== left[1]) return right[1] - left[1];
       return left[0] - right[0];
     });
-
     return Object.freeze({
       hotNumbers: Object.freeze(ranked.filter(([, count]) => count > 0).slice(0, 5).map(([number]) => number)),
       coldNumbers: Object.freeze(ranked.slice().reverse().slice(0, 5).map(([number]) => number)),
