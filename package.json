@@ -35,7 +35,8 @@
     "warmup:gemini-extract": "node install/runtime/warmup-gemini-extract-latest.cjs",
     "warmup:fetch": "bash scripts/fetch-latest-screenshot.sh",
     "paper": "node scripts/paper-runtime-session.js",
-    "paper:live": "npm run warmup:fetch && node scripts/live-paper-orchestrator.js"
+    "paper:live": "npm run warmup:fetch && node scripts/live-paper-orchestrator.js",
+    "paper:manual": "node scripts/manual-warmup-injector.js"
   },
   "keywords": [
     "rl-sys",
