@@ -1,3 +1,6 @@
+import { AnalyticsShadowAuditor } from '../observability/AnalyticsShadowAuditor.js';
+import { NullTelemetrySink } from '../observability/NullTelemetrySink.js';
+import type { TelemetrySink } from '../observability/AnalyticsShadowTelemetry.js';
 import { TriplicacaoAdvancedProbabilityEngine } from '../../domain/analytics/TriplicacaoAdvancedProbabilityEngine.js';
 import { FusionHeatmapIntegrationEngine } from './FusionHeatmapIntegrationEngine.js';
 
@@ -47,6 +50,14 @@ const REDS = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 const ROULETTE_NUMBERS = Array.from({ length: 37 }, (_, index) => index);
 
 export class AnalyticsDecisionEngine {
+  private readonly auditor = new AnalyticsShadowAuditor();
+  private readonly telemetrySink: TelemetrySink;
+
+  public constructor(
+    telemetrySink: TelemetrySink = NullTelemetrySink.INSTANCE,
+  ) {
+    this.telemetrySink = telemetrySink;
+  }
   public evaluate(input: AnalyticsDecisionInput): AnalyticsDecisionEngineResult {
     const warmup = this.parseRounds(input.warmupRounds);
     const live = this.parseRounds(input.liveRounds);
@@ -59,62 +70,11 @@ export class AnalyticsDecisionEngine {
     const triplicacao = this.computeTriplicacao(allRounds);
     const heatmap = this.computeHeatmap(allRounds);
 
-    // --------------------------------------------------------------
-    // SHADOW RUN 1: TRIPLICAÇÃO (Com Parity Gate Determinístico)
-    // --------------------------------------------------------------
-    try {
-      const advancedEngine = new TriplicacaoAdvancedProbabilityEngine();
-      const advancedAnalysis = advancedEngine.analyze(allRounds);
-
-      const advancedPattern = advancedAnalysis.selectedPatternKind ?? 'NONE';
-      let advancedRatio = 0;
-      if (advancedPattern !== 'NONE') {
-        const metric = advancedAnalysis.metrics.find((m) => m.patternKind === advancedPattern);
-        if (metric && triplicacao.totalTrios > 0) {
-          advancedRatio = metric.occurrences / triplicacao.totalTrios;
-        }
-      }
-
-      const parityCheck = {
-        patternMismatch: triplicacao.dominantPattern !== advancedPattern,
-        ratioDrift: Math.abs(triplicacao.dominantRatio - advancedRatio),
-      };
-
-      if (parityCheck.patternMismatch || parityCheck.ratioDrift > 1e-6) {
-        console.warn('[RL.SYS SHADOW DRIFT - TRIPLICACAO]', { 
-          parityCheck, 
-          legacy: { pattern: triplicacao.dominantPattern, ratio: triplicacao.dominantRatio },
-          advanced: { pattern: advancedPattern, ratio: advancedRatio }
-        });
-      }
-    } catch (error) {
-      console.warn('[RL.SYS SHADOW ERROR - TRIPLICACAO]', error);
-    }
-
-    // --------------------------------------------------------------
-    // SHADOW RUN 2: FUSION HEATMAP (Auditoria Observacional Pura)
-    // --------------------------------------------------------------
-    try {
-      const fusionEngine = new FusionHeatmapIntegrationEngine();
-      const fusionReport = fusionEngine.analyze(allRounds);
-
-      console.warn('[RL.SYS FUSION SHADOW]', {
-        legacyHot: heatmap.hotNumbers,
-        fusionHot: fusionReport.heatmap.hotNumbers.map(h => h.number),
-        
-        legacyCold: heatmap.coldNumbers,
-        fusionCold: fusionReport.heatmap.coldNumbers.map(h => h.number),
-
-        fusionPressure: fusionReport.fusionPressureScore,
-        recencyPressure: fusionReport.recencyPressureScore,
-        dispersion: fusionReport.dispersionScore,
-
-        mode: fusionReport.mode,
-        signal: fusionReport.signalStrength,
-      });
-    } catch (error) {
-      console.warn('[RL.SYS FUSION SHADOW ERROR]', error);
-    }
+    this.runShadowAuditing(
+      allRounds,
+      triplicacao,
+      heatmap,
+    );
 
     // --------------------------------------------------------------
     // DECISÃO INSTITUCIONAL (Baseada exclusivamente no Legado)
@@ -212,6 +172,92 @@ export class AnalyticsDecisionEngine {
         `Motores alinhados=${enginesAligned}/3`,
       ].join(String.fromCharCode(10)),
     });
+  }
+
+
+  private runShadowAuditing(
+    allRounds: readonly number[],
+    triplicacao: AnalyticsDecisionEngineResult['triplicacao'],
+    heatmap: AnalyticsDecisionEngineResult['heatmap'],
+  ): void {
+    try {
+      const advancedEngine =
+        new TriplicacaoAdvancedProbabilityEngine();
+
+      const advancedAnalysis =
+        advancedEngine.analyze(allRounds);
+
+      const advancedPattern =
+        advancedAnalysis.selectedPatternKind ?? 'NONE';
+
+      let advancedRatio = 0;
+
+      if (advancedPattern !== 'NONE') {
+        const metric =
+          advancedAnalysis.metrics.find(
+            (m) => m.patternKind === advancedPattern,
+          );
+
+        if (metric && triplicacao.totalTrios > 0) {
+          advancedRatio =
+            metric.occurrences /
+            triplicacao.totalTrios;
+        }
+      }
+
+      const telemetry =
+        this.auditor.capture({
+          legacyPattern:
+            triplicacao.dominantPattern,
+          advancedPattern,
+          legacyRatio:
+            triplicacao.dominantRatio,
+          advancedRatio,
+        });
+
+      this.telemetrySink.write(telemetry);
+
+      const fusionEngine =
+        new FusionHeatmapIntegrationEngine();
+
+      const fusionReport =
+        fusionEngine.analyze(allRounds);
+
+      console.warn(
+        '[RL.SYS FUSION SHADOW]',
+        {
+          legacyHot: heatmap.hotNumbers,
+          fusionHot:
+            fusionReport.heatmap.hotNumbers.map(
+              h => h.number,
+            ),
+
+          legacyCold: heatmap.coldNumbers,
+          fusionCold:
+            fusionReport.heatmap.coldNumbers.map(
+              h => h.number,
+            ),
+
+          fusionPressure:
+            fusionReport.fusionPressureScore,
+
+          recencyPressure:
+            fusionReport.recencyPressureScore,
+
+          dispersion:
+            fusionReport.dispersionScore,
+
+          mode: fusionReport.mode,
+          signal:
+            fusionReport.signalStrength,
+        },
+      );
+    } catch (error) {
+      console.warn(
+        '[RL.SYS AUDITOR ERROR]',
+        error,
+      );
+    }
   }
 
   private computeTriplicacao(rounds: readonly number[]): AnalyticsDecisionEngineResult['triplicacao'] {
