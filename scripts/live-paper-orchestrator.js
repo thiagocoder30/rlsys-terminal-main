@@ -9,6 +9,7 @@ const { AnalyticsDecisionEngine } = require('../dist/application/runtime/Analyti
 const { TriplicacaoAdvancedProbabilityEngine } = require('../dist/domain/analytics/TriplicacaoAdvancedProbabilityEngine.js');
 const { FusionHeatmapIntegrationEngine } = require('../dist/application/runtime/FusionHeatmapIntegrationEngine.js');
 const { InstitutionalContextScoreEngine } = require('../src/application/runtime/InstitutionalContextScoreEngine.js');
+const { TermuxTtsVoiceCopilot } = require('../src/infrastructure/audio/TermuxTtsVoiceCopilot.js');
 
 const repoRoot = process.cwd();
 const screenshotDir = path.join(repoRoot, 'data', 'paper-runtime', 'warmup-screenshots');
@@ -16,20 +17,17 @@ const importedTxtPath = path.join(screenshotDir, 'warmup-screenshot-imported-rou
 
 console.clear();
 console.log('======================================================');
-console.log(' 🛡️ RL.SYS COPILOTO INSTITUCIONAL (SPRINT 349)');
+console.log(' 🛡️ RL.SYS COPILOTO INSTITUCIONAL (SPRINT 350)');
 console.log('======================================================');
 
 let warmupRounds = [];
 
 if (fs.existsSync(importedTxtPath)) {
   warmupRounds = fs.readFileSync(importedTxtPath, 'utf8')
-    .split(',')
-    .map(n => n.trim())
-    .filter(n => n.length > 0)
-    .map(Number);
+    .split(',').map(n => n.trim()).filter(n => n.length > 0).map(Number);
   console.log(`[+] Warmup carregado da base: ${warmupRounds.length} rodadas.`);
 } else {
-  console.log('[!] Nenhum Warmup detectado. Executando extrator Gemini...');
+  console.log('[!] Nenhum Warmup detectado. Extraindo...');
   spawnSync('npm', ['run', 'warmup:gemini-extract'], { stdio: 'inherit' });
   if (fs.existsSync(importedTxtPath)) {
     warmupRounds = fs.readFileSync(importedTxtPath, 'utf8')
@@ -40,41 +38,63 @@ if (fs.existsSync(importedTxtPath)) {
 const advancedTriplicacaoEngine = new TriplicacaoAdvancedProbabilityEngine();
 const fusionHeatmapEngine = new FusionHeatmapIntegrationEngine();
 const contextEngine = new InstitutionalContextScoreEngine();
+const voiceCopilot = new TermuxTtsVoiceCopilot();
 
 let liveRounds = [];
 let sessionStartTime = Date.now();
+let lastContextStatus = '';
 
 function calculateSimulatedScores(allRounds) {
-  // 1. MESA (Table Score)
   const advTriplicacao = advancedTriplicacaoEngine.analyze(allRounds);
   const advHeatmap = fusionHeatmapEngine.analyze(allRounds);
   
-  let tableScore = 50; // Neutro padrão
+  let tableScore = 50; 
   if (advHeatmap.mode === 'FUSION_READY' && advTriplicacao.selectedPatternKind !== 'NONE') tableScore = 85;
   else if (advHeatmap.mode === 'BLOCKED') tableScore = 30;
 
-  // 2. DADOS (Data Score)
   const dataScore = allRounds.length >= 100 ? 95 : 40;
-
-  // 3. DISCIPLINA (Fadiga Operacional)
   const sessionMinutes = (Date.now() - sessionStartTime) / 60000;
   let disciplineScore = 100 - (liveRounds.length * 1.5) - (sessionMinutes * 0.5);
-  disciplineScore = Math.max(10, Math.min(100, disciplineScore)); // Clamp
-
-  // 4. RISCO (Mockup inicial, futuramente conectado ao Bankroll Guard)
-  const riskScore = 90; // Drawdown Seguro provisório
+  disciplineScore = Math.max(10, Math.min(100, disciplineScore)); 
+  const riskScore = 90; 
 
   return { tableScore, riskScore, disciplineScore, dataScore, advPattern: advTriplicacao.selectedPatternKind };
 }
 
-function renderTerminalHud() {
+function renderTerminalHudAndSpeak() {
   const allRounds = [...warmupRounds, ...liveRounds];
   const scores = calculateSimulatedScores(allRounds);
   const context = contextEngine.evaluate(scores);
 
+  // Lógica de Geração de Síntese de Voz (Voice Copilot)
+  // Avisa sempre no primeiro carregamento ou quando o status da mesa/consenso mudar.
+  let shouldSpeak = false;
+  let speechMessage = '';
+
+  if (context.status !== lastContextStatus) {
+    shouldSpeak = true;
+    lastContextStatus = context.status;
+    
+    // Traduz o status do sistema para uma frase humana natural
+    const statusLimpo = context.status.toLowerCase().replace('contexto ', '');
+    speechMessage = `Contexto ${statusLimpo}. `;
+    
+    if (context.vetoReason) {
+      speechMessage += `Atenção. Operação bloqueada por: ${context.vetoReason}.`;
+    } else {
+      if (statusLimpo === 'favorável') {
+        speechMessage += 'Mesa alinhada. Sugestão de entrada detectada.';
+      } else {
+        speechMessage += 'Aguardando melhoria das condições da mesa.';
+      }
+    }
+    
+    voiceCopilot.speak(speechMessage);
+  }
+
   console.clear();
   console.log('======================================================');
-  console.log(' 🛡️ RL.SYS CORE - COPILOTO INSTITUCIONAL');
+  console.log(' 🎙️ RL.SYS CORE - VOICE COPILOT ACTIVE');
   console.log('======================================================');
   console.log(` MESA ............. ${Math.round(scores.tableScore)}/100  [${context.pillars.table}]`);
   console.log(` RISCO ............ ${Math.round(scores.riskScore)}/100  [${context.pillars.risk}]`);
@@ -96,7 +116,8 @@ function renderTerminalHud() {
   console.log('------------------------------------------------------');
 }
 
-renderTerminalHud();
+// Renderiza a primeira vez ao iniciar
+renderTerminalHudAndSpeak();
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -109,6 +130,7 @@ rl.prompt();
 rl.on('line', (line) => {
   const cmd = line.trim().toLowerCase();
   if (cmd === 'exit' || cmd === 'quit') {
+    voiceCopilot.speak('Sessão encerrada. Proteção de capital ativada.');
     console.log('Sessão encerrada. Proteção de capital ativada.');
     rl.close();
     return;
@@ -117,7 +139,7 @@ rl.on('line', (line) => {
   const num = parseInt(cmd, 10);
   if (!isNaN(num) && num >= 0 && num <= 36) {
     liveRounds.push(num);
-    renderTerminalHud();
+    renderTerminalHudAndSpeak();
   } else {
     console.log('Entrada inválida. Digite um número ou "exit".');
   }
