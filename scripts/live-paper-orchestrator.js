@@ -14,12 +14,11 @@ const mesaTracker = new LiveMesaTracker();
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
-const savedState = bankrollRepo.load();
+let savedState = bankrollRepo.load();
 let initialBankroll = 100.00;
 if (savedState && savedState.initialBankroll) initialBankroll = savedState.initialBankroll;
 
-const cooldownGuard = new DynamicEmotionalCooldownGuard(initialBankroll, savedState);
-
+let cooldownGuard = new DynamicEmotionalCooldownGuard(initialBankroll, savedState);
 let activeStrategyId = null;
 let inputMode = 'NUMBER'; 
 let pendingResult = null; 
@@ -29,25 +28,18 @@ function saveSystemState() {
   bankrollRepo.save(currentSnapshot);
 }
 
-// ---------------------------------------------------------
-// MOTOR DE INTELIGÊNCIA (SPRINT 361)
-// ---------------------------------------------------------
 function generateNextTrade() {
   if (cooldownGuard.isSessionEnded || cooldownGuard.isLocked()) {
     activeStrategyId = null;
     return;
   }
   
-  // Janela de observação: Analisa o micro-contexto das últimas 15 rodadas
   const timeline = mesaTracker.history.slice(-15); 
-  
-  // Filtro de Segurança: Só opera se a mesa tiver histórico suficiente
   if (timeline.length < 10) {
     activeStrategyId = null; 
     return;
   }
 
-  // Placar de Backtest em Tempo Real
   let scores = {
     'HEDGE_BLACK_COL3': 0,
     'HEDGE_RED_COL2': 0,
@@ -58,18 +50,15 @@ function generateNextTrade() {
 
   const engineStrategies = AutoSettlementEngine.getStrategies();
 
-  // Simula o histórico contra todas as estratégias
   timeline.forEach(num => {
     Object.keys(scores).forEach(stratId => {
        const result = engineStrategies[stratId].evaluate(num);
-       // Pontua apenas se a estratégia entregasse lucro real na rodada
        if (result.status === 'WIN_MAX' || result.status === 'WIN_MIN') {
            scores[stratId]++;
        }
     });
   });
 
-  // Encontra a estratégia dominante da mesa no momento
   let bestStrat = null;
   let maxScore = 0;
   
@@ -80,10 +69,7 @@ function generateNextTrade() {
      }
   });
 
-  // Gatilho Institucional: A estratégia só é sugerida se tiver batido em 
-  // pelo menos 40% das últimas rodadas. Caso contrário, manda ficar de fora.
   const hitRateThreshold = timeline.length * 0.40;
-  
   if (bestStrat && maxScore >= hitRateThreshold) {
      activeStrategyId = bestStrat;
   } else {
@@ -105,6 +91,29 @@ function startOrchestrator() {
       return;
     }
 
+    // COMANDO ADMINISTRATIVO DE AJUSTE DE BANCA (SPRINT 362)
+    if (cmd.startsWith('setbankroll ')) {
+      const valStr = cmd.replace('setbankroll ', '').trim();
+      const newVal = parseFloat(valStr);
+      if (isNaN(newVal) || newVal <= 0) {
+        console.log('Valor inválido. Utilize o formato: setbankroll 50.00');
+        rl.prompt();
+        return;
+      }
+
+      // Reinicialização completa da máquina de estados com o saldo real informado
+      cooldownGuard = new DynamicEmotionalCooldownGuard(newVal, null);
+      activeStrategyId = null;
+      inputMode = 'NUMBER';
+      pendingResult = null;
+
+      saveSystemState();
+      generateNextTrade();
+      voiceCopilot.speak('Banca recalibrada. Novo ciclo de governança operacional iniciado.');
+      renderTerminalHud();
+      return;
+    }
+
     if (inputMode === 'VIEW_ONLY') {
       inputMode = 'NUMBER';
       renderTerminalHud();
@@ -118,14 +127,14 @@ function startOrchestrator() {
           voiceCopilot.speak('Green liquidado.');
         } else if (pendingResult.status === 'PUSH') {
           cooldownGuard.registerOutcome(true, cooldownGuard.currentBankroll);
-          voiceCopilot.speak('Empate tático. Capital protegido.');
+          voiceCopilot.speak('Empate tático.');
         } else {
           cooldownGuard.registerOutcome(false, cooldownGuard.currentBankroll - Math.abs(pendingResult.netAmount));
           voiceCopilot.speak('Red absorvido.');
         }
         saveSystemState();
       } else if (cmd === 'n' || cmd === 'nao' || cmd === 'não') {
-        voiceCopilot.speak('Entrada descartada. Apenas histórico.');
+        voiceCopilot.speak('Entrada descartada.');
       } else {
         console.log('Comando inválido. Digite "s" ou "n".');
         rl.prompt();
@@ -209,6 +218,8 @@ function renderTerminalHud() {
   
   if (lockStatus) {
     console.log(`\x1b[31m 🛑 TRAVA INVIOLÁVEL ATIVA: ${lockStatus.time}\x1b[0m`);
+    console.log(` MOTIVO: ${lockStatus.reason}`);
+    console.log(` (Comandos permitidos: timeline, heatmap, sync, setbankroll)`);
     rl.setPrompt('comando > ');
   } 
   else if (inputMode === 'CONFIRM_TRADE') {
