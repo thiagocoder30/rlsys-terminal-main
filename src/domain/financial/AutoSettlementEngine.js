@@ -1,8 +1,8 @@
 'use strict';
 
 /**
- * Motor Polimórfico de Liquidação.
- * Suporta estratégias complexas com múltiplos níveis de retorno (Win, Min Win, Push, Loss).
+ * Motor Polimórfico de Liquidação - Versão Expandida (Sprint 360).
+ * Suporta estratégias de Cobertura Avançada, Hedges e Setores Personalizados.
  */
 class AutoSettlementEngine {
   
@@ -13,7 +13,7 @@ class AutoSettlementEngine {
 
   evaluate(drawnNumber, strategyId) {
     const strat = AutoSettlementEngine.getStrategies()[strategyId];
-    if (!strat) throw new Error('Estratégia não mapeada.');
+    if (!strat) throw new Error(`Estratégia [${strategyId}] não mapeada no motor contábil.`);
     return strat.evaluate(drawnNumber);
   }
 
@@ -29,7 +29,7 @@ class AutoSettlementEngine {
           
           if (isBlack && isCol3) return { status: 'WIN_MAX', netAmount: 3.60 };
           if (isBlack && !isCol3) return { status: 'WIN_MIN', netAmount: 0.90 };
-          if (!isBlack && isCol3) return { status: 'PUSH', netAmount: 0.00 }; // Defesa
+          if (!isBlack && isCol3) return { status: 'PUSH', netAmount: 0.00 };
           return { status: 'LOSS', netAmount: -2.70 };
         }
       },
@@ -43,11 +43,32 @@ class AutoSettlementEngine {
           
           if (isRed && isCol2) return { status: 'WIN_MAX', netAmount: 3.60 };
           if (isRed && !isCol2) return { status: 'WIN_MIN', netAmount: 0.90 };
-          if (!isRed && isCol2) return { status: 'PUSH', netAmount: 0.00 }; // Defesa
+          if (!isRed && isCol2) return { status: 'PUSH', netAmount: 0.00 };
           return { status: 'LOSS', netAmount: -2.70 };
         }
       },
-      // FUSION MANTIDA COMO LEGADO DA SPRINT ANTERIOR
+      'SECTOR_OMEGA': {
+        name: 'Sector Omega',
+        stake: 2.00,
+        evaluate: (num) => {
+          const targets = [0, 1, 5, 6, 8, 9, 10, 11, 13, 14, 16, 17, 20, 23, 24, 30, 31, 33, 36];
+          if (targets.includes(num)) {
+            return { status: 'WIN_MAX', netAmount: 1.60 };
+          }
+          return { status: 'LOSS', netAmount: -2.00 };
+        }
+      },
+      'SECTOR_ALPHA': {
+        name: 'Sector Alpha',
+        stake: 2.50,
+        evaluate: (num) => {
+          const targets = [0, 1, 2, 3, 4, 6, 7, 9, 12, 14, 15, 17, 18, 19, 20, 21, 22, 25, 26, 28, 29, 31, 32, 34, 35];
+          if (targets.includes(num)) {
+            return { status: 'WIN_MAX', netAmount: 1.10 };
+          }
+          return { status: 'LOSS', netAmount: -2.50 };
+        }
+      },
       'FUSION_SECTOR': {
         name: 'Fusion Reduzida (Setor do 23)',
         stake: 1.90,

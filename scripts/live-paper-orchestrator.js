@@ -35,11 +35,15 @@ function generateNextTrade() {
     return;
   }
   
-  // Mock Analítico: Alterna entre as novas estratégias de Hedge
+  // Seleção aleatória simulada entre o portfólio completo de estratégias ativas
+  const strategies = ['HEDGE_BLACK_COL3', 'HEDGE_RED_COL2', 'SECTOR_OMEGA', 'SECTOR_ALPHA', 'FUSION_SECTOR'];
   const r = Math.random();
-  if (r > 0.66) activeStrategyId = 'HEDGE_BLACK_COL3';
-  else if (r > 0.33) activeStrategyId = 'HEDGE_RED_COL2';
-  else activeStrategyId = null; 
+  if (r > 0.5) {
+    const index = Math.floor(Math.random() * strategies.length);
+    activeStrategyId = strategies[index];
+  } else {
+    activeStrategyId = null; 
+  }
 }
 
 function startOrchestrator() {
@@ -68,9 +72,8 @@ function startOrchestrator() {
           cooldownGuard.registerOutcome(true, cooldownGuard.currentBankroll + pendingResult.netAmount);
           voiceCopilot.speak('Green liquidado.');
         } else if (pendingResult.status === 'PUSH') {
-          // Push é uma defesa: Não dá lucro, mas quebra o Loss Streak
           cooldownGuard.registerOutcome(true, cooldownGuard.currentBankroll);
-          voiceCopilot.speak('Empate tático. Capital protegido.');
+          voiceCopilot.speak('Empate tático.');
         } else {
           cooldownGuard.registerOutcome(false, cooldownGuard.currentBankroll - Math.abs(pendingResult.netAmount));
           voiceCopilot.speak('Red absorvido.');
@@ -152,7 +155,7 @@ function renderTerminalHud() {
   const lockStatus = cooldownGuard.getRemainingStatus();
   
   console.log('======================================================');
-  console.log(' 🛡️ RL.SYS CORE - POLYMORPHIC HEDGE ENGINE');
+  console.log(' 🛡️ RL.SYS CORE - MULTI-STRATEGY PORTFOLIO');
   console.log('======================================================');
   console.log(` BANCA ATUAL ..... R$ ${cooldownGuard.currentBankroll.toFixed(2)}`);
   if (!cooldownGuard.isSessionEnded) console.log(` PRÓXIMO DEGRAU .. R$ ${cooldownGuard.nextMilestone.toFixed(2)}`);
@@ -165,12 +168,12 @@ function renderTerminalHud() {
   } 
   else if (inputMode === 'CONFIRM_TRADE') {
     const stratName = AutoSettlementEngine.getStrategies()[activeStrategyId].name;
-    let color = '\x1b[31m'; // Default Red
+    let color = '\x1b[31m';
     let label = 'RED (Loss)';
     
     if (pendingResult.status === 'WIN_MAX') { color = '\x1b[32m'; label = 'GREEN MÁXIMO'; }
     if (pendingResult.status === 'WIN_MIN') { color = '\x1b[32m'; label = 'GREEN MÍNIMO'; }
-    if (pendingResult.status === 'PUSH') { color = '\x1b[33m'; label = 'PUSH (Empate Seguro)'; }
+    if (pendingResult.status === 'PUSH') { color = '\x1b[33m'; label = 'PUSH (Empate)'; }
     
     const amount = pendingResult.netAmount.toFixed(2);
     
@@ -195,15 +198,4 @@ function renderTerminalHud() {
   rl.prompt();
 }
 
-if (savedState === null) {
-  rl.question('Banca Inicial (R$): ', (answer) => {
-    initialBankroll = parseFloat(answer) || 100.00;
-    cooldownGuard.initialBankroll = initialBankroll;
-    cooldownGuard.currentBankroll = initialBankroll;
-    cooldownGuard.calculateNextMilestone();
-    saveSystemState();
-    startOrchestrator();
-  });
-} else {
-  startOrchestrator();
-}
+startOrchestrator();
