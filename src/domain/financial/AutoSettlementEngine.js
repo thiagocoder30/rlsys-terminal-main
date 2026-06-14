@@ -1,40 +1,62 @@
 'use strict';
 
 /**
- * Motor de Liquidação Zero-Touch.
- * Desacopla a validação da aposta do input do usuário.
+ * Motor Polimórfico de Liquidação.
+ * Suporta estratégias complexas com múltiplos níveis de retorno (Win, Min Win, Push, Loss).
  */
 class AutoSettlementEngine {
-  /**
-   * Avalia o número sorteado contra o alvo da estratégia.
-   * @param {number} drawnNumber O número que saiu na roleta (0-36).
-   * @param {Array<number>} targetNumbers Os números cobertos pela estratégia.
-   * @param {number} stake Valor investido (R$).
-   * @param {number} payoutMultiplier Multiplicador de lucro (ex: 2 para cores, 3 para dúzias).
-   * @returns {Object} { isWin: boolean, netAmount: number }
-   */
-  evaluate(drawnNumber, targetNumbers, stake, payoutMultiplier = 2) {
-    // Zero verde não está nas estratégias padrões externas, liquida como loss instantâneo
-    if (drawnNumber === 0) {
-      return { isWin: false, netAmount: stake };
-    }
+  
+  static get RED_NUMS() { return [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]; }
+  static get BLACK_NUMS() { return [2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35]; }
+  static get COL2_NUMS() { return [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35]; }
+  static get COL3_NUMS() { return [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36]; }
 
-    const isWin = targetNumbers.includes(drawnNumber);
-    
-    if (isWin) {
-      const grossReturn = stake * payoutMultiplier;
-      const netReturn = grossReturn - stake; // Retorna apenas o Lucro Líquido
-      return { isWin: true, netAmount: netReturn };
-    } else {
-      return { isWin: false, netAmount: stake }; // Retorna a perda da Stake
-    }
+  evaluate(drawnNumber, strategyId) {
+    const strat = AutoSettlementEngine.getStrategies()[strategyId];
+    if (!strat) throw new Error('Estratégia não mapeada.');
+    return strat.evaluate(drawnNumber);
   }
 
-  // Tabela Institucional de Alvos
-  static getTargets() {
+  static getStrategies() {
     return {
-      RED: [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36],
-      BLACK: [2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35]
+      'HEDGE_BLACK_COL3': {
+        name: 'Hedge Black Col 3',
+        stake: 2.70,
+        evaluate: (num) => {
+          if (num === 0) return { status: 'LOSS', netAmount: -2.70 };
+          const isBlack = AutoSettlementEngine.BLACK_NUMS.includes(num);
+          const isCol3 = AutoSettlementEngine.COL3_NUMS.includes(num);
+          
+          if (isBlack && isCol3) return { status: 'WIN_MAX', netAmount: 3.60 };
+          if (isBlack && !isCol3) return { status: 'WIN_MIN', netAmount: 0.90 };
+          if (!isBlack && isCol3) return { status: 'PUSH', netAmount: 0.00 }; // Defesa
+          return { status: 'LOSS', netAmount: -2.70 };
+        }
+      },
+      'HEDGE_RED_COL2': {
+        name: 'Hedge Red Col 2',
+        stake: 2.70,
+        evaluate: (num) => {
+          if (num === 0) return { status: 'LOSS', netAmount: -2.70 };
+          const isRed = AutoSettlementEngine.RED_NUMS.includes(num);
+          const isCol2 = AutoSettlementEngine.COL2_NUMS.includes(num);
+          
+          if (isRed && isCol2) return { status: 'WIN_MAX', netAmount: 3.60 };
+          if (isRed && !isCol2) return { status: 'WIN_MIN', netAmount: 0.90 };
+          if (!isRed && isCol2) return { status: 'PUSH', netAmount: 0.00 }; // Defesa
+          return { status: 'LOSS', netAmount: -2.70 };
+        }
+      },
+      // FUSION MANTIDA COMO LEGADO DA SPRINT ANTERIOR
+      'FUSION_SECTOR': {
+        name: 'Fusion Reduzida (Setor do 23)',
+        stake: 1.90,
+        evaluate: (num) => {
+          const targets = [17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31];
+          if (targets.includes(num)) return { status: 'WIN_MAX', netAmount: 1.70 };
+          return { status: 'LOSS', netAmount: -1.90 };
+        }
+      }
     };
   }
 }

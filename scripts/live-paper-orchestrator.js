@@ -20,9 +20,8 @@ if (savedState && savedState.initialBankroll) initialBankroll = savedState.initi
 
 const cooldownGuard = new DynamicEmotionalCooldownGuard(initialBankroll, savedState);
 
-// Variáveis de Estado do Orquestrador
-let activeTrade = null;
-let inputMode = 'NUMBER'; // 'NUMBER', 'CONFIRM_TRADE', ou 'VIEW_ONLY'
+let activeStrategyId = null;
+let inputMode = 'NUMBER'; 
 let pendingResult = null; 
 
 function saveSystemState() {
@@ -32,21 +31,15 @@ function saveSystemState() {
 
 function generateNextTrade() {
   if (cooldownGuard.isSessionEnded || cooldownGuard.isLocked()) {
-    activeTrade = null;
+    activeStrategyId = null;
     return;
   }
   
-  const isContextFavorable = Math.random() > 0.6; // Mock analítico
-  if (isContextFavorable) {
-    activeTrade = {
-      strategy: 'FUSION REDUZIDA (Setor do 23)',
-      type: 'FUSION_SECTOR',
-      targets: AutoSettlementEngine.getTargets().FUSION_23,
-      stake: 1.90
-    };
-  } else {
-    activeTrade = null;
-  }
+  // Mock Analítico: Alterna entre as novas estratégias de Hedge
+  const r = Math.random();
+  if (r > 0.66) activeStrategyId = 'HEDGE_BLACK_COL3';
+  else if (r > 0.33) activeStrategyId = 'HEDGE_RED_COL2';
+  else activeStrategyId = null; 
 }
 
 function startOrchestrator() {
@@ -63,76 +56,64 @@ function startOrchestrator() {
       return;
     }
 
-    // MODO 3: VISUALIZAÇÃO DE RELATÓRIOS (ON-DEMAND)
     if (inputMode === 'VIEW_ONLY') {
       inputMode = 'NUMBER';
       renderTerminalHud();
       return;
     }
 
-    // MODO 2: AGUARDANDO CONFIRMAÇÃO DO USUÁRIO
     if (inputMode === 'CONFIRM_TRADE') {
       if (cmd === 's' || cmd === 'sim' || cmd === 'y') {
-        if (pendingResult.isWin) {
+        if (pendingResult.status === 'WIN_MAX' || pendingResult.status === 'WIN_MIN') {
           cooldownGuard.registerOutcome(true, cooldownGuard.currentBankroll + pendingResult.netAmount);
           voiceCopilot.speak('Green liquidado.');
+        } else if (pendingResult.status === 'PUSH') {
+          // Push é uma defesa: Não dá lucro, mas quebra o Loss Streak
+          cooldownGuard.registerOutcome(true, cooldownGuard.currentBankroll);
+          voiceCopilot.speak('Empate tático. Capital protegido.');
         } else {
-          cooldownGuard.registerOutcome(false, cooldownGuard.currentBankroll - pendingResult.netAmount);
+          cooldownGuard.registerOutcome(false, cooldownGuard.currentBankroll - Math.abs(pendingResult.netAmount));
           voiceCopilot.speak('Red absorvido.');
         }
         saveSystemState();
       } else if (cmd === 'n' || cmd === 'nao' || cmd === 'não') {
         voiceCopilot.speak('Entrada descartada.');
       } else {
-        console.log('Comando inválido. Digite "s" para Sim ou "n" para Não.');
+        console.log('Comando inválido. Digite "s" ou "n".');
         rl.prompt();
         return;
       }
 
       inputMode = 'NUMBER';
       pendingResult = null;
-      activeTrade = null;
+      activeStrategyId = null;
       generateNextTrade();
       renderTerminalHud();
       return;
     }
 
-    // COMANDOS DE INTERFACE ON-DEMAND
     if (cmd === 'timeline') {
       console.clear();
       console.log('======================================================');
-      console.log(' ⏱️ TIMELINE (ÚLTIMAS 12 RODADAS)');
-      console.log('======================================================');
       console.log(` Histórico: \x1b[36m${mesaTracker.getTimeline(12)}\x1b[0m`);
-      console.log('======================================================');
-      console.log(' Pressione ENTER para voltar ao painel principal...');
+      console.log(' Pressione ENTER para voltar...');
       inputMode = 'VIEW_ONLY';
-      rl.prompt();
-      return;
+      rl.prompt(); return;
     }
-
     if (cmd === 'heatmap') {
       const stats = mesaTracker.getHeatmap();
       console.clear();
       console.log('======================================================');
-      console.log(' 🔥 HEATMAP (ANÁLISE DE FREQUÊNCIA)');
-      console.log('======================================================');
-      console.log(` Giros Analisados : ${stats.totalSpins}`);
-      console.log(` Números Quentes  : \x1b[31m${stats.hot}\x1b[0m`);
-      console.log(` Números Frios    : \x1b[34m${stats.cold}\x1b[0m`);
-      console.log('======================================================');
-      console.log(' Pressione ENTER para voltar ao painel principal...');
+      console.log(` Quentes : \x1b[31m${stats.hot}\x1b[0m | Frios : \x1b[34m${stats.cold}\x1b[0m`);
+      console.log(' Pressione ENTER para voltar...');
       inputMode = 'VIEW_ONLY';
-      rl.prompt();
-      return;
+      rl.prompt(); return;
     }
 
-    // MODO 1: RECEBENDO NÚMEROS DA ROLETA
     if (cooldownGuard.isLocked()) {
       if (!cmd.startsWith('sync ') && cmd !== 'timeline' && cmd !== 'heatmap') {
         cooldownGuard.registerOutcome(false, cooldownGuard.currentBankroll); 
         saveSystemState();
-        voiceCopilot.speak('Penalidade por ansiedade.');
         renderTerminalHud();
         return;
       }
@@ -140,33 +121,22 @@ function startOrchestrator() {
 
     if (cmd.startsWith('sync ')) {
       const numbers = cmd.replace('sync ', '').split(',').map(n => parseInt(n.trim(), 10));
-      let syncedCount = 0;
-      
-      numbers.forEach(n => {
-        if (!isNaN(n) && n >= 0 && n <= 36) {
-          mesaTracker.addNumber(n);
-          syncedCount++;
-        }
-      });
-      
-      activeTrade = null;
+      numbers.forEach(n => { if (!isNaN(n) && n >= 0 && n <= 36) mesaTracker.addNumber(n); });
+      activeStrategyId = null;
       generateNextTrade();
-      voiceCopilot.speak(`${syncedCount} números sincronizados.`);
       renderTerminalHud();
       return;
     }
 
     const num = parseInt(cmd, 10);
     if (isNaN(num) || num < 0 || num > 36) {
-      console.log('Entrada inválida. Digite número, "sync", "timeline" ou "heatmap".');
-      rl.prompt();
-      return;
+      console.log('Entrada inválida.'); rl.prompt(); return;
     }
 
-    mesaTracker.addNumber(num); // Alimenta o motor analítico
+    mesaTracker.addNumber(num); 
 
-    if (activeTrade) {
-      pendingResult = settlementEngine.evaluate(num, activeTrade);
+    if (activeStrategyId) {
+      pendingResult = settlementEngine.evaluate(num, activeStrategyId);
       inputMode = 'CONFIRM_TRADE'; 
       renderTerminalHud();
       return;
@@ -182,44 +152,42 @@ function renderTerminalHud() {
   const lockStatus = cooldownGuard.getRemainingStatus();
   
   console.log('======================================================');
-  console.log(' 🛡️ RL.SYS CORE - EXPLICIT HANDSHAKE & ANALYTICS');
+  console.log(' 🛡️ RL.SYS CORE - POLYMORPHIC HEDGE ENGINE');
   console.log('======================================================');
   console.log(` BANCA ATUAL ..... R$ ${cooldownGuard.currentBankroll.toFixed(2)}`);
-  
-  if (!cooldownGuard.isSessionEnded) {
-    console.log(` PRÓXIMO DEGRAU .. R$ ${cooldownGuard.nextMilestone.toFixed(2)}`);
-  }
-  console.log(` META GLOBAL (10%) R$ ${cooldownGuard.globalStopWinTarget.toFixed(2)}`);
+  if (!cooldownGuard.isSessionEnded) console.log(` PRÓXIMO DEGRAU .. R$ ${cooldownGuard.nextMilestone.toFixed(2)}`);
   console.log(` LOSS STREAK ..... ${cooldownGuard.consecutiveLosses} / 2`);
   console.log('------------------------------------------------------');
   
   if (lockStatus) {
     console.log(`\x1b[31m 🛑 TRAVA INVIOLÁVEL ATIVA: ${lockStatus.time}\x1b[0m`);
-    console.log(` MOTIVO: ${lockStatus.reason}`);
-    console.log(` (Comandos permitidos: timeline, heatmap, sync)`);
     rl.setPrompt('comando > ');
   } 
   else if (inputMode === 'CONFIRM_TRADE') {
-    const color = pendingResult.isWin ? '\x1b[32m' : '\x1b[31m';
-    const label = pendingResult.isWin ? 'GREEN (Lucro)' : 'RED (Loss)';
+    const stratName = AutoSettlementEngine.getStrategies()[activeStrategyId].name;
+    let color = '\x1b[31m'; // Default Red
+    let label = 'RED (Loss)';
+    
+    if (pendingResult.status === 'WIN_MAX') { color = '\x1b[32m'; label = 'GREEN MÁXIMO'; }
+    if (pendingResult.status === 'WIN_MIN') { color = '\x1b[32m'; label = 'GREEN MÍNIMO'; }
+    if (pendingResult.status === 'PUSH') { color = '\x1b[33m'; label = 'PUSH (Empate Seguro)'; }
+    
     const amount = pendingResult.netAmount.toFixed(2);
     
-    console.log(` ${color}RESULTADO DA ESTRATÉGIA: ${label} | R$ ${amount}\x1b[0m`);
+    console.log(` ${color}RESULTADO: ${label} | R$ ${amount}\x1b[0m`);
     console.log('------------------------------------------------------');
-    console.log(` [?] Você executou essa aposta na corretora?`);
+    console.log(` [?] Você executou a estratégia [${stratName}]?`);
     rl.setPrompt('Confirme (s/n) > ');
   } 
-  else if (activeTrade) {
-    console.log(` ESTRATÉGIA .. ${activeTrade.strategy}`);
+  else if (activeStrategyId) {
+    const strat = AutoSettlementEngine.getStrategies()[activeStrategyId];
+    console.log(` ESTRATÉGIA .. ${strat.name}`);
     console.log(` AÇÃO ........ \x1b[32mENTRAR\x1b[0m`);
-    console.log(` STAKE ....... R$ ${activeTrade.stake.toFixed(2)}`);
-    console.log(` (Digite o número sorteado ou use: timeline, heatmap)`);
+    console.log(` STAKE ....... R$ ${strat.stake.toFixed(2)}`);
     rl.setPrompt('roleta/comando > ');
   } 
   else {
     console.log(` AÇÃO ........ \x1b[33mOBSERVAR\x1b[0m`);
-    console.log(` MESA ........ Aguardando alinhamento institucional.`);
-    console.log(` (Digite o número sorteado ou use: timeline, heatmap)`);
     rl.setPrompt('roleta/comando > ');
   }
   
@@ -228,7 +196,7 @@ function renderTerminalHud() {
 }
 
 if (savedState === null) {
-  rl.question('Primeiro acesso detectado. Digite a Banca Inicial (R$): ', (answer) => {
+  rl.question('Banca Inicial (R$): ', (answer) => {
     initialBankroll = parseFloat(answer) || 100.00;
     cooldownGuard.initialBankroll = initialBankroll;
     cooldownGuard.currentBankroll = initialBankroll;
