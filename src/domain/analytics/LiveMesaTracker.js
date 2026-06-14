@@ -18,17 +18,19 @@ class LiveMesaTracker {
     this.frequencies.set(num, this.frequencies.get(num) + 1);
   }
 
-  getTimeline(limit = 12) {
+  getTimeline(limit = 15) {
     if (this.history.length === 0) return 'Mesa sem histórico recente.';
-    return this.history.slice(-limit).join(' » ');
+    
+    // Inverte a ordem do array (slice) para que o giro mais recente fique no índice 0.
+    // Utiliza ' « ' para indicar visualmente que os números da direita são mais antigos.
+    return this.history.slice(-limit).reverse().join(' « ');
   }
 
   getHeatmap() {
-    // Ordena os números pela frequência (do maior para o menor)
     const sorted = [...this.frequencies.entries()].sort((a, b) => b[1] - a[1]);
     
     const hot = sorted.slice(0, 5).filter(n => n[1] > 0).map(n => `${n[0]} (${n[1]}x)`);
-    const cold = sorted.slice(-5).map(n => `${n[0]} (${n[1]}x)`); // Pega os 5 últimos
+    const cold = sorted.slice(-5).map(n => `${n[0]} (${n[1]}x)`);
 
     return {
       hot: hot.length ? hot.join(' | ') : 'Dados insuficientes',
