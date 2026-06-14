@@ -26,6 +26,7 @@ let triplicacaoPatternFound = null;
 let triplicacaoTypeFound = null; 
 let currentVixPercent = 0; 
 let toxicTableLockUntil = null; 
+let forceObserveRound = false; // Flag comportamental contra a Síndrome de Perseguição
 
 function saveSystemState() {
   const currentSnapshot = cooldownGuard.exportState();
@@ -46,7 +47,6 @@ function computeShannonEntropy(counts, total) {
 
 function computeTriplicacao(rounds, mapFn) {
   let tc = 0, ntc = 0, ta = 0, nta = 0, zeroTrios = 0;
-  
   for (let index = rounds.length - 1; index >= 2; index -= 3) {
     const trio = [rounds[index], rounds[index - 1], rounds[index - 2]];
     if (trio.includes(0)) { zeroTrios += 1; continue; }
@@ -61,18 +61,14 @@ function computeTriplicacao(rounds, mapFn) {
   const totalTrios = tc + ntc + ta + nta;
   const entropy = computeShannonEntropy([tc, ntc, ta, nta], totalTrios);
   const vix = totalTrios > 0 ? (entropy / 2.0) * 100 : 0;
-
   const pairs = [['TC', tc], ['NTC', ntc], ['TA', ta], ['NTA', nta]];
+  
   let dominantPattern = 'NONE';
   let dominantCount = 0;
   for (const [pattern, count] of pairs) {
     if (count > dominantCount) { dominantPattern = pattern; dominantCount = count; }
   }
-  
-  return {
-    totalTrios, dominantPattern, vix,
-    dominantRatio: totalTrios > 0 ? dominantCount / totalTrios : 0
-  };
+  return { totalTrios, dominantPattern, vix, dominantRatio: totalTrios > 0 ? dominantCount / totalTrios : 0 };
 }
 
 function checkToxicTableLock() {
@@ -87,6 +83,13 @@ function generateNextTrade() {
   triplicacaoTypeFound = null;
 
   if (cooldownGuard.isSessionEnded || cooldownGuard.isLocked() || checkToxicTableLock()) return;
+  
+  // UX FIX: Se o usuário rejeitou a última entrada, força uma rodada de "Respiro"
+  if (forceObserveRound) {
+    forceObserveRound = false; 
+    return;
+  }
+
   if (mesaTracker.history.length < 10) return;
 
   const reversedHistory = [...mesaTracker.history].reverse();
@@ -134,7 +137,6 @@ function generateNextTrade() {
         activeStrategyId = colorTarget === 'A' ? 'TRIPLICACAO_RED' : 'TRIPLICACAO_BLACK';
         return; 
       }
-      
       if (parityTarget) {
         triplicacaoTypeFound = 'PARIDADE';
         triplicacaoPatternFound = parityStats.dominantPattern;
@@ -203,7 +205,8 @@ function startOrchestrator() {
         }
         saveSystemState();
       } else if (cmd === 'n' || cmd === 'nao' || cmd === 'não') {
-        voiceCopilot.speak('Entrada descartada.');
+        voiceCopilot.speak('Entrada descartada. Forçando rodada de observação.');
+        forceObserveRound = true; // Aplica o Respiro Comportamental
       } else {
         console.log('Inválido.'); rl.prompt(); return;
       }
@@ -213,9 +216,62 @@ function startOrchestrator() {
 
     if (cmd === 'timeline') { console.clear(); console.log(`\n Histórico: \x1b[36m${mesaTracker.getTimeline(15)}\x1b[0m\n [ENTER] para voltar...`); inputMode = 'VIEW_ONLY'; rl.prompt(); return; }
     if (cmd === 'heatmap') { const s = mesaTracker.getHeatmap(); console.clear(); console.log(`\n Quentes: \x1b[31m${s.hot}\x1b[0m | Frios: \x1b[34m${s.cold}\x1b[0m\n [ENTER] para voltar...`); inputMode = 'VIEW_ONLY'; rl.prompt(); return; }
+    
+    // NOVO COMANDO XAI: Auditoria de Trios
+    if (cmd === 'trios') {
+      console.clear();
+      console.log('======================================================');
+      console.log(' 🧩 XAI: AUDITORIA DE TRIPLICAÇÃO (Últimos Eventos)');
+      console.log('======================================================');
+      
+      const h = mesaTracker.history;
+      if (h.length < 3) {
+         console.log(' \x1b[33mDados insuficientes para formar trios estruturais.\x1b[0m');
+      } else {
+         const reversed = [...h].reverse();
+         const remainder = reversed.length % 3;
+         const REDS = new Set(AutoSettlementEngine.RED_NUMS);
+
+         if (remainder === 2) {
+             console.log(` \x1b[33m[PENDENTE]\x1b[0m Início: \x1b[1m${reversed[1]}\x1b[0m | Confirmação: \x1b[1m${reversed[0]}\x1b[0m | Finalização: ?`);
+         } else if (remainder === 1) {
+             console.log(` \x1b[33m[PENDENTE]\x1b[0m Início: \x1b[1m${reversed[0]}\x1b[0m | Confirmação: ? | Finalização: ?`);
+         }
+
+         let printed = 0;
+         for (let i = remainder; i < reversed.length && printed < 8; i += 3) {
+             const f = reversed[i]; const c = reversed[i+1]; const inc = reversed[i+2];
+             
+             if ([inc, c, f].includes(0)) {
+                 console.log(` \x1b[31m[ANULADO]\x1b[0m  Trio com Zero: (${inc}, ${c}, ${f})`);
+             } else {
+                 const cor = [inc, c, f].map(v => REDS.has(v) ? 'R' : 'B');
+                 let pCor = 'N/A';
+                 if (cor[0]===cor[1] && cor[1]===cor[2]) pCor = 'TC ';
+                 else if (cor[0]===cor[1] && cor[1]!==cor[2]) pCor = 'NTC';
+                 else if (cor[0]!==cor[1] && cor[1]!==cor[2] && cor[0]===cor[2]) pCor = 'TA ';
+                 else if (cor[0]!==cor[1] && cor[1]===cor[2]) pCor = 'NTA';
+
+                 const par = [inc, c, f].map(v => v%2===0 ? 'P' : 'I');
+                 let pPar = 'N/A';
+                 if (par[0]===par[1] && par[1]===par[2]) pPar = 'TC ';
+                 else if (par[0]===par[1] && par[1]!==par[2]) pPar = 'NTC';
+                 else if (par[0]!==par[1] && par[1]!==par[2] && par[0]===par[2]) pPar = 'TA ';
+                 else if (par[0]!==par[1] && par[1]===par[2]) pPar = 'NTA';
+
+                 console.log(` \x1b[32m[FECHADO]\x1b[0m  (${inc}, ${c}, ${f}) => Cor: \x1b[36m${pCor}\x1b[0m | Paridade: \x1b[36m${pPar}\x1b[0m`);
+             }
+             printed++;
+         }
+      }
+      console.log('------------------------------------------------------');
+      console.log(' Pressione ENTER para voltar...');
+      inputMode = 'VIEW_ONLY';
+      rl.prompt(); return;
+    }
 
     if (cooldownGuard.isLocked() || checkToxicTableLock()) {
-      if (!cmd.startsWith('sync ') && cmd !== 'timeline' && cmd !== 'heatmap') {
+      if (!cmd.startsWith('sync ') && cmd !== 'timeline' && cmd !== 'heatmap' && cmd !== 'trios') {
         if (!checkToxicTableLock()) cooldownGuard.registerOutcome(false, cooldownGuard.currentBankroll); 
         saveSystemState(); renderTerminalHud(); return;
       }
@@ -225,13 +281,10 @@ function startOrchestrator() {
       const numbers = cmd.replace('sync ', '').split(',').map(n => parseInt(n.trim(), 10));
       numbers.forEach(n => { if (!isNaN(n) && n >= 0 && n <= 36) mesaTracker.addNumber(n); });
       generateNextTrade();
-      
-      // CALIBRAGEM INSTITUCIONAL: Bloqueia apenas em caso de Caos Total (>95% VIX)
       if (numbers.length > 20 && currentVixPercent > 95.0) {
          toxicTableLockUntil = Date.now() + (15 * 60 * 1000); 
          voiceCopilot.speak('Atenção. Entropia máxima detectada. Mesa inoperável rejeitada.');
       }
-      
       renderTerminalHud(); return;
     }
 
@@ -259,7 +312,6 @@ function renderTerminalHud() {
   console.log(` BANCA ATUAL ..... R$ ${cooldownGuard.currentBankroll.toFixed(2)}`);
   if (!cooldownGuard.isSessionEnded) console.log(` PRÓXIMO DEGRAU .. R$ ${cooldownGuard.nextMilestone.toFixed(2)}`);
   
-  // HUD RECALIBRADO PARA REFLITIR A NOVA DIMENSÃO DO VIX
   let vixColor = '\x1b[32m'; 
   if (currentVixPercent > 75) vixColor = '\x1b[33m'; 
   if (currentVixPercent > 95) vixColor = '\x1b[31m'; 
