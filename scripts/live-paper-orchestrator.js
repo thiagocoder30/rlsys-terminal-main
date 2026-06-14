@@ -29,20 +29,65 @@ function saveSystemState() {
   bankrollRepo.save(currentSnapshot);
 }
 
+// ---------------------------------------------------------
+// MOTOR DE INTELIGÊNCIA (SPRINT 361)
+// ---------------------------------------------------------
 function generateNextTrade() {
   if (cooldownGuard.isSessionEnded || cooldownGuard.isLocked()) {
     activeStrategyId = null;
     return;
   }
   
-  // Seleção aleatória simulada entre o portfólio completo de estratégias ativas
-  const strategies = ['HEDGE_BLACK_COL3', 'HEDGE_RED_COL2', 'SECTOR_OMEGA', 'SECTOR_ALPHA', 'FUSION_SECTOR'];
-  const r = Math.random();
-  if (r > 0.5) {
-    const index = Math.floor(Math.random() * strategies.length);
-    activeStrategyId = strategies[index];
-  } else {
+  // Janela de observação: Analisa o micro-contexto das últimas 15 rodadas
+  const timeline = mesaTracker.history.slice(-15); 
+  
+  // Filtro de Segurança: Só opera se a mesa tiver histórico suficiente
+  if (timeline.length < 10) {
     activeStrategyId = null; 
+    return;
+  }
+
+  // Placar de Backtest em Tempo Real
+  let scores = {
+    'HEDGE_BLACK_COL3': 0,
+    'HEDGE_RED_COL2': 0,
+    'SECTOR_OMEGA': 0,
+    'SECTOR_ALPHA': 0,
+    'FUSION_SECTOR': 0
+  };
+
+  const engineStrategies = AutoSettlementEngine.getStrategies();
+
+  // Simula o histórico contra todas as estratégias
+  timeline.forEach(num => {
+    Object.keys(scores).forEach(stratId => {
+       const result = engineStrategies[stratId].evaluate(num);
+       // Pontua apenas se a estratégia entregasse lucro real na rodada
+       if (result.status === 'WIN_MAX' || result.status === 'WIN_MIN') {
+           scores[stratId]++;
+       }
+    });
+  });
+
+  // Encontra a estratégia dominante da mesa no momento
+  let bestStrat = null;
+  let maxScore = 0;
+  
+  Object.entries(scores).forEach(([strat, score]) => {
+     if (score > maxScore) {
+        maxScore = score;
+        bestStrat = strat;
+     }
+  });
+
+  // Gatilho Institucional: A estratégia só é sugerida se tiver batido em 
+  // pelo menos 40% das últimas rodadas. Caso contrário, manda ficar de fora.
+  const hitRateThreshold = timeline.length * 0.40;
+  
+  if (bestStrat && maxScore >= hitRateThreshold) {
+     activeStrategyId = bestStrat;
+  } else {
+     activeStrategyId = null; 
   }
 }
 
@@ -73,14 +118,14 @@ function startOrchestrator() {
           voiceCopilot.speak('Green liquidado.');
         } else if (pendingResult.status === 'PUSH') {
           cooldownGuard.registerOutcome(true, cooldownGuard.currentBankroll);
-          voiceCopilot.speak('Empate tático.');
+          voiceCopilot.speak('Empate tático. Capital protegido.');
         } else {
           cooldownGuard.registerOutcome(false, cooldownGuard.currentBankroll - Math.abs(pendingResult.netAmount));
           voiceCopilot.speak('Red absorvido.');
         }
         saveSystemState();
       } else if (cmd === 'n' || cmd === 'nao' || cmd === 'não') {
-        voiceCopilot.speak('Entrada descartada.');
+        voiceCopilot.speak('Entrada descartada. Apenas histórico.');
       } else {
         console.log('Comando inválido. Digite "s" ou "n".');
         rl.prompt();
@@ -98,7 +143,7 @@ function startOrchestrator() {
     if (cmd === 'timeline') {
       console.clear();
       console.log('======================================================');
-      console.log(` Histórico: \x1b[36m${mesaTracker.getTimeline(12)}\x1b[0m`);
+      console.log(` Histórico: \x1b[36m${mesaTracker.getTimeline(15)}\x1b[0m`);
       console.log(' Pressione ENTER para voltar...');
       inputMode = 'VIEW_ONLY';
       rl.prompt(); return;
@@ -155,7 +200,7 @@ function renderTerminalHud() {
   const lockStatus = cooldownGuard.getRemainingStatus();
   
   console.log('======================================================');
-  console.log(' 🛡️ RL.SYS CORE - MULTI-STRATEGY PORTFOLIO');
+  console.log(' 🛡️ RL.SYS CORE - QUANTITATIVE BACKTEST ENGINE');
   console.log('======================================================');
   console.log(` BANCA ATUAL ..... R$ ${cooldownGuard.currentBankroll.toFixed(2)}`);
   if (!cooldownGuard.isSessionEnded) console.log(` PRÓXIMO DEGRAU .. R$ ${cooldownGuard.nextMilestone.toFixed(2)}`);
@@ -184,13 +229,14 @@ function renderTerminalHud() {
   } 
   else if (activeStrategyId) {
     const strat = AutoSettlementEngine.getStrategies()[activeStrategyId];
-    console.log(` ESTRATÉGIA .. ${strat.name}`);
+    console.log(` ESTRATÉGIA .. \x1b[36m${strat.name}\x1b[0m`);
     console.log(` AÇÃO ........ \x1b[32mENTRAR\x1b[0m`);
     console.log(` STAKE ....... R$ ${strat.stake.toFixed(2)}`);
     rl.setPrompt('roleta/comando > ');
   } 
   else {
     console.log(` AÇÃO ........ \x1b[33mOBSERVAR\x1b[0m`);
+    console.log(` MESA ........ Analisando tendência cruzada...`);
     rl.setPrompt('roleta/comando > ');
   }
   
