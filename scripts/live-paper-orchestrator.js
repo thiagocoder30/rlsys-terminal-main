@@ -25,14 +25,13 @@ let pendingResult = null;
 let triplicacaoPatternFound = null; 
 let triplicacaoTypeFound = null; 
 let currentVixPercent = 0; 
-let toxicTableLockUntil = null; // Trava de Rejeição de Mesa (15 min)
+let toxicTableLockUntil = null; 
 
 function saveSystemState() {
   const currentSnapshot = cooldownGuard.exportState();
   bankrollRepo.save(currentSnapshot);
 }
 
-// ALGORITMO DE ENTROPIA DE SHANNON
 function computeShannonEntropy(counts, total) {
   if (total === 0) return 0;
   let entropy = 0;
@@ -60,8 +59,6 @@ function computeTriplicacao(rounds, mapFn) {
   }
   
   const totalTrios = tc + ntc + ta + nta;
-  
-  // Cálculo do VIX usando a Entropia de Shannon (Máx H para 4 padrões = 2.0)
   const entropy = computeShannonEntropy([tc, ntc, ta, nta], totalTrios);
   const vix = totalTrios > 0 ? (entropy / 2.0) * 100 : 0;
 
@@ -80,7 +77,7 @@ function computeTriplicacao(rounds, mapFn) {
 
 function checkToxicTableLock() {
   if (toxicTableLockUntil && Date.now() < toxicTableLockUntil) return true;
-  if (toxicTableLockUntil && Date.now() >= toxicTableLockUntil) toxicTableLockUntil = null; // Libera
+  if (toxicTableLockUntil && Date.now() >= toxicTableLockUntil) toxicTableLockUntil = null; 
   return false;
 }
 
@@ -98,7 +95,6 @@ function generateNextTrade() {
   const colorStats = computeTriplicacao(reversedHistory, v => REDS.has(v) ? 'A' : 'B');
   const parityStats = computeTriplicacao(reversedHistory, v => v % 2 === 0 ? 'A' : 'B');
 
-  // VIX GLOBAL DA MESA (Média da Entropia de Cor e Paridade)
   currentVixPercent = (colorStats.vix + parityStats.vix) / 2;
 
   if (reversedHistory.length % 3 === 2) {
@@ -230,10 +226,10 @@ function startOrchestrator() {
       numbers.forEach(n => { if (!isNaN(n) && n >= 0 && n <= 36) mesaTracker.addNumber(n); });
       generateNextTrade();
       
-      // TOXIC TABLE GOVERNANCE: Avalia a mesa após o Warmup
-      if (numbers.length > 20 && currentVixPercent > 85.0) {
-         toxicTableLockUntil = Date.now() + (15 * 60 * 1000); // 15 minutos de trava
-         voiceCopilot.speak('Atenção. Entropia máxima detectada. Mesa rejeitada.');
+      // CALIBRAGEM INSTITUCIONAL: Bloqueia apenas em caso de Caos Total (>95% VIX)
+      if (numbers.length > 20 && currentVixPercent > 95.0) {
+         toxicTableLockUntil = Date.now() + (15 * 60 * 1000); 
+         voiceCopilot.speak('Atenção. Entropia máxima detectada. Mesa inoperável rejeitada.');
       }
       
       renderTerminalHud(); return;
@@ -263,10 +259,10 @@ function renderTerminalHud() {
   console.log(` BANCA ATUAL ..... R$ ${cooldownGuard.currentBankroll.toFixed(2)}`);
   if (!cooldownGuard.isSessionEnded) console.log(` PRÓXIMO DEGRAU .. R$ ${cooldownGuard.nextMilestone.toFixed(2)}`);
   
-  // MEDIDOR DE VIX / ENTROPIA
-  let vixColor = '\x1b[32m'; // Verde (Low Entropy)
-  if (currentVixPercent > 70) vixColor = '\x1b[33m'; // Amarelo (Med Entropy)
-  if (currentVixPercent > 85) vixColor = '\x1b[31m'; // Vermelho (Toxic)
+  // HUD RECALIBRADO PARA REFLITIR A NOVA DIMENSÃO DO VIX
+  let vixColor = '\x1b[32m'; 
+  if (currentVixPercent > 75) vixColor = '\x1b[33m'; 
+  if (currentVixPercent > 95) vixColor = '\x1b[31m'; 
   if (mesaTracker.history.length >= 10) {
       console.log(` ENTROPIA DA MESA. ${vixColor}${currentVixPercent.toFixed(1)}% (VIX)\x1b[0m`);
   } else {
@@ -277,7 +273,7 @@ function renderTerminalHud() {
   
   if (toxicLockActive) {
     const remaining = Math.ceil((toxicTableLockUntil - Date.now()) / 60000);
-    console.log(`\x1b[31m ☣️ MESA TÓXICA REJEITADA PELO SISTEMA\x1b[0m`);
+    console.log(`\x1b[31m ☣️ MESA TÓXICA REJEITADA PELO SISTEMA (VIX > 95%)\x1b[0m`);
     console.log(` MOTIVO: Entropia de Shannon confirmou ausência de padrões.`);
     console.log(` AÇÃO: Feche a corretora. Retorne em ${remaining} minutos.`);
     rl.setPrompt('comando > ');

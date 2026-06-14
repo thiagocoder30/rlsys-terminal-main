@@ -62,7 +62,6 @@ class AutoSettlementEngine {
           return { status: 'LOSS', netAmount: -1.90 };
         }
       },
-      // TRIPLICAÇÃO - CORES
       'TRIPLICACAO_RED': {
         name: 'Triplicação (Alvo: VERMELHO)', stake: 1.00,
         evaluate: (num) => {
@@ -79,7 +78,6 @@ class AutoSettlementEngine {
           return { status: 'LOSS', netAmount: -1.00 };
         }
       },
-      // TRIPLICAÇÃO - PARIDADES
       'TRIPLICACAO_EVEN': {
         name: 'Triplicação (Alvo: PAR)', stake: 1.00,
         evaluate: (num) => {
