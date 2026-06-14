@@ -4,8 +4,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 /**
- * Adaptador de Infraestrutura para Persistência do Capital.
- * Garante a continuidade do Juros Compostos entre as sessões.
+ * Repositório Avançado de Persistência.
+ * Salva todo o estado da máquina de risco para evitar bypass por reinicialização.
  */
 class FileBankrollRepository {
   constructor() {
@@ -15,25 +15,23 @@ class FileBankrollRepository {
   load() {
     try {
       if (fs.existsSync(this.filePath)) {
-        const data = JSON.parse(fs.readFileSync(this.filePath, 'utf8'));
-        return data.bankroll;
+        return JSON.parse(fs.readFileSync(this.filePath, 'utf8'));
       }
       return null;
     } catch (error) {
-      return null; // Fail-safe: Se corromper, retorna nulo para solicitar setup manual.
+      return null;
     }
   }
 
-  save(bankroll) {
+  save(statePayload) {
     try {
-      const payload = JSON.stringify({ 
-        bankroll: parseFloat(bankroll.toFixed(2)), 
-        lastUpdated: new Date().toISOString() 
-      });
-      // Escrita síncrona O(1) otimizada para não travar o loop de eventos no Termux
+      const payload = JSON.stringify({
+        ...statePayload,
+        lastUpdated: new Date().toISOString()
+      }, null, 2);
       fs.writeFileSync(this.filePath, payload, 'utf8');
     } catch (error) {
-      // Degradação silenciosa segura, a sessão atual continua operando em RAM
+      // Fail-safe passivo
     }
   }
 }

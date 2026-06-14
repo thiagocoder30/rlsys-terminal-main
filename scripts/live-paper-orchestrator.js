@@ -10,16 +10,32 @@ const voiceCopilot = new TermuxTtsVoiceCopilot();
 const bankrollRepo = new FileBankrollRepository();
 const settlementEngine = new AutoSettlementEngine();
 
-let initialBankroll = bankrollRepo.load();
-if (initialBankroll === null) initialBankroll = 100.00; 
-
-let cooldownGuard;
-let activeTrade = null; 
-
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
+// Carrega o estado persistido completo do disco
+const savedState = bankrollRepo.load();
+let initialBankroll = 100.00;
+
+if (savedState && savedState.initialBankroll) {
+  initialBankroll = savedState.initialBankroll;
+}
+
+// Inicializa o motor com injeção de dependência do estado persistido
+const cooldownGuard = new DynamicEmotionalCooldownGuard(initialBankroll, savedState);
+let activeTrade = null;
+
+function saveSystemState() {
+  const currentSnapshot = cooldownGuard.exportState();
+  bankrollRepo.save(currentSnapshot);
+}
+
 function startOrchestrator() {
-  cooldownGuard = new DynamicEmotionalCooldownGuard(initialBankroll);
+  if (cooldownGuard.isLocked()) {
+    voiceCopilot.speak('Acesso negado. Governança emocional ativa em disco.');
+  } else {
+    voiceCopilot.speak('Sessão iniciada. Monitoramento de capital ativo.');
+  }
+  
   renderTerminalHud();
   rl.setPrompt('roleta (0-36) > ');
   rl.prompt();
@@ -28,8 +44,8 @@ function startOrchestrator() {
     const cmd = line.trim().toLowerCase();
     
     if (cmd === 'exit' || cmd === 'quit') {
-      bankrollRepo.save(cooldownGuard.currentBankroll);
-      console.log('\n[!] Capital salvo no repositório. Saindo...');
+      saveSystemState();
+      console.log('\n[!] Estado protegido e salvo no disco. Encerrando terminal...');
       rl.close();
       return;
     }
@@ -37,7 +53,7 @@ function startOrchestrator() {
     if (cmd === 'skip' || cmd === 'pass') {
       if (activeTrade) {
         activeTrade = null;
-        voiceCopilot.speak('Entrada abortada pelo operador.');
+        voiceCopilot.speak('Entrada abortada.');
       }
       renderTerminalHud();
       rl.prompt();
@@ -46,7 +62,17 @@ function startOrchestrator() {
 
     if (cmd.startsWith('sync ')) {
       activeTrade = null;
-      voiceCopilot.speak('Histórico sincronizado. Operação fantasma evitada.');
+      voiceCopilot.speak('Sincronizado.');
+      renderTerminalHud();
+      rl.prompt();
+      return;
+    }
+
+    // Se tentar burlar digitando números durante o Cooldown travado em disco
+    if (cooldownGuard.isLocked()) {
+      cooldownGuard.registerOutcome(false, cooldownGuard.currentBankroll); // Aplica punição de +2 minutos
+      saveSystemState();
+      voiceCopilot.speak('Penalidade por tentativa de violação.');
       renderTerminalHud();
       rl.prompt();
       return;
@@ -54,7 +80,7 @@ function startOrchestrator() {
 
     const num = parseInt(cmd, 10);
     if (isNaN(num) || num < 0 || num > 36) {
-      console.log('Entrada inválida. Digite o número, "skip" ou "sync [nums]".');
+      console.log('Entrada inválida.');
       rl.prompt();
       return;
     }
@@ -64,12 +90,12 @@ function startOrchestrator() {
       
       if (result.isWin) {
         cooldownGuard.registerOutcome(true, cooldownGuard.currentBankroll + result.netAmount);
-        voiceCopilot.speak('Green confirmado.');
+        voiceCopilot.speak('Green.');
       } else {
         cooldownGuard.registerOutcome(false, cooldownGuard.currentBankroll - result.netAmount);
-        voiceCopilot.speak('Red detectado.');
+        voiceCopilot.speak('Red.');
       }
-      bankrollRepo.save(cooldownGuard.currentBankroll);
+      saveSystemState();
       activeTrade = null; 
     }
 
@@ -80,8 +106,8 @@ function startOrchestrator() {
        return;
     }
 
+    // Geração de sinal controlada
     const isContextFavorable = Math.random() > 0.6; 
-    
     if (isContextFavorable && !cooldownGuard.isLocked()) {
       activeTrade = {
         strategy: 'FUSION REDUZIDA (Setor do 23)',
@@ -103,7 +129,7 @@ function renderTerminalHud() {
   const lockStatus = cooldownGuard.getRemainingStatus();
   
   console.log('======================================================');
-  console.log(' 🛡️ RL.SYS CORE - ZERO-TOUCH & MILESTONE LADDER');
+  console.log(' 🛡️ RL.SYS CORE - ANTI-EVASION PERSISTENCE ACTIVE');
   console.log('======================================================');
   console.log(` BANCA ATUAL ..... R$ ${cooldownGuard.currentBankroll.toFixed(2)}`);
   
@@ -115,13 +141,13 @@ function renderTerminalHud() {
   console.log('------------------------------------------------------');
   
   if (lockStatus) {
-    console.log(`\x1b[31m 🛑 COOLDOWN ATIVO: ${lockStatus.time}\x1b[0m`);
+    console.log(`\x1b[31m 🛑 TRAVA INVIOLÁVEL ATIVA: ${lockStatus.time}\x1b[0m`);
     console.log(` MOTIVO: ${lockStatus.reason}`);
+    console.log(' Sair do programa ou reiniciar NÃO quebrará este bloqueio.');
   } else if (activeTrade) {
     console.log(` ESTRATÉGIA .. ${activeTrade.strategy}`);
     console.log(` AÇÃO ........ \x1b[32mENTRAR\x1b[0m`);
     console.log(` STAKE ....... R$ ${activeTrade.stake.toFixed(2)}`);
-    console.log(` (Digite o número, ou 'skip' se perdeu a entrada)`);
   } else {
     console.log(` AÇÃO ........ \x1b[33mOBSERVAR\x1b[0m`);
     console.log(` MESA ........ Aguardando alinhamento institucional.`);
@@ -129,4 +155,15 @@ function renderTerminalHud() {
   console.log('======================================================');
 }
 
-startOrchestrator();
+if (savedState === null) {
+  rl.question('Primeiro acesso detectado. Digite a Banca Inicial (R$): ', (answer) => {
+    initialBankroll = parseFloat(answer) || 100.00;
+    cooldownGuard.initialBankroll = initialBankroll;
+    cooldownGuard.currentBankroll = initialBankroll;
+    cooldownGuard.calculateNextMilestone();
+    saveSystemState();
+    startOrchestrator();
+  });
+} else {
+  startOrchestrator();
+}
