@@ -10,23 +10,17 @@ const voiceCopilot = new TermuxTtsVoiceCopilot();
 const bankrollRepo = new FileBankrollRepository();
 const settlementEngine = new AutoSettlementEngine();
 
-console.clear();
-console.log('======================================================');
-console.log(' ⚙️ RL.SYS CORE - ZERO-TOUCH SETTLEMENT (SPRINT 353)');
-console.log('======================================================');
+let initialBankroll = bankrollRepo.load();
+if (initialBankroll === null) initialBankroll = 100.00; 
+
+let cooldownGuard;
+let activeTrade = null; 
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
-// 1. Fase de Persistência (Boot)
-let initialBankroll = bankrollRepo.load();
-let cooldownGuard;
-let activeTrade = null; // Memória da última ordem do sistema
-
 function startOrchestrator() {
   cooldownGuard = new DynamicEmotionalCooldownGuard(initialBankroll);
-  voiceCopilot.speak(`Banca recuperada. Capital em ${initialBankroll.toFixed(2)} reais. Governança ativa.`);
   renderTerminalHud();
-
   rl.setPrompt('roleta (0-36) > ');
   rl.prompt();
 
@@ -35,45 +29,65 @@ function startOrchestrator() {
     
     if (cmd === 'exit' || cmd === 'quit') {
       bankrollRepo.save(cooldownGuard.currentBankroll);
-      voiceCopilot.speak('Sessão encerrada. Capital preservado em disco.');
       console.log('\n[!] Capital salvo no repositório. Saindo...');
       rl.close();
       return;
     }
 
-    const num = parseInt(cmd, 10);
-    if (isNaN(num) || num < 0 || num > 36) {
-      console.log('Entrada inválida. Digite o número da roleta (0-36).');
+    if (cmd === 'skip' || cmd === 'pass') {
+      if (activeTrade) {
+        activeTrade = null;
+        voiceCopilot.speak('Entrada abortada pelo operador.');
+      }
+      renderTerminalHud();
       rl.prompt();
       return;
     }
 
-    // 2. Fase de Auto-Settlement (Verifica se havia uma ordem aberta na rodada anterior)
+    if (cmd.startsWith('sync ')) {
+      activeTrade = null;
+      voiceCopilot.speak('Histórico sincronizado. Operação fantasma evitada.');
+      renderTerminalHud();
+      rl.prompt();
+      return;
+    }
+
+    const num = parseInt(cmd, 10);
+    if (isNaN(num) || num < 0 || num > 36) {
+      console.log('Entrada inválida. Digite o número, "skip" ou "sync [nums]".');
+      rl.prompt();
+      return;
+    }
+
     if (activeTrade && !cooldownGuard.isLocked()) {
-      const result = settlementEngine.evaluate(num, activeTrade.targets, activeTrade.stake, activeTrade.payoutMultiplier);
+      const result = settlementEngine.evaluate(num, activeTrade);
       
       if (result.isWin) {
         cooldownGuard.registerOutcome(true, cooldownGuard.currentBankroll + result.netAmount);
-        voiceCopilot.speak('Green confirmado. Lucro liquidado na banca.');
+        voiceCopilot.speak('Green confirmado.');
       } else {
         cooldownGuard.registerOutcome(false, cooldownGuard.currentBankroll - result.netAmount);
-        voiceCopilot.speak('Red detectado. Risco absorvido sem alavancagem.');
+        voiceCopilot.speak('Red detectado.');
       }
       bankrollRepo.save(cooldownGuard.currentBankroll);
-      activeTrade = null; // Limpa a ordem após a liquidação
+      activeTrade = null; 
     }
 
-    // 3. Atualização do Motor de Decisão (Mock para HUD)
-    // Aqui o AnalyticsDecisionEngine faria o recálculo com o novo número
-    const isContextFavorable = Math.random() > 0.5; // Simulação de engine de consenso
+    if (cooldownGuard.isSessionEnded) {
+       activeTrade = null;
+       renderTerminalHud();
+       rl.prompt();
+       return;
+    }
+
+    const isContextFavorable = Math.random() > 0.6; 
     
     if (isContextFavorable && !cooldownGuard.isLocked()) {
-      // Prepara a próxima entrada
       activeTrade = {
-        strategy: 'FUSION REDUZIDA (Vermelhos)',
-        targets: AutoSettlementEngine.getTargets().RED,
-        stake: 1.90, // Calculado via InstitutionalPositionSizingEngine
-        payoutMultiplier: 2
+        strategy: 'FUSION REDUZIDA (Setor do 23)',
+        type: 'FUSION_SECTOR',
+        targets: AutoSettlementEngine.getTargets().FUSION_23,
+        stake: 1.90
       };
     } else {
       activeTrade = null;
@@ -89,9 +103,14 @@ function renderTerminalHud() {
   const lockStatus = cooldownGuard.getRemainingStatus();
   
   console.log('======================================================');
-  console.log(' 🛡️ RL.SYS CORE - AUTO-SETTLEMENT ACTIVE');
+  console.log(' 🛡️ RL.SYS CORE - ZERO-TOUCH & MILESTONE LADDER');
   console.log('======================================================');
   console.log(` BANCA ATUAL ..... R$ ${cooldownGuard.currentBankroll.toFixed(2)}`);
+  
+  if (!cooldownGuard.isSessionEnded) {
+    console.log(` PRÓXIMO DEGRAU .. R$ ${cooldownGuard.nextMilestone.toFixed(2)} (Parcial)`);
+  }
+  console.log(` META GLOBAL (10%) R$ ${cooldownGuard.globalStopWinTarget.toFixed(2)}`);
   console.log(` LOSS STREAK ..... ${cooldownGuard.consecutiveLosses} / 2`);
   console.log('------------------------------------------------------');
   
@@ -102,6 +121,7 @@ function renderTerminalHud() {
     console.log(` ESTRATÉGIA .. ${activeTrade.strategy}`);
     console.log(` AÇÃO ........ \x1b[32mENTRAR\x1b[0m`);
     console.log(` STAKE ....... R$ ${activeTrade.stake.toFixed(2)}`);
+    console.log(` (Digite o número, ou 'skip' se perdeu a entrada)`);
   } else {
     console.log(` AÇÃO ........ \x1b[33mOBSERVAR\x1b[0m`);
     console.log(` MESA ........ Aguardando alinhamento institucional.`);
@@ -109,12 +129,4 @@ function renderTerminalHud() {
   console.log('======================================================');
 }
 
-if (initialBankroll === null) {
-  rl.question('Primeiro acesso detectado. Digite a Banca Inicial (R$): ', (answer) => {
-    initialBankroll = parseFloat(answer) || 100.00;
-    bankrollRepo.save(initialBankroll);
-    startOrchestrator();
-  });
-} else {
-  startOrchestrator();
-}
+startOrchestrator();
