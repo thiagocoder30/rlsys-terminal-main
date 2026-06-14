@@ -5,10 +5,12 @@ const { DynamicEmotionalCooldownGuard } = require('../src/domain/risk/DynamicEmo
 const { TermuxTtsVoiceCopilot } = require('../src/infrastructure/audio/TermuxTtsVoiceCopilot.js');
 const { FileBankrollRepository } = require('../src/infrastructure/persistence/FileBankrollRepository.js');
 const { AutoSettlementEngine } = require('../src/domain/financial/AutoSettlementEngine.js');
+const { LiveMesaTracker } = require('../src/domain/analytics/LiveMesaTracker.js');
 
 const voiceCopilot = new TermuxTtsVoiceCopilot();
 const bankrollRepo = new FileBankrollRepository();
 const settlementEngine = new AutoSettlementEngine();
+const mesaTracker = new LiveMesaTracker();
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
@@ -20,8 +22,8 @@ const cooldownGuard = new DynamicEmotionalCooldownGuard(initialBankroll, savedSt
 
 // Variáveis de Estado do Orquestrador
 let activeTrade = null;
-let inputMode = 'NUMBER'; // Pode ser 'NUMBER' ou 'CONFIRM_TRADE'
-let pendingResult = null; // Guarda o resultado para a confirmação do usuário
+let inputMode = 'NUMBER'; // 'NUMBER', 'CONFIRM_TRADE', ou 'VIEW_ONLY'
+let pendingResult = null; 
 
 function saveSystemState() {
   const currentSnapshot = cooldownGuard.exportState();
@@ -34,7 +36,7 @@ function generateNextTrade() {
     return;
   }
   
-  const isContextFavorable = Math.random() > 0.6; // Mock da inteligência real
+  const isContextFavorable = Math.random() > 0.6; // Mock analítico
   if (isContextFavorable) {
     activeTrade = {
       strategy: 'FUSION REDUZIDA (Setor do 23)',
@@ -61,7 +63,14 @@ function startOrchestrator() {
       return;
     }
 
-    // MODO 2: AGUARDANDO CONFIRMAÇÃO DO USUÁRIO (O Checkpoint)
+    // MODO 3: VISUALIZAÇÃO DE RELATÓRIOS (ON-DEMAND)
+    if (inputMode === 'VIEW_ONLY') {
+      inputMode = 'NUMBER';
+      renderTerminalHud();
+      return;
+    }
+
+    // MODO 2: AGUARDANDO CONFIRMAÇÃO DO USUÁRIO
     if (inputMode === 'CONFIRM_TRADE') {
       if (cmd === 's' || cmd === 'sim' || cmd === 'y') {
         if (pendingResult.isWin) {
@@ -73,27 +82,54 @@ function startOrchestrator() {
         }
         saveSystemState();
       } else if (cmd === 'n' || cmd === 'nao' || cmd === 'não') {
-        voiceCopilot.speak('Entrada descartada. Histórico sincronizado sem risco.');
+        voiceCopilot.speak('Entrada descartada.');
       } else {
         console.log('Comando inválido. Digite "s" para Sim ou "n" para Não.');
         rl.prompt();
         return;
       }
 
-      // Limpa o estado e volta a mapear a mesa
       inputMode = 'NUMBER';
       pendingResult = null;
       activeTrade = null;
-      
       generateNextTrade();
       renderTerminalHud();
       return;
     }
 
+    // COMANDOS DE INTERFACE ON-DEMAND
+    if (cmd === 'timeline') {
+      console.clear();
+      console.log('======================================================');
+      console.log(' ⏱️ TIMELINE (ÚLTIMAS 12 RODADAS)');
+      console.log('======================================================');
+      console.log(` Histórico: \x1b[36m${mesaTracker.getTimeline(12)}\x1b[0m`);
+      console.log('======================================================');
+      console.log(' Pressione ENTER para voltar ao painel principal...');
+      inputMode = 'VIEW_ONLY';
+      rl.prompt();
+      return;
+    }
+
+    if (cmd === 'heatmap') {
+      const stats = mesaTracker.getHeatmap();
+      console.clear();
+      console.log('======================================================');
+      console.log(' 🔥 HEATMAP (ANÁLISE DE FREQUÊNCIA)');
+      console.log('======================================================');
+      console.log(` Giros Analisados : ${stats.totalSpins}`);
+      console.log(` Números Quentes  : \x1b[31m${stats.hot}\x1b[0m`);
+      console.log(` Números Frios    : \x1b[34m${stats.cold}\x1b[0m`);
+      console.log('======================================================');
+      console.log(' Pressione ENTER para voltar ao painel principal...');
+      inputMode = 'VIEW_ONLY';
+      rl.prompt();
+      return;
+    }
+
     // MODO 1: RECEBENDO NÚMEROS DA ROLETA
     if (cooldownGuard.isLocked()) {
-      // Bloqueia inputs fora de hora para evitar ansiedade, mas permite sincronizar
-      if (!cmd.startsWith('sync ')) {
+      if (!cmd.startsWith('sync ') && cmd !== 'timeline' && cmd !== 'heatmap') {
         cooldownGuard.registerOutcome(false, cooldownGuard.currentBankroll); 
         saveSystemState();
         voiceCopilot.speak('Penalidade por ansiedade.');
@@ -103,22 +139,35 @@ function startOrchestrator() {
     }
 
     if (cmd.startsWith('sync ')) {
+      const numbers = cmd.replace('sync ', '').split(',').map(n => parseInt(n.trim(), 10));
+      let syncedCount = 0;
+      
+      numbers.forEach(n => {
+        if (!isNaN(n) && n >= 0 && n <= 36) {
+          mesaTracker.addNumber(n);
+          syncedCount++;
+        }
+      });
+      
       activeTrade = null;
       generateNextTrade();
+      voiceCopilot.speak(`${syncedCount} números sincronizados.`);
       renderTerminalHud();
       return;
     }
 
     const num = parseInt(cmd, 10);
     if (isNaN(num) || num < 0 || num > 36) {
-      console.log('Entrada inválida.');
+      console.log('Entrada inválida. Digite número, "sync", "timeline" ou "heatmap".');
       rl.prompt();
       return;
     }
 
+    mesaTracker.addNumber(num); // Alimenta o motor analítico
+
     if (activeTrade) {
       pendingResult = settlementEngine.evaluate(num, activeTrade);
-      inputMode = 'CONFIRM_TRADE'; // Muda o estado para forçar a confirmação
+      inputMode = 'CONFIRM_TRADE'; 
       renderTerminalHud();
       return;
     }
@@ -133,7 +182,7 @@ function renderTerminalHud() {
   const lockStatus = cooldownGuard.getRemainingStatus();
   
   console.log('======================================================');
-  console.log(' 🛡️ RL.SYS CORE - EXPLICIT HANDSHAKE ACTIVE');
+  console.log(' 🛡️ RL.SYS CORE - EXPLICIT HANDSHAKE & ANALYTICS');
   console.log('======================================================');
   console.log(` BANCA ATUAL ..... R$ ${cooldownGuard.currentBankroll.toFixed(2)}`);
   
@@ -147,7 +196,8 @@ function renderTerminalHud() {
   if (lockStatus) {
     console.log(`\x1b[31m 🛑 TRAVA INVIOLÁVEL ATIVA: ${lockStatus.time}\x1b[0m`);
     console.log(` MOTIVO: ${lockStatus.reason}`);
-    rl.setPrompt('roleta (0-36) > ');
+    console.log(` (Comandos permitidos: timeline, heatmap, sync)`);
+    rl.setPrompt('comando > ');
   } 
   else if (inputMode === 'CONFIRM_TRADE') {
     const color = pendingResult.isWin ? '\x1b[32m' : '\x1b[31m';
@@ -163,12 +213,14 @@ function renderTerminalHud() {
     console.log(` ESTRATÉGIA .. ${activeTrade.strategy}`);
     console.log(` AÇÃO ........ \x1b[32mENTRAR\x1b[0m`);
     console.log(` STAKE ....... R$ ${activeTrade.stake.toFixed(2)}`);
-    rl.setPrompt('roleta (0-36) > ');
+    console.log(` (Digite o número sorteado ou use: timeline, heatmap)`);
+    rl.setPrompt('roleta/comando > ');
   } 
   else {
     console.log(` AÇÃO ........ \x1b[33mOBSERVAR\x1b[0m`);
     console.log(` MESA ........ Aguardando alinhamento institucional.`);
-    rl.setPrompt('roleta (0-36) > ');
+    console.log(` (Digite o número sorteado ou use: timeline, heatmap)`);
+    rl.setPrompt('roleta/comando > ');
   }
   
   console.log('======================================================');
