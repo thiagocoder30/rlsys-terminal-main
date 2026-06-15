@@ -294,7 +294,6 @@ export class LivePaperOrchestrator {
         const freqMap = this.mesaTracker.getFrequencies();
         const historyLength = this.mesaTracker.getHistory().length;
         
-        // Converte o Map para um array ordenado por frequência (decrescente)
         const sortedFreq = Array.from(freqMap.entries()).sort((a, b) => b[1] - a[1]);
         
         console.log('======================================================');
@@ -312,7 +311,6 @@ export class LivePaperOrchestrator {
             }
             
             console.log('\n \x1b[36m❄️  COLD NUMBERS (Menos frequentes/Ausentes):\x1b[0m');
-            // Pega os 5 últimos do array ordenado
             for (let i = sortedFreq.length - 1; i >= sortedFreq.length - 5; i--) {
                 console.log(`    Número \x1b[1m${sortedFreq[i][0].toString().padStart(2, ' ')}\x1b[0m : ${sortedFreq[i][1]} aparições`);
             }
@@ -337,21 +335,31 @@ export class LivePaperOrchestrator {
         if (stats.total === 0) {
             console.log(' \x1b[33mAguardando dados da mesa...\x1b[0m');
         } else {
+            // Percentuais 1:1
             const pRed = ((stats.red / stats.total) * 100).toFixed(1);
             const pBlack = ((stats.black / stats.total) * 100).toFixed(1);
             const pZero = ((stats.zero / stats.total) * 100).toFixed(1);
-            
             const pEven = ((stats.even / stats.total) * 100).toFixed(1);
             const pOdd = ((stats.odd / stats.total) * 100).toFixed(1);
-            
             const pLow = ((stats.low / stats.total) * 100).toFixed(1);
             const pHigh = ((stats.high / stats.total) * 100).toFixed(1);
+
+            // Percentuais 2:1
+            const pD1 = ((stats.dozen1 / stats.total) * 100).toFixed(1);
+            const pD2 = ((stats.dozen2 / stats.total) * 100).toFixed(1);
+            const pD3 = ((stats.dozen3 / stats.total) * 100).toFixed(1);
+            const pC1 = ((stats.col1 / stats.total) * 100).toFixed(1);
+            const pC2 = ((stats.col2 / stats.total) * 100).toFixed(1);
+            const pC3 = ((stats.col3 / stats.total) * 100).toFixed(1);
 
             console.log(` \x1b[31mVermelho\x1b[0m : ${stats.red.toString().padStart(3, ' ')} vezes (${pRed}%) | \x1b[30m\x1b[47mPreto\x1b[0m: ${stats.black.toString().padStart(3, ' ')} vezes (${pBlack}%)`);
             console.log(` \x1b[32mZero (0)\x1b[0m : ${stats.zero.toString().padStart(3, ' ')} vezes (${pZero}%)`);
             console.log(' ----------------------------------------------------');
             console.log(` Pares    : ${stats.even.toString().padStart(3, ' ')} vezes (${pEven}%) | Ímpares: ${stats.odd.toString().padStart(3, ' ')} vezes (${pOdd}%)`);
             console.log(` Baixos   : ${stats.low.toString().padStart(3, ' ')} vezes (${pLow}%) | Altos  : ${stats.high.toString().padStart(3, ' ')} vezes (${pHigh}%)`);
+            console.log(' ----------------------------------------------------');
+            console.log(` \x1b[36mDúzias\x1b[0m   : 1ª [${stats.dozen1.toString().padStart(3, ' ')} | ${pD1}%] - 2ª [${stats.dozen2.toString().padStart(3, ' ')} | ${pD2}%] - 3ª [${stats.dozen3.toString().padStart(3, ' ')} | ${pD3}%]`);
+            console.log(` \x1b[36mColunas\x1b[0m  : 1ª [${stats.col1.toString().padStart(3, ' ')} | ${pC1}%] - 2ª [${stats.col2.toString().padStart(3, ' ')} | ${pC2}%] - 3ª [${stats.col3.toString().padStart(3, ' ')} | ${pC3}%]`);
         }
         
         console.log('------------------------------------------------------');
@@ -376,7 +384,7 @@ export class LivePaperOrchestrator {
                 console.log(' timeline           : Exibe a fita dos últimos 15 giros.');
                 console.log(' trios              : Abre o Scanner de Padrões (Triplicação).');
                 console.log(' heatmap            : Mapeia números Quentes e Frios.');
-                console.log(' stats              : Exibe a estatística geral da mesa.');
+                console.log(' stats              : Exibe a estatística geral da mesa (Cores, Dúzias, Colunas).');
                 console.log('\n [ GESTÃO DE RISCO ]');
                 console.log(' provider pragmatic : Ajusta Floor do Provedor p/ R$ 0.10.');
                 console.log(' provider evolution : Ajusta Floor do Provedor p/ R$ 0.50.');
