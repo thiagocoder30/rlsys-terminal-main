@@ -73,6 +73,16 @@ export class LivePaperOrchestrator {
             this.sizingEngine.setProvider(this.savedState.provider as CasinoProvider);
         }
         
+        // Recuperação de Memória RAM (Histórico de Giros)
+        if (this.savedState && Array.isArray(this.savedState.history)) {
+            this.savedState.history.forEach((num: number) => this.mesaTracker.addNumber(num));
+        }
+
+        // Recuperação do Bloqueio de Mesa Tóxica (Cooldown 15m)
+        if (this.savedState && this.savedState.toxicTableLockUntil) {
+            this.toxicTableLockUntil = this.savedState.toxicTableLockUntil;
+        }
+        
         this.cooldownGuard = new DynamicEmotionalCooldownGuard(this.initialBankroll, this.savedState);
         this.sessionStats.startBankroll = this.cooldownGuard.currentBankroll;
         this.trailingStopGuard = new TrailingStopGuard(this.sessionStats.startBankroll);
@@ -113,6 +123,11 @@ export class LivePaperOrchestrator {
         currentSnapshot.isDailyHardLocked = this.isDailyHardLocked;
         currentSnapshot.hardLockDateEpoch = this.hardLockDateEpoch;
         currentSnapshot.provider = this.sizingEngine.getProvider();
+        
+        // Persistindo RAM no Cofre
+        currentSnapshot.history = this.mesaTracker.getHistory();
+        currentSnapshot.toxicTableLockUntil = this.toxicTableLockUntil;
+        
         this.bankrollRepo.save(currentSnapshot);
     }
 
@@ -222,7 +237,10 @@ export class LivePaperOrchestrator {
 
     private checkToxicTableLock(): boolean {
         if (this.toxicTableLockUntil && Date.now() < this.toxicTableLockUntil) return true;
-        if (this.toxicTableLockUntil && Date.now() >= this.toxicTableLockUntil) this.toxicTableLockUntil = null; 
+        if (this.toxicTableLockUntil && Date.now() >= this.toxicTableLockUntil) {
+            this.toxicTableLockUntil = null; 
+            this.saveSystemState();
+        }
         return false;
     }
 
@@ -335,7 +353,6 @@ export class LivePaperOrchestrator {
         if (stats.total === 0) {
             console.log(' \x1b[33mAguardando dados da mesa...\x1b[0m');
         } else {
-            // Percentuais 1:1
             const pRed = ((stats.red / stats.total) * 100).toFixed(1);
             const pBlack = ((stats.black / stats.total) * 100).toFixed(1);
             const pZero = ((stats.zero / stats.total) * 100).toFixed(1);
@@ -344,7 +361,6 @@ export class LivePaperOrchestrator {
             const pLow = ((stats.low / stats.total) * 100).toFixed(1);
             const pHigh = ((stats.high / stats.total) * 100).toFixed(1);
 
-            // Percentuais 2:1
             const pD1 = ((stats.dozen1 / stats.total) * 100).toFixed(1);
             const pD2 = ((stats.dozen2 / stats.total) * 100).toFixed(1);
             const pD3 = ((stats.dozen3 / stats.total) * 100).toFixed(1);
@@ -436,6 +452,10 @@ export class LivePaperOrchestrator {
                 this.isDailyHardLocked = false; this.hardLockDateEpoch = null;
                 this.sessionStats = { startBankroll: newVal, wins: 0, losses: 0, entropyBlocks: 0, strategyWins: {}, vixReadings: [] };
                 this.trailingStopGuard = new TrailingStopGuard(newVal);
+                
+                // Zera o rastreador
+                this.mesaTracker = new (this.mesaTracker.constructor as any)();
+                
                 this.saveSystemState(); this.generateNextTrade(); this.renderTerminalHud(); return;
             }
             
@@ -507,8 +527,15 @@ export class LivePaperOrchestrator {
                         this.logDataForLaboratory(n, 'OBSERVE', 'SYNC_FEED', 0);
                     }
                 });
+                
+                // Trava tática para impedir VIX acima de 95%
                 this.generateNextTrade();
-                if (numbers.length > 20 && this.currentVixPercent > 95.0) { this.toxicTableLockUntil = Date.now() + (15 * 60 * 1000); this.voiceCopilot.speak('Atenção. Entropia máxima detectada.'); }
+                if (numbers.length > 20 && this.currentVixPercent > 95.0) { 
+                    this.toxicTableLockUntil = Date.now() + (15 * 60 * 1000); 
+                    this.voiceCopilot.speak('Atenção. Entropia máxima detectada.');
+                    this.saveSystemState();
+                }
+                
                 this.renderTerminalHud(); return;
             }
 
