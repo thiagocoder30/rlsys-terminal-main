@@ -18,7 +18,9 @@ export class LiveMesaTracker implements IAnalyticsEngine {
     }
 
     public getTimeline(length: number): string {
-        const slice = this._history.slice(-length);
+        // Alinhamento com plataformas: fatia os últimos giros e inverte a ordem
+        // fazendo com que o número mais recente (último do array) fique na extrema esquerda.
+        const slice = this._history.slice(-length).reverse();
         return slice.join(' - ');
     }
 
@@ -45,17 +47,14 @@ export class LiveMesaTracker implements IAnalyticsEngine {
         this._history.forEach(num => {
             if (num === 0) { stats.zero++; return; }
             
-            // Proporções 1:1
             if (this.RED_NUMS.has(num)) stats.red++; else stats.black++;
             if (num % 2 === 0) stats.even++; else stats.odd++;
             if (num >= 1 && num <= 18) stats.low++; else stats.high++;
 
-            // Proporções 2:1 (Dúzias)
             if (num >= 1 && num <= 12) stats.dozen1++;
             else if (num >= 13 && num <= 24) stats.dozen2++;
             else if (num >= 25 && num <= 36) stats.dozen3++;
 
-            // Proporções 2:1 (Colunas)
             if (num % 3 === 1) stats.col1++;
             else if (num % 3 === 2) stats.col2++;
             else if (num % 3 === 0) stats.col3++;
