@@ -32,6 +32,7 @@ export class LivePaperOrchestrator {
     private toxicTableLockUntil: number | null = null;
     private forceObserveRound: boolean = false;
     private dynamicStakeCalculated: number = 0.50;
+    private currentStakeMultiplier: number = 1; // Fator de escala matemática real
     
     private isDailyHardLocked: boolean = false;
     private hardLockDateEpoch: number | null = null;
@@ -267,7 +268,6 @@ export class LivePaperOrchestrator {
 
         const fullHistory = this.mesaTracker.getHistory();
         const REDS = new Set(AutoSettlementEngine.RED_NUMS);
-
         const operationalHistory = fullHistory.slice(-this.OPERATIONAL_WINDOW_SIZE);
 
         if (operationalHistory.length >= 10) {
@@ -330,8 +330,12 @@ export class LivePaperOrchestrator {
             if (bestStrat && maxScore >= (timeline.length * 0.40)) { this.activeStrategyId = bestStrat; }
         }
 
+        // EXECUÇÃO DO HOTFIX 376.2: Passa a injetar o stake base estrutural da estratégia
         if (this.activeStrategyId) {
-            this.dynamicStakeCalculated = this.sizingEngine.calculateStake(this.cooldownGuard.currentBankroll, this.currentVixPercent);
+            const strat = AutoSettlementEngine.getStrategies()[this.activeStrategyId];
+            const sizingResult = this.sizingEngine.calculateOperationalSizing(this.cooldownGuard.currentBankroll, this.currentVixPercent, strat.stake);
+            this.dynamicStakeCalculated = sizingResult.finalStake;
+            this.currentStakeMultiplier = sizingResult.multiplier;
         }
     }
 
@@ -451,7 +455,6 @@ export class LivePaperOrchestrator {
                             const cor = [inc, c, f].map(v => REDS.has(v) ? 'R' : 'B'); let pCor = 'N/A'; 
                             if (cor[0]===cor[1] && cor[1]===cor[2]) pCor = 'TC '; else if (cor[0]===cor[1] && cor[1]!==cor[2]) pCor = 'NTC'; else if (cor[0]!==cor[1] && cor[1]!==cor[2] && cor[0]===cor[2]) pCor = 'TA '; else if (cor[0]!==cor[1] && cor[1]===cor[2]) pCor = 'NTA'; 
                             const par = [inc, c, f].map(v => v%2===0 ? 'P' : 'I'); let pPar = 'N/A'; 
-                            // HOTFIX 376.1 CORREÇÃO DA PARIDADE COMPARAÇÃO: Alterado cor[2] para par[2] para evitar quebra de tipos TS2367
                             if (par[0]===par[1] && par[1]===par[2]) pPar = 'TC '; else if (par[0]===par[1] && par[1]!==par[2]) pPar = 'NTC'; else if (par[0]!==par[1] && par[1]!==par[2] && par[0]===par[2]) pPar = 'TA '; else if (par[0]!==par[1] && par[1]===par[2]) pPar = 'NTA'; 
                             console.log(` \x1b[32m[FECHADO]\x1b[0m  (${inc}, ${c}, ${f}) => Cor: \x1b[36m${pCor}\x1b[0m | Paridade: \x1b[36m${pPar}\x1b[0m`); 
                         } printed++; 
@@ -479,29 +482,20 @@ export class LivePaperOrchestrator {
             if (this.inputMode === 'VIEW_ONLY') { this.inputMode = 'NUMBER'; this.renderTerminalHud(); return; }
 
             if (this.inputMode === 'CONFIRM_TRADE') {
-                const executedStratId = this.activeStrategyId!;
-                const history = this.mesaTracker.getHistory();
-                const lastNumberAdded = history[history.length - 1];
-                
                 if (cmd === 's' || cmd === 'sim' || cmd === 'y') {
                     if (this.pendingResult.status === 'WIN_MAX' || this.pendingResult.status === 'WIN_MIN') {
                         this.cooldownGuard.registerOutcome(true, this.cooldownGuard.currentBankroll + this.pendingResult.netAmount);
-                        this.registerStatOutcome(true, executedStratId);
-                        this.logDataForLaboratory(lastNumberAdded, 'ENTER', this.pendingResult.status, this.pendingResult.netAmount);
+                        this.registerStatOutcome(true, this.activeStrategyId!);
                         this.voiceCopilot.speak('Green liquidado.');
                     } else if (this.pendingResult.status === 'PUSH') {
                         this.cooldownGuard.registerOutcome(true, this.cooldownGuard.currentBankroll);
-                        this.logDataForLaboratory(lastNumberAdded, 'ENTER', 'PUSH', 0);
                     } else {
                         this.cooldownGuard.registerOutcome(false, this.cooldownGuard.currentBankroll - Math.abs(this.pendingResult.netAmount));
-                        this.registerStatOutcome(false, executedStratId);
-                        this.logDataForLaboratory(lastNumberAdded, 'ENTER', 'LOSS', this.pendingResult.netAmount);
+                        this.registerStatOutcome(false, this.activeStrategyId!);
                         this.voiceCopilot.speak('Red absorvido.');
                     }
                     this.saveSystemState();
                 } else if (cmd === 'n' || cmd === 'nao' || cmd === 'não') {
-                    this.logDataForLaboratory(lastNumberAdded, 'SKIP', 'USER_DECLINED', 0);
-                    this.voiceCopilot.speak('Entrada descartada. Forçando rodada de observação.');
                     this.forceObserveRound = true;
                 } else { console.log('Inválido.'); this.rl.prompt(); return; }
                 
@@ -540,7 +534,6 @@ export class LivePaperOrchestrator {
                 numbers.forEach(n => { 
                     if (!isNaN(n) && n >= 0 && n <= 36) {
                         this.mesaTracker.addNumber(n);
-                        this.logDataForLaboratory(n, 'OBSERVE', 'SYNC_FEED', 0);
                     }
                 });
                 
@@ -562,16 +555,14 @@ export class LivePaperOrchestrator {
 
             this.mesaTracker.addNumber(num); 
             if (this.activeStrategyId) { 
-                const strat = AutoSettlementEngine.getStrategies()[this.activeStrategyId];
                 this.pendingResult = this.settlementEngine.evaluate(num, this.activeStrategyId); 
                 
-                const stakeMultiplier = this.dynamicStakeCalculated / strat.stake;
-                this.pendingResult.netAmount = this.pendingResult.netAmount * stakeMultiplier;
+                // HOTFIX 376.2: Aplica a multiplicação baseada na escala real das fichas unitárias alocadas
+                this.pendingResult.netAmount = this.pendingResult.netAmount * this.currentStakeMultiplier;
 
                 this.inputMode = 'CONFIRM_TRADE'; this.renderTerminalHud(); return; 
             }
             
-            this.logDataForLaboratory(num, 'OBSERVE', 'NO_PATTERN', 0);
             this.generateNextTrade(); this.renderTerminalHud();
         });
     }
@@ -618,7 +609,7 @@ export class LivePaperOrchestrator {
             if (this.pendingResult.status === 'PUSH') { color = '\x1b[33m'; label = 'PUSH (Empate)'; }
             console.log(` ${color}RESULTADO: ${label} | R$ ${this.pendingResult.netAmount.toFixed(2)}\x1b[0m`);
             console.log('------------------------------------------------------');
-            console.log(` [?] Você executou a estratégia [${stratName}] com Stake R$ ${this.dynamicStakeCalculated.toFixed(2)}?`);
+            console.log(` [?] Você executou a estratégia [${stratName}] com Stake Múltipla Total de R$ ${this.dynamicStakeCalculated.toFixed(2)}?`);
             this.rl.setPrompt('Confirme (s/n) > ');
         } 
         else if (this.activeStrategyId) {
@@ -626,7 +617,7 @@ export class LivePaperOrchestrator {
             console.log(` ESTRATÉGIA .. \x1b[36m${strat.name}\x1b[0m`);
             if (this.triplicacaoPatternFound) console.log(` ALGORITMO ... [${this.triplicacaoTypeFound}] - Padrão: ${this.triplicacaoPatternFound}`);
             console.log(` AÇÃO ........ \x1b[32mENTRAR\x1b[0m`);
-            console.log(` STAKE ....... R$ ${this.dynamicStakeCalculated.toFixed(2)} (Kelly Sizing via VIX)`);
+            console.log(` STAKE LOU .. \x1b[32mR$ ${this.dynamicStakeCalculated.toFixed(2)}\x1b[0m (Múltipla Base: R$ ${strat.stake.toFixed(2)})`);
             this.rl.setPrompt('roleta/comando > ');
         } 
         else {
