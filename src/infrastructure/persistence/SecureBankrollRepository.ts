@@ -1,10 +1,14 @@
-'use strict';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as crypto from 'node:crypto';
+import { IBankrollRepository } from '../../domain/interfaces/IBankrollRepository';
 
-const fs = require('node:fs');
-const path = require('node:path');
-const crypto = require('node:crypto');
+export class SecureBankrollRepository implements IBankrollRepository {
+    private readonly dataDir: string;
+    private readonly filePath: string;
+    private readonly keyPath: string;
+    private readonly secretKey: string;
 
-class SecureBankrollRepository {
     constructor() {
         this.dataDir = path.join(__dirname, '..', '..', '..', 'data');
         if (!fs.existsSync(this.dataDir)) {
@@ -14,34 +18,31 @@ class SecureBankrollRepository {
         this.filePath = path.join(this.dataDir, 'bankroll-state.json');
         this.keyPath = path.join(this.dataDir, '.sys_lock_key');
         
-        // Inicializa ou recupera a chave criptográfica do sistema
         this.secretKey = this._getOrCreateKey();
     }
 
-    _getOrCreateKey() {
+    private _getOrCreateKey(): string {
         if (fs.existsSync(this.keyPath)) {
             return fs.readFileSync(this.keyPath, 'utf8');
         }
-        // Gera um entropy alto para a chave secreta e restringe a leitura do arquivo
         const newKey = crypto.randomBytes(32).toString('hex');
         fs.writeFileSync(this.keyPath, newKey, { encoding: 'utf8', mode: 0o600 });
         return newKey;
     }
 
-    _generateSignature(payload) {
+    private _generateSignature(payload: any): string {
         return crypto.createHmac('sha256', this.secretKey)
                      .update(JSON.stringify(payload))
                      .digest('hex');
     }
 
-    load() {
+    public load(): any | null {
         if (!fs.existsSync(this.filePath)) return null;
 
         try {
             const fileContent = fs.readFileSync(this.filePath, 'utf8');
             const parsed = JSON.parse(fileContent);
 
-            // Defesa 1: Checa se o arquivo é legado (sem criptografia)
             if (!parsed.signature || !parsed.payload) {
                 console.error('\n\x1b[41m\x1b[37m [!] ALERTA CRÍTICO DE INTEGRIDADE \x1b[0m');
                 console.error('\x1b[31m O formato do arquivo de dados não está assinado digitalmente.\x1b[0m');
@@ -49,7 +50,6 @@ class SecureBankrollRepository {
                 return { isDailyHardLocked: true, hardLockDateEpoch: Date.now() };
             }
 
-            // Defesa 2: Valida a assinatura HMAC
             const expectedSignature = this._generateSignature(parsed.payload);
             if (expectedSignature !== parsed.signature) {
                 console.error('\n\x1b[41m\x1b[37m [!] ALERTA DE VIOLAÇÃO (ANTI-TAMPER) \x1b[0m');
@@ -65,7 +65,7 @@ class SecureBankrollRepository {
         }
     }
 
-    save(state) {
+    public save(state: any): void {
         const signature = this._generateSignature(state);
         const secureEnvelope = {
             payload: state,
@@ -74,5 +74,3 @@ class SecureBankrollRepository {
         fs.writeFileSync(this.filePath, JSON.stringify(secureEnvelope, null, 2), 'utf8');
     }
 }
-
-module.exports = { SecureBankrollRepository };

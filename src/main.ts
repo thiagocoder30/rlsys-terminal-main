@@ -1,6 +1,6 @@
-import { SecureBankrollRepository } from './infrastructure/persistence/SecureBankrollRepository.js';
-import { LiveMesaTracker } from './domain/analytics/LiveMesaTracker.js';
-import { LivePaperOrchestrator } from './presentation/cli/LivePaperOrchestrator.js';
+import { SecureBankrollRepository } from './infrastructure/persistence/SecureBankrollRepository';
+import { LiveMesaTracker } from './domain/analytics/LiveMesaTracker';
+import { LivePaperOrchestrator } from './presentation/cli/LivePaperOrchestrator';
 
 // 1. Instanciação das dependências (Infra & Analítica)
 const bankrollRepository = new SecureBankrollRepository();
