@@ -36,6 +36,9 @@ export class LivePaperOrchestrator {
     private dynamicStakeCalculated: number = 0.50;
     private currentStakeMultiplier: number = 1;
     
+    // HOTFIX 377.2: Tolerância Dinâmica de Entropia (Padrão 95.0)
+    private vixTolerance: number = 95.0;
+    
     private isDailyHardLocked: boolean = false;
     private hardLockDateEpoch: number | null = null;
     
@@ -82,6 +85,11 @@ export class LivePaperOrchestrator {
             this.sizingEngine.setProvider(this.savedState.provider as CasinoProvider);
         }
         
+        // HOTFIX 377.2: Recupera a tolerância customizada, se existir
+        if (this.savedState && this.savedState.vixTolerance) {
+            this.vixTolerance = this.savedState.vixTolerance;
+        }
+        
         if (this.savedState && Array.isArray(this.savedState.history)) {
             this.savedState.history.forEach((num: number) => this.mesaTracker.addNumber(num));
         }
@@ -90,7 +98,6 @@ export class LivePaperOrchestrator {
             this.toxicTableLockUntil = this.savedState.toxicTableLockUntil;
         }
 
-        // PERSISTÊNCIA DA QUARENTENA: Recupera a matriz de pesos salva no disco
         if (this.savedState && this.savedState.strategyWeights) {
             this.performanceEvaluator.setWeights(this.savedState.strategyWeights);
         }
@@ -155,9 +162,10 @@ export class LivePaperOrchestrator {
         currentSnapshot.provider = this.sizingEngine.getProvider();
         currentSnapshot.history = this.mesaTracker.getHistory();
         currentSnapshot.toxicTableLockUntil = this.toxicTableLockUntil;
-        
-        // Salvando matriz de aprendizado criptografada em disco
         currentSnapshot.strategyWeights = this.performanceEvaluator.getAllWeights();
+        
+        // Salvando tolerância customizada no cofre
+        currentSnapshot.vixTolerance = this.vixTolerance;
         
         this.bankrollRepo.save(currentSnapshot);
     }
@@ -298,7 +306,8 @@ export class LivePaperOrchestrator {
         if (this.forceObserveRound) { this.forceObserveRound = false; return; }
         if (operationalHistory.length < 10) return;
 
-        if (this.currentVixPercent > 95.0) { this.sessionStats.entropyBlocks++; return; }
+        // Tolerância Dinâmica acoplada ao motor de risco
+        if (this.currentVixPercent > this.vixTolerance) { this.sessionStats.entropyBlocks++; return; }
 
         const reversedHistory = [...operationalHistory].reverse();
         
@@ -451,6 +460,37 @@ export class LivePaperOrchestrator {
                 this.rl.close(); 
                 return; 
             }
+
+            // HOTFIX 377.2: Comando de Limpeza de Memória (Mesa Nova)
+            if (cmd === 'reset') {
+                this.mesaTracker = new (this.mesaTracker.constructor as any)();
+                this.toxicTableLockUntil = null;
+                this.saveSystemState();
+                console.clear();
+                console.log('\n \x1b[32m[!] SUCESSO: Memória da mesa e travas temporárias foram purgadas.\x1b[0m');
+                console.log(' Você agora está operando uma "Mesa Limpa".');
+                setTimeout(() => this.renderTerminalHud(), 2000);
+                return;
+            }
+
+            // HOTFIX 377.2: Comandos de Risco
+            if (cmd === 'risk low') {
+                this.vixTolerance = 98.0;
+                this.saveSystemState();
+                console.clear();
+                console.log('\n \x1b[33m[!] ATENÇÃO: Limite de VIX expandido para 98.0%.\x1b[0m');
+                console.log(' O sistema suportará mesas mais caóticas (ideal para Pragmatic).');
+                setTimeout(() => { this.generateNextTrade(); this.renderTerminalHud(); }, 2500);
+                return;
+            }
+            if (cmd === 'risk normal') {
+                this.vixTolerance = 95.0;
+                this.saveSystemState();
+                console.clear();
+                console.log('\n \x1b[32m[!] SUCESSO: Limite de VIX restaurado para o padrão 95.0%.\x1b[0m');
+                setTimeout(() => { this.generateNextTrade(); this.renderTerminalHud(); }, 2000);
+                return;
+            }
             
             if (cmd === 'help' || cmd === 'ajuda') {
                 console.clear();
@@ -466,10 +506,14 @@ export class LivePaperOrchestrator {
                 console.log(' heatmap            : Mapeia números Quentes e Frios.');
                 console.log(' stats              : Exibe a estatística geral da mesa.');
                 console.log(' weights            : Inspeciona os pesos ativos de regime.');
-                console.log('\n [ GESTÃO DE RISCO ]');
+                console.log('\n [ GESTÃO DE RISCO E SISTEMA ]');
+                console.log(' reset              : Limpa o histórico de giros (Para nova mesa).');
+                console.log(' risk low           : Aumenta a tolerância de VIX para 98%.');
+                console.log(' risk normal        : Restaura a tolerância de VIX para 95%.');
                 console.log(' provider pragmatic : Ajusta Floor do Provedor p/ R$ 0.10.');
                 console.log(' provider evolution : Ajusta Floor do Provedor p/ R$ 0.50.');
                 console.log(' setbankroll <v>    : Calibra banca inicial.');
+                console.log(' exit / quit        : Salva o estado criptografado e encerra.');
                 console.log('------------------------------------------------------');
                 console.log(' Pressione ENTER para retornar à operação...');
                 this.inputMode = 'VIEW_ONLY';
@@ -535,8 +579,6 @@ export class LivePaperOrchestrator {
                     } else {
                         this.cooldownGuard.registerOutcome(false, this.cooldownGuard.currentBankroll - Math.abs(this.pendingResult.netAmount));
                         this.registerStatOutcome(false, executedStratId);
-                        
-                        // DEGRADAÇÃO AGRESSIVA ROTA A: Peso cai para 0.5, cortando o sinal imediatamente
                         this.performanceEvaluator.registerLoss(executedStratId);
                         this.voiceCopilot.speak('Red absorvido.');
                     }
@@ -584,7 +626,8 @@ export class LivePaperOrchestrator {
                 });
                 
                 this.generateNextTrade();
-                if (numbers.length > 20 && this.currentVixPercent > 95.0) { 
+                // Bloqueio referenciando a Tolerância Dinâmica
+                if (numbers.length > 20 && this.currentVixPercent > this.vixTolerance) { 
                     if (!this.toxicTableLockUntil || Date.now() >= this.toxicTableLockUntil) {
                         this.toxicTableLockUntil = Date.now() + (15 * 60 * 1000); 
                         this.voiceCopilot.speak('Atenção. Entropia máxima detectada. Mesa trancada.');
@@ -624,7 +667,8 @@ export class LivePaperOrchestrator {
         
         let vixColor = '\x1b[32m'; 
         if (this.currentVixPercent > 75) vixColor = '\x1b[33m'; 
-        if (this.currentVixPercent > 95) vixColor = '\x1b[31m'; 
+        // Adapta cor baseada na tolerância escolhida
+        if (this.currentVixPercent > this.vixTolerance) vixColor = '\x1b[31m'; 
         
         console.log(` ENTROPIA (VIX) .. ${vixColor}${this.currentVixPercent.toFixed(1)}%\x1b[0m [Janela Móvel: ${this.OPERATIONAL_WINDOW_SIZE} Giros]`);
         console.log(` PROVEDOR ATIVO .. \x1b[36m${this.sizingEngine.getProvider()}\x1b[0m (Floor: R$ ${this.sizingEngine.getProvider() === 'EVOLUTION' ? '0.50' : '0.10'})`);
@@ -636,7 +680,7 @@ export class LivePaperOrchestrator {
             const secs = Math.floor((remainingMs % 60000) / 1000);
             const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
             
-            console.log(`\x1b[31m ☣️ MESA TÓXICA REJEITADA PELO SISTEMA (VIX > 95%)\x1b[0m`);
+            console.log(`\x1b[31m ☣️ MESA TÓXICA REJEITADA PELO SISTEMA (VIX > ${this.vixTolerance.toFixed(1)}%)\x1b[0m`);
             console.log(` AÇÃO: Feche a corretora. Retorne em \x1b[1m${timeStr}\x1b[0m.`);
             this.rl.setPrompt('comando > ');
         }
