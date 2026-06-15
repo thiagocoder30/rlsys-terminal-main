@@ -289,15 +289,81 @@ export class LivePaperOrchestrator {
         }
     }
 
+    private renderHeatmap(): void {
+        console.clear();
+        const freqMap = this.mesaTracker.getFrequencies();
+        const historyLength = this.mesaTracker.getHistory().length;
+        
+        // Converte o Map para um array ordenado por frequência (decrescente)
+        const sortedFreq = Array.from(freqMap.entries()).sort((a, b) => b[1] - a[1]);
+        
+        console.log('======================================================');
+        console.log(` 🌡️  XAI: HEATMAP TOPOGRÁFICO (Amostra: ${historyLength} giros)`);
+        console.log('======================================================');
+        
+        if (historyLength === 0) {
+            console.log(' \x1b[33mAguardando dados da mesa...\x1b[0m');
+        } else {
+            console.log(' \x1b[31m🔥 HOT NUMBERS (Mais frequentes):\x1b[0m');
+            for (let i = 0; i < 5; i++) {
+                if (sortedFreq[i][1] > 0) {
+                    console.log(`    Número \x1b[1m${sortedFreq[i][0].toString().padStart(2, ' ')}\x1b[0m : ${sortedFreq[i][1]} aparições`);
+                }
+            }
+            
+            console.log('\n \x1b[36m❄️  COLD NUMBERS (Menos frequentes/Ausentes):\x1b[0m');
+            // Pega os 5 últimos do array ordenado
+            for (let i = sortedFreq.length - 1; i >= sortedFreq.length - 5; i--) {
+                console.log(`    Número \x1b[1m${sortedFreq[i][0].toString().padStart(2, ' ')}\x1b[0m : ${sortedFreq[i][1]} aparições`);
+            }
+        }
+        
+        console.log('------------------------------------------------------');
+        console.log(' [!] Aviso: Cassinos usam isso para induzir a Falácia');
+        console.log('     do Apostador. O sistema RL.SYS usa para atestar a');
+        console.log('     Variância. Não utilize como sinal preditivo.');
+        console.log('------------------------------------------------------');
+        console.log(' Pressione ENTER para retornar à operação...');
+    }
+
+    private renderStats(): void {
+        console.clear();
+        const stats = this.mesaTracker.getDistributionStats();
+        
+        console.log('======================================================');
+        console.log(` 📊 XAI: DISTRIBUIÇÃO DA MESA (Amostra: ${stats.total} giros)`);
+        console.log('======================================================');
+        
+        if (stats.total === 0) {
+            console.log(' \x1b[33mAguardando dados da mesa...\x1b[0m');
+        } else {
+            const pRed = ((stats.red / stats.total) * 100).toFixed(1);
+            const pBlack = ((stats.black / stats.total) * 100).toFixed(1);
+            const pZero = ((stats.zero / stats.total) * 100).toFixed(1);
+            
+            const pEven = ((stats.even / stats.total) * 100).toFixed(1);
+            const pOdd = ((stats.odd / stats.total) * 100).toFixed(1);
+            
+            const pLow = ((stats.low / stats.total) * 100).toFixed(1);
+            const pHigh = ((stats.high / stats.total) * 100).toFixed(1);
+
+            console.log(` \x1b[31mVermelho\x1b[0m : ${stats.red.toString().padStart(3, ' ')} vezes (${pRed}%) | \x1b[30m\x1b[47mPreto\x1b[0m: ${stats.black.toString().padStart(3, ' ')} vezes (${pBlack}%)`);
+            console.log(` \x1b[32mZero (0)\x1b[0m : ${stats.zero.toString().padStart(3, ' ')} vezes (${pZero}%)`);
+            console.log(' ----------------------------------------------------');
+            console.log(` Pares    : ${stats.even.toString().padStart(3, ' ')} vezes (${pEven}%) | Ímpares: ${stats.odd.toString().padStart(3, ' ')} vezes (${pOdd}%)`);
+            console.log(` Baixos   : ${stats.low.toString().padStart(3, ' ')} vezes (${pLow}%) | Altos  : ${stats.high.toString().padStart(3, ' ')} vezes (${pHigh}%)`);
+        }
+        
+        console.log('------------------------------------------------------');
+        console.log(' Pressione ENTER para retornar à operação...');
+    }
+
     private attachEventListeners(): void {
         this.rl.on('line', (line) => {
             const cmd = line.trim().toLowerCase();
             
             if (cmd === 'exit' || cmd === 'quit') { this.saveSystemState(); console.log('\n[!] Estado criptografado salvo. Encerrando...'); this.rl.close(); return; }
             
-            // ==========================================
-            // NOVO: MENU DE AJUDA / HELP
-            // ==========================================
             if (cmd === 'help' || cmd === 'ajuda') {
                 console.clear();
                 console.log('======================================================');
@@ -308,7 +374,9 @@ export class LivePaperOrchestrator {
                 console.log(' sync <n,n,...>     : Insere múltiplos números (Warmup).');
                 console.log('\n [ AUDITORIA E ANÁLISE (XAI) ]');
                 console.log(' timeline           : Exibe a fita dos últimos 15 giros.');
-                console.log(' trios              : Abre o Scanner de Padrões e Triplicação.');
+                console.log(' trios              : Abre o Scanner de Padrões (Triplicação).');
+                console.log(' heatmap            : Mapeia números Quentes e Frios.');
+                console.log(' stats              : Exibe a estatística geral da mesa.');
                 console.log('\n [ GESTÃO DE RISCO ]');
                 console.log(' provider pragmatic : Ajusta Floor do Provedor p/ R$ 0.10.');
                 console.log(' provider evolution : Ajusta Floor do Provedor p/ R$ 0.50.');
@@ -321,6 +389,32 @@ export class LivePaperOrchestrator {
                 this.inputMode = 'VIEW_ONLY';
                 this.rl.prompt();
                 return;
+            }
+
+            if (cmd === 'heatmap') { this.renderHeatmap(); this.inputMode = 'VIEW_ONLY'; this.rl.prompt(); return; }
+            if (cmd === 'stats') { this.renderStats(); this.inputMode = 'VIEW_ONLY'; this.rl.prompt(); return; }
+            if (cmd === 'timeline') { console.clear(); console.log(`\n Histórico: \x1b[36m${this.mesaTracker.getTimeline(15)}\x1b[0m\n [ENTER] para voltar...`); this.inputMode = 'VIEW_ONLY'; this.rl.prompt(); return; }
+            
+            if (cmd === 'trios') { 
+                console.clear(); console.log('======================================================'); console.log(' 🧩 XAI: AUDITORIA DE TRIPLICAÇÃO (Últimos Eventos)'); console.log('======================================================'); 
+                const h = this.mesaTracker.getHistory(); 
+                if (h.length < 3) { console.log(' \x1b[33mDados insuficientes para formar trios estruturais.\x1b[0m'); } else { 
+                    const reversed = [...h].reverse(); const remainder = reversed.length % 3; const REDS = new Set(AutoSettlementEngine.RED_NUMS); 
+                    if (remainder === 2) { console.log(` \x1b[33m[PENDENTE]\x1b[0m Início: \x1b[1m${reversed[1]}\x1b[0m | Confirmação: \x1b[1m${reversed[0]}\x1b[0m | Finalização: ?`); } 
+                    else if (remainder === 1) { console.log(` \x1b[33m[PENDENTE]\x1b[0m Início: \x1b[1m${reversed[0]}\x1b[0m | Confirmação: ? | Finalização: ?`); } 
+                    let printed = 0; 
+                    for (let i = remainder; i < reversed.length && printed < 8; i += 3) { 
+                        const f = reversed[i]; const c = reversed[i+1]; const inc = reversed[i+2]; 
+                        if ([inc, c, f].includes(0)) { console.log(` \x1b[31m[ANULADO]\x1b[0m  Trio com Zero: (${inc}, ${c}, ${f})`); } else { 
+                            const cor = [inc, c, f].map(v => REDS.has(v) ? 'R' : 'B'); let pCor = 'N/A'; 
+                            if (cor[0]===cor[1] && cor[1]===cor[2]) pCor = 'TC '; else if (cor[0]===cor[1] && cor[1]!==cor[2]) pCor = 'NTC'; else if (cor[0]!==cor[1] && cor[1]!==cor[2] && cor[0]===cor[2]) pCor = 'TA '; else if (cor[0]!==cor[1] && cor[1]===cor[2]) pCor = 'NTA'; 
+                            const par = [inc, c, f].map(v => v%2===0 ? 'P' : 'I'); let pPar = 'N/A'; 
+                            if (par[0]===par[1] && par[1]===par[2]) pPar = 'TC '; else if (par[0]===par[1] && par[1]!==par[2]) pPar = 'NTC'; else if (par[0]!==par[1] && par[1]!==par[2] && par[0]===par[2]) pPar = 'TA '; else if (par[0]!==par[1] && par[1]===par[2]) pPar = 'NTA'; 
+                            console.log(` \x1b[32m[FECHADO]\x1b[0m  (${inc}, ${c}, ${f}) => Cor: \x1b[36m${pCor}\x1b[0m | Paridade: \x1b[36m${pPar}\x1b[0m`); 
+                        } printed++; 
+                    } 
+                } 
+                console.log('------------------------------------------------------'); console.log(' Pressione ENTER para voltar...'); this.inputMode = 'VIEW_ONLY'; this.rl.prompt(); return; 
             }
 
             if (cmd === 'provider pragmatic') { this.sizingEngine.setProvider('PRAGMATIC'); this.saveSystemState(); this.generateNextTrade(); this.renderTerminalHud(); return; }
