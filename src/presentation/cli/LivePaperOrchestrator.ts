@@ -35,9 +35,10 @@ export class LivePaperOrchestrator {
     private forceObserveRound: boolean = false;
     private dynamicStakeCalculated: number = 0.50;
     private currentStakeMultiplier: number = 1;
-    
-    // HOTFIX 377.2: Tolerância Dinâmica de Entropia (Padrão 95.0)
     private vixTolerance: number = 95.0;
+    
+    // SPRINT 379: Registro de Estratégias Desligadas pelo Usuário
+    private disabledStrategies: Set<string> = new Set();
     
     private isDailyHardLocked: boolean = false;
     private hardLockDateEpoch: number | null = null;
@@ -85,7 +86,6 @@ export class LivePaperOrchestrator {
             this.sizingEngine.setProvider(this.savedState.provider as CasinoProvider);
         }
         
-        // HOTFIX 377.2: Recupera a tolerância customizada, se existir
         if (this.savedState && this.savedState.vixTolerance) {
             this.vixTolerance = this.savedState.vixTolerance;
         }
@@ -100,6 +100,11 @@ export class LivePaperOrchestrator {
 
         if (this.savedState && this.savedState.strategyWeights) {
             this.performanceEvaluator.setWeights(this.savedState.strategyWeights);
+        }
+
+        // Recupera do Cofre as estratégias que você pediu para desligar
+        if (this.savedState && Array.isArray(this.savedState.disabledStrategies)) {
+            this.disabledStrategies = new Set(this.savedState.disabledStrategies);
         }
         
         this.cooldownGuard = new DynamicEmotionalCooldownGuard(this.initialBankroll, this.savedState);
@@ -163,9 +168,10 @@ export class LivePaperOrchestrator {
         currentSnapshot.history = this.mesaTracker.getHistory();
         currentSnapshot.toxicTableLockUntil = this.toxicTableLockUntil;
         currentSnapshot.strategyWeights = this.performanceEvaluator.getAllWeights();
-        
-        // Salvando tolerância customizada no cofre
         currentSnapshot.vixTolerance = this.vixTolerance;
+        
+        // Salvando as opções de chaveamento do usuário
+        currentSnapshot.disabledStrategies = Array.from(this.disabledStrategies);
         
         this.bankrollRepo.save(currentSnapshot);
     }
@@ -306,7 +312,6 @@ export class LivePaperOrchestrator {
         if (this.forceObserveRound) { this.forceObserveRound = false; return; }
         if (operationalHistory.length < 10) return;
 
-        // Tolerância Dinâmica acoplada ao motor de risco
         if (this.currentVixPercent > this.vixTolerance) { this.sessionStats.entropyBlocks++; return; }
 
         const reversedHistory = [...operationalHistory].reverse();
@@ -340,7 +345,8 @@ export class LivePaperOrchestrator {
                 if (colorTarget) prospectiveId = colorTarget === 'A' ? 'TRIPLICACAO_RED' : 'TRIPLICACAO_BLACK';
                 else if (parityTarget) prospectiveId = parityTarget === 'A' ? 'TRIPLICACAO_EVEN' : 'TRIPLICACAO_ODD';
                 
-                if (prospectiveId && this.performanceEvaluator.isAllowed(prospectiveId)) {
+                // CRÍTICO DA SPRINT 379: Só habilita o sinal se o usuário não tiver desativado a estratégia manualmente
+                if (prospectiveId && this.performanceEvaluator.isAllowed(prospectiveId) && !this.disabledStrategies.has(prospectiveId)) {
                     this.activeStrategyId = prospectiveId;
                     if (colorTarget) { this.triplicacaoTypeFound = 'COR'; this.triplicacaoPatternFound = colorStats.dominantPattern; }
                     else { this.triplicacaoTypeFound = 'PARIDADE'; this.triplicacaoPatternFound = parityStats.dominantPattern; }
@@ -356,7 +362,8 @@ export class LivePaperOrchestrator {
             
             let bestStrat = null; let maxScore = 0;
             Object.entries(scores).forEach(([strat, score]) => { 
-                if (score > maxScore && this.performanceEvaluator.isAllowed(strat)) { 
+                // CRÍTICO DA SPRINT 379: Bloqueia a entrada na corrida de scores se a chave estiver desligada
+                if (score > maxScore && this.performanceEvaluator.isAllowed(strat) && !this.disabledStrategies.has(strat)) { 
                     maxScore = score; 
                     bestStrat = strat; 
                 } 
@@ -436,14 +443,20 @@ export class LivePaperOrchestrator {
         console.clear();
         const weights = this.performanceEvaluator.getAllWeights();
         console.log('======================================================');
-        console.log(' 📊 XAI: INSPEÇÃO DE REGIME E QUARENTENA DE SINAIS');
+        console.log(' 📊 XAI: INSPEÇÃO DE REGIME E CHAVEAMENTO MANUAL');
         console.log('======================================================');
         Object.entries(weights).forEach(([stratId, weight]) => {
             const name = AutoSettlementEngine.getStrategies()[stratId].name;
-            let status = '\x1b[32m[ALINHADO]\x1b[0m';
-            if (weight < 1.0) status = '\x1b[33m[ALERTADO]\x1b[0m';
-            if (weight < 0.6) status = '\x1b[31m[SILENCIADO - QUARENTENA]\x1b[0m';
-            console.log(` > ${name.padEnd(20, ' ')} : Peso ${weight.toFixed(1)} | Status: ${status}`);
+            
+            // Renderização do Switch Manual
+            if (this.disabledStrategies.has(stratId)) {
+                console.log(` > \x1b[90m${name.padEnd(30, ' ')} [DESLIGADA PELO USUÁRIO]\x1b[0m`);
+            } else {
+                let status = '\x1b[32m[ALINHADO]\x1b[0m';
+                if (weight < 1.0) status = '\x1b[33m[ALERTADO]\x1b[0m';
+                if (weight < 0.6) status = '\x1b[31m[SILENCIADO PELA IA]\x1b[0m';
+                console.log(` > ${name.padEnd(20, ' ')} : Peso ${weight.toFixed(1)} | Status: ${status}`);
+            }
         });
         console.log('------------------------------------------------------');
         console.log(' Pressione ENTER para retornar à operação...');
@@ -461,26 +474,52 @@ export class LivePaperOrchestrator {
                 return; 
             }
 
-            // HOTFIX 377.2: Comando de Limpeza de Memória (Mesa Nova)
+            // SPRINT 379: Comandos de Roteamento Algorítmico
+            if (cmd.startsWith('disable ')) {
+                const term = cmd.replace('disable ', '').trim().toUpperCase();
+                let count = 0;
+                Object.keys(AutoSettlementEngine.getStrategies()).forEach(id => {
+                    if (id.includes(term)) { this.disabledStrategies.add(id); count++; }
+                });
+                console.log(`\n \x1b[33m[!] SUCESSO: ${count} estratégias correspondentes a '${term}' foram DESLIGADAS manualmente.\x1b[0m`);
+                this.saveSystemState();
+                setTimeout(() => { this.rl.prompt(); }, 2000);
+                return;
+            }
+
+            if (cmd.startsWith('enable ')) {
+                const term = cmd.replace('enable ', '').trim().toUpperCase();
+                let count = 0;
+                if (term === 'ALL') {
+                    this.disabledStrategies.clear();
+                    count = Object.keys(AutoSettlementEngine.getStrategies()).length;
+                } else {
+                    Object.keys(AutoSettlementEngine.getStrategies()).forEach(id => {
+                        if (id.includes(term)) { this.disabledStrategies.delete(id); count++; }
+                    });
+                }
+                console.log(`\n \x1b[32m[!] SUCESSO: ${count} estratégias correspondentes a '${term}' foram RELIGADAS manualmente.\x1b[0m`);
+                this.saveSystemState();
+                setTimeout(() => { this.rl.prompt(); }, 2000);
+                return;
+            }
+
             if (cmd === 'reset') {
                 this.mesaTracker = new (this.mesaTracker.constructor as any)();
                 this.toxicTableLockUntil = null;
                 this.saveSystemState();
                 console.clear();
                 console.log('\n \x1b[32m[!] SUCESSO: Memória da mesa e travas temporárias foram purgadas.\x1b[0m');
-                console.log(' Você agora está operando uma "Mesa Limpa".');
-                setTimeout(() => this.renderTerminalHud(), 2000);
+                setTimeout(() => this.renderTerminalHud(), 1500);
                 return;
             }
 
-            // HOTFIX 377.2: Comandos de Risco
             if (cmd === 'risk low') {
                 this.vixTolerance = 98.0;
                 this.saveSystemState();
                 console.clear();
                 console.log('\n \x1b[33m[!] ATENÇÃO: Limite de VIX expandido para 98.0%.\x1b[0m');
-                console.log(' O sistema suportará mesas mais caóticas (ideal para Pragmatic).');
-                setTimeout(() => { this.generateNextTrade(); this.renderTerminalHud(); }, 2500);
+                setTimeout(() => { this.generateNextTrade(); this.renderTerminalHud(); }, 1500);
                 return;
             }
             if (cmd === 'risk normal') {
@@ -488,7 +527,7 @@ export class LivePaperOrchestrator {
                 this.saveSystemState();
                 console.clear();
                 console.log('\n \x1b[32m[!] SUCESSO: Limite de VIX restaurado para o padrão 95.0%.\x1b[0m');
-                setTimeout(() => { this.generateNextTrade(); this.renderTerminalHud(); }, 2000);
+                setTimeout(() => { this.generateNextTrade(); this.renderTerminalHud(); }, 1500);
                 return;
             }
             
@@ -501,18 +540,14 @@ export class LivePaperOrchestrator {
                 console.log(' <0-36>             : Registra o número do giro na roleta.');
                 console.log(' sync <n,n,...>     : Insere múltiplos números (Warmup).');
                 console.log('\n [ AUDITORIA E ANÁLISE (XAI) ]');
-                console.log(' timeline           : Exibe a fita dos últimos 15 giros.');
-                console.log(' trios              : Abre o Scanner de Padrões (Triplicação).');
-                console.log(' heatmap            : Mapeia números Quentes e Frios.');
-                console.log(' stats              : Exibe a estatística geral da mesa.');
                 console.log(' weights            : Inspeciona os pesos ativos de regime.');
                 console.log('\n [ GESTÃO DE RISCO E SISTEMA ]');
+                console.log(' disable <nome>     : Desliga estratégias (ex: disable sector).');
+                console.log(' enable <nome>      : Religa estratégias (ex: enable all).');
                 console.log(' reset              : Limpa o histórico de giros (Para nova mesa).');
                 console.log(' risk low           : Aumenta a tolerância de VIX para 98%.');
                 console.log(' risk normal        : Restaura a tolerância de VIX para 95%.');
                 console.log(' provider pragmatic : Ajusta Floor do Provedor p/ R$ 0.10.');
-                console.log(' provider evolution : Ajusta Floor do Provedor p/ R$ 0.50.');
-                console.log(' setbankroll <v>    : Calibra banca inicial.');
                 console.log(' exit / quit        : Salva o estado criptografado e encerra.');
                 console.log('------------------------------------------------------');
                 console.log(' Pressione ENTER para retornar à operação...');
@@ -626,7 +661,6 @@ export class LivePaperOrchestrator {
                 });
                 
                 this.generateNextTrade();
-                // Bloqueio referenciando a Tolerância Dinâmica
                 if (numbers.length > 20 && this.currentVixPercent > this.vixTolerance) { 
                     if (!this.toxicTableLockUntil || Date.now() >= this.toxicTableLockUntil) {
                         this.toxicTableLockUntil = Date.now() + (15 * 60 * 1000); 
@@ -667,7 +701,6 @@ export class LivePaperOrchestrator {
         
         let vixColor = '\x1b[32m'; 
         if (this.currentVixPercent > 75) vixColor = '\x1b[33m'; 
-        // Adapta cor baseada na tolerância escolhida
         if (this.currentVixPercent > this.vixTolerance) vixColor = '\x1b[31m'; 
         
         console.log(` ENTROPIA (VIX) .. ${vixColor}${this.currentVixPercent.toFixed(1)}%\x1b[0m [Janela Móvel: ${this.OPERATIONAL_WINDOW_SIZE} Giros]`);
