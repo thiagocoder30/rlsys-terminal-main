@@ -38,7 +38,6 @@ export class LivePaperOrchestrator {
     
     private liveTimer: any = null;
     
-    // Configuração de Limite de Microestrutura Institucional
     private readonly OPERATIONAL_WINDOW_SIZE = 90; 
 
     private sessionStats = {
@@ -269,8 +268,6 @@ export class LivePaperOrchestrator {
         const fullHistory = this.mesaTracker.getHistory();
         const REDS = new Set(AutoSettlementEngine.RED_NUMS);
 
-        // APLICANDO CORREÇÃO DA SPRINT 376: O isolamento da Janela Móvel Operacional
-        // Reduzimos a amostra matemática para os últimos 90 giros eliminando a "Inércia de Dados"
         const operationalHistory = fullHistory.slice(-this.OPERATIONAL_WINDOW_SIZE);
 
         if (operationalHistory.length >= 10) {
@@ -422,7 +419,7 @@ export class LivePaperOrchestrator {
                 console.log(' timeline           : Exibe a fita dos últimos 15 giros.');
                 console.log(' trios              : Abre o Scanner de Padrões (Triplicação).');
                 console.log(' heatmap            : Mapeia números Quentes e Frios.');
-                console.log(' stats              : Exibe a estatística geral acumulada da mesa.');
+                console.log(' stats              : Exibe a estatística geral da mesa.');
                 console.log('\n [ GESTÃO DE RISCO ]');
                 console.log(' provider pragmatic : Ajusta Floor do Provedor p/ R$ 0.10.');
                 console.log(' provider evolution : Ajusta Floor do Provedor p/ R$ 0.50.');
@@ -454,7 +451,8 @@ export class LivePaperOrchestrator {
                             const cor = [inc, c, f].map(v => REDS.has(v) ? 'R' : 'B'); let pCor = 'N/A'; 
                             if (cor[0]===cor[1] && cor[1]===cor[2]) pCor = 'TC '; else if (cor[0]===cor[1] && cor[1]!==cor[2]) pCor = 'NTC'; else if (cor[0]!==cor[1] && cor[1]!==cor[2] && cor[0]===cor[2]) pCor = 'TA '; else if (cor[0]!==cor[1] && cor[1]===cor[2]) pCor = 'NTA'; 
                             const par = [inc, c, f].map(v => v%2===0 ? 'P' : 'I'); let pPar = 'N/A'; 
-                            if (par[0]===par[1] && par[1]===par[2]) pPar = 'TC '; else if (par[0]===par[1] && par[1]!==par[2]) pPar = 'NTC'; else if (par[0]!==par[1] && par[1]!==par[2] && par[0]===cor[2]) pPar = 'TA '; else if (par[0]!==par[1] && par[1]===par[2]) pPar = 'NTA'; 
+                            // HOTFIX 376.1 CORREÇÃO DA PARIDADE COMPARAÇÃO: Alterado cor[2] para par[2] para evitar quebra de tipos TS2367
+                            if (par[0]===par[1] && par[1]===par[2]) pPar = 'TC '; else if (par[0]===par[1] && par[1]!==par[2]) pPar = 'NTC'; else if (par[0]!==par[1] && par[1]!==par[2] && par[0]===par[2]) pPar = 'TA '; else if (par[0]!==par[1] && par[1]===par[2]) pPar = 'NTA'; 
                             console.log(` \x1b[32m[FECHADO]\x1b[0m  (${inc}, ${c}, ${f}) => Cor: \x1b[36m${pCor}\x1b[0m | Paridade: \x1b[36m${pPar}\x1b[0m`); 
                         } printed++; 
                     } 
