@@ -38,6 +38,9 @@ export class LivePaperOrchestrator {
     
     private liveTimer: any = null;
     
+    // Configuração de Limite de Microestrutura Institucional
+    private readonly OPERATIONAL_WINDOW_SIZE = 90; 
+
     private sessionStats = {
         startBankroll: 0,
         wins: 0,
@@ -263,12 +266,15 @@ export class LivePaperOrchestrator {
     private generateNextTrade(): void {
         this.activeStrategyId = null; this.triplicacaoPatternFound = null; this.triplicacaoTypeFound = null;
 
-        const history = this.mesaTracker.getHistory();
+        const fullHistory = this.mesaTracker.getHistory();
         const REDS = new Set(AutoSettlementEngine.RED_NUMS);
 
-        // A Matemática da Entropia foi movida para o topo (Sempre executada)
-        if (history.length >= 10) {
-            const reversedHistory = [...history].reverse();
+        // APLICANDO CORREÇÃO DA SPRINT 376: O isolamento da Janela Móvel Operacional
+        // Reduzimos a amostra matemática para os últimos 90 giros eliminando a "Inércia de Dados"
+        const operationalHistory = fullHistory.slice(-this.OPERATIONAL_WINDOW_SIZE);
+
+        if (operationalHistory.length >= 10) {
+            const reversedHistory = [...operationalHistory].reverse();
             const colorStats = this.computeTriplicacao(reversedHistory, v => REDS.has(v) ? 'A' : 'B');
             const parityStats = this.computeTriplicacao(reversedHistory, v => v % 2 === 0 ? 'A' : 'B');
 
@@ -278,15 +284,14 @@ export class LivePaperOrchestrator {
             }
         }
 
-        // Travas de Bloqueio Operacional (Não impedem mais a leitura do VIX)
         if (this.isDailyHardLocked) return;
         if (this.cooldownGuard.isSessionEnded || this.cooldownGuard.isLocked() || this.checkToxicTableLock()) return;
         if (this.forceObserveRound) { this.forceObserveRound = false; return; }
-        if (history.length < 10) return;
+        if (operationalHistory.length < 10) return;
 
         if (this.currentVixPercent > 95.0) { this.sessionStats.entropyBlocks++; return; }
 
-        const reversedHistory = [...history].reverse();
+        const reversedHistory = [...operationalHistory].reverse();
         
         if (reversedHistory.length % 3 === 2) {
             const inicio = reversedHistory[1]; const confirmacao = reversedHistory[0];
@@ -318,7 +323,7 @@ export class LivePaperOrchestrator {
         }
 
         if (!this.activeStrategyId) {
-            const timeline = history.slice(-15); 
+            const timeline = operationalHistory.slice(-15); 
             let scores: Record<string, number> = { 'HEDGE_BLACK_COL3': 0, 'HEDGE_RED_COL2': 0, 'SECTOR_OMEGA': 0, 'SECTOR_ALPHA': 0, 'FUSION_SECTOR': 0 };
             const engineStrategies = AutoSettlementEngine.getStrategies();
             timeline.forEach(num => { Object.keys(scores).forEach(stratId => { const result = engineStrategies[stratId].evaluate(num); if (result.status === 'WIN_MAX' || result.status === 'WIN_MIN') scores[stratId]++; }); });
@@ -340,7 +345,7 @@ export class LivePaperOrchestrator {
         const sortedFreq = Array.from(freqMap.entries()).sort((a, b) => b[1] - a[1]);
         
         console.log('======================================================');
-        console.log(` 🌡️  XAI: HEATMAP TOPOGRÁFICO (Amostra: ${historyLength} giros)`);
+        console.log(` 🌡️  XAI: HEATMAP TOPOGRÁFICO (Amostra Acumulada: ${historyLength} giros)`);
         console.log('======================================================');
         
         if (historyLength === 0) { console.log(' \x1b[33mAguardando dados da mesa...\x1b[0m'); } else {
@@ -362,7 +367,7 @@ export class LivePaperOrchestrator {
         const stats = this.mesaTracker.getDistributionStats();
         
         console.log('======================================================');
-        console.log(` 📊 XAI: DISTRIBUIÇÃO DA MESA (Amostra: ${stats.total} giros)`);
+        console.log(` 📊 XAI: DISTRIBUIÇÃO DA MESA (Amostra Acumulada: ${stats.total} giros)`);
         console.log('======================================================');
         
         if (stats.total === 0) { console.log(' \x1b[33mAguardando dados da mesa...\x1b[0m'); } else {
@@ -417,11 +422,11 @@ export class LivePaperOrchestrator {
                 console.log(' timeline           : Exibe a fita dos últimos 15 giros.');
                 console.log(' trios              : Abre o Scanner de Padrões (Triplicação).');
                 console.log(' heatmap            : Mapeia números Quentes e Frios.');
-                console.log(' stats              : Exibe a estatística geral da mesa.');
+                console.log(' stats              : Exibe a estatística geral acumulada da mesa.');
                 console.log('\n [ GESTÃO DE RISCO ]');
                 console.log(' provider pragmatic : Ajusta Floor do Provedor p/ R$ 0.10.');
                 console.log(' provider evolution : Ajusta Floor do Provedor p/ R$ 0.50.');
-                console.log(' setbankroll <v>    : Calibra banca inicial (Ex: setbankroll 50).');
+                console.log(' setbankroll <v>    : Calibra banca inicial.');
                 console.log('\n [ SISTEMA ]');
                 console.log(' exit / quit        : Salva o estado criptografado e encerra.');
                 console.log('------------------------------------------------------');
@@ -435,6 +440,28 @@ export class LivePaperOrchestrator {
             if (cmd === 'stats') { this.renderStats(); this.inputMode = 'VIEW_ONLY'; this.rl.prompt(); return; }
             if (cmd === 'timeline') { console.clear(); console.log(`\n Histórico: \x1b[36m${this.mesaTracker.getTimeline(15)}\x1b[0m\n [ENTER] para voltar...`); this.inputMode = 'VIEW_ONLY'; this.rl.prompt(); return; }
             
+            if (cmd === 'trios') { 
+                console.clear(); console.log('======================================================'); console.log(' 🧩 XAI: AUDITORIA DE TRIPLICAÇÃO (Últimos Eventos)'); console.log('======================================================'); 
+                const h = this.mesaTracker.getHistory(); 
+                if (h.length < 3) { console.log(' \x1b[33mDados insuficientes para formar trios estruturais.\x1b[0m'); } else { 
+                    const reversed = [...h].reverse(); const remainder = reversed.length % 3; const REDS = new Set(AutoSettlementEngine.RED_NUMS); 
+                    if (remainder === 2) { console.log(` \x1b[33m[PENDENTE]\x1b[0m Início: \x1b[1m${reversed[1]}\x1b[0m | Confirmação: \x1b[1m${reversed[0]}\x1b[0m | Finalização: ?`); } 
+                    else if (remainder === 1) { console.log(` \x1b[33m[PENDENTE]\x1b[0m Início: \x1b[1m${reversed[0]}\x1b[0m | Confirmação: ? | Finalização: ?`); } 
+                    let printed = 0; 
+                    for (let i = remainder; i < reversed.length && printed < 8; i += 3) { 
+                        const f = reversed[i]; const c = reversed[i+1]; const inc = reversed[i+2]; 
+                        if ([inc, c, f].includes(0)) { console.log(` \x1b[31m[ANULADO]\x1b[0m  Trio com Zero: (${inc}, ${c}, ${f})`); } else { 
+                            const cor = [inc, c, f].map(v => REDS.has(v) ? 'R' : 'B'); let pCor = 'N/A'; 
+                            if (cor[0]===cor[1] && cor[1]===cor[2]) pCor = 'TC '; else if (cor[0]===cor[1] && cor[1]!==cor[2]) pCor = 'NTC'; else if (cor[0]!==cor[1] && cor[1]!==cor[2] && cor[0]===cor[2]) pCor = 'TA '; else if (cor[0]!==cor[1] && cor[1]===cor[2]) pCor = 'NTA'; 
+                            const par = [inc, c, f].map(v => v%2===0 ? 'P' : 'I'); let pPar = 'N/A'; 
+                            if (par[0]===par[1] && par[1]===par[2]) pPar = 'TC '; else if (par[0]===par[1] && par[1]!==par[2]) pPar = 'NTC'; else if (par[0]!==par[1] && par[1]!==par[2] && par[0]===cor[2]) pPar = 'TA '; else if (par[0]!==par[1] && par[1]===par[2]) pPar = 'NTA'; 
+                            console.log(` \x1b[32m[FECHADO]\x1b[0m  (${inc}, ${c}, ${f}) => Cor: \x1b[36m${pCor}\x1b[0m | Paridade: \x1b[36m${pPar}\x1b[0m`); 
+                        } printed++; 
+                    } 
+                } 
+                console.log('------------------------------------------------------'); console.log(' Pressione ENTER para voltar...'); this.inputMode = 'VIEW_ONLY'; this.rl.prompt(); return; 
+            }
+
             if (cmd === 'provider pragmatic') { this.sizingEngine.setProvider('PRAGMATIC'); this.saveSystemState(); this.generateNextTrade(); this.renderTerminalHud(); return; }
             if (cmd === 'provider evolution') { this.sizingEngine.setProvider('EVOLUTION'); this.saveSystemState(); this.generateNextTrade(); this.renderTerminalHud(); return; }
 
@@ -566,10 +593,7 @@ export class LivePaperOrchestrator {
         if (this.currentVixPercent > 75) vixColor = '\x1b[33m'; 
         if (this.currentVixPercent > 95) vixColor = '\x1b[31m'; 
         
-        const historyLength = this.mesaTracker.getHistory().length;
-        if (historyLength >= 10) { console.log(` ENTROPIA DA MESA. ${vixColor}${this.currentVixPercent.toFixed(1)}% (VIX)\x1b[0m`); } 
-        else { console.log(` ENTROPIA DA MESA. \x1b[36mAguardando Warmup...\x1b[0m`); }
-        
+        console.log(` ENTROPIA (VIX) .. ${vixColor}${this.currentVixPercent.toFixed(1)}%\x1b[0m [Janela Móvel: ${this.OPERATIONAL_WINDOW_SIZE} Giros]`);
         console.log(` PROVEDOR ATIVO .. \x1b[36m${this.sizingEngine.getProvider()}\x1b[0m (Floor: R$ ${this.sizingEngine.getProvider() === 'EVOLUTION' ? '0.50' : '0.10'})`);
         console.log('------------------------------------------------------');
         
