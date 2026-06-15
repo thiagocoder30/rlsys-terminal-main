@@ -5,6 +5,7 @@ import { IBankrollRepository } from '../../domain/interfaces/IBankrollRepository
 import { IAnalyticsEngine } from '../../domain/interfaces/IAnalyticsEngine';
 import { PositionSizingEngine, CasinoProvider } from '../../domain/risk/PositionSizingEngine';
 import { TrailingStopGuard } from '../../domain/risk/TrailingStopGuard';
+import { StrategyPerformanceEvaluator } from '../../domain/risk/StrategyPerformanceEvaluator';
 
 const { DynamicEmotionalCooldownGuard } = require('../../domain/risk/DynamicEmotionalCooldownGuard.js');
 const { TermuxTtsVoiceCopilot } = require('../../infrastructure/audio/TermuxTtsVoiceCopilot.js');
@@ -16,6 +17,7 @@ export class LivePaperOrchestrator {
     private mesaTracker: IAnalyticsEngine;
     private sizingEngine: PositionSizingEngine;
     private trailingStopGuard!: TrailingStopGuard;
+    private performanceEvaluator: StrategyPerformanceEvaluator;
     
     private voiceCopilot: any;
     private settlementEngine: any;
@@ -32,13 +34,12 @@ export class LivePaperOrchestrator {
     private toxicTableLockUntil: number | null = null;
     private forceObserveRound: boolean = false;
     private dynamicStakeCalculated: number = 0.50;
-    private currentStakeMultiplier: number = 1; // Fator de escala matemática real
+    private currentStakeMultiplier: number = 1;
     
     private isDailyHardLocked: boolean = false;
     private hardLockDateEpoch: number | null = null;
     
     private liveTimer: any = null;
-    
     private readonly OPERATIONAL_WINDOW_SIZE = 90; 
 
     private sessionStats = {
@@ -59,6 +60,10 @@ export class LivePaperOrchestrator {
         this.bankrollRepo = bankrollRepo;
         this.mesaTracker = mesaTracker;
         this.sizingEngine = new PositionSizingEngine();
+        
+        // Inicializa a malha com todas as assinaturas válidas da engine financeira
+        const availableStrategies = Object.keys(AutoSettlementEngine.getStrategies());
+        this.performanceEvaluator = new StrategyPerformanceEvaluator(availableStrategies);
         
         this.voiceCopilot = new TermuxTtsVoiceCopilot();
         this.settlementEngine = new AutoSettlementEngine();
@@ -314,8 +319,17 @@ export class LivePaperOrchestrator {
                 if (colorTarget && parityTarget) {
                     if (colorStats.dominantRatio >= parityStats.dominantRatio) parityTarget = null; else colorTarget = null;
                 }
-                if (colorTarget) { this.triplicacaoTypeFound = 'COR'; this.triplicacaoPatternFound = colorStats.dominantPattern; this.activeStrategyId = colorTarget === 'A' ? 'TRIPLICACAO_RED' : 'TRIPLICACAO_BLACK'; }
-                else if (parityTarget) { this.triplicacaoTypeFound = 'PARIDADE'; this.triplicacaoPatternFound = parityStats.dominantPattern; this.activeStrategyId = parityTarget === 'A' ? 'TRIPLICACAO_EVEN' : 'TRIPLICACAO_ODD'; }
+                
+                let prospectiveId = null;
+                if (colorTarget) prospectiveId = colorTarget === 'A' ? 'TRIPLICACAO_RED' : 'TRIPLICACAO_BLACK';
+                else if (parityTarget) prospectiveId = parityTarget === 'A' ? 'TRIPLICACAO_EVEN' : 'TRIPLICACAO_ODD';
+                
+                // CRÍTICO DA SPRINT 377: Auditoria de Quarentena de Sinal antes de expor a sugestão
+                if (prospectiveId && this.performanceEvaluator.isAllowed(prospectiveId)) {
+                    this.activeStrategyId = prospectiveId;
+                    if (colorTarget) { this.triplicacaoTypeFound = 'COR'; this.triplicacaoPatternFound = colorStats.dominantPattern; }
+                    else { this.triplicacaoTypeFound = 'PARIDADE'; this.triplicacaoPatternFound = parityStats.dominantPattern; }
+                }
             }
         }
 
@@ -325,12 +339,17 @@ export class LivePaperOrchestrator {
             const engineStrategies = AutoSettlementEngine.getStrategies();
             timeline.forEach(num => { Object.keys(scores).forEach(stratId => { const result = engineStrategies[stratId].evaluate(num); if (result.status === 'WIN_MAX' || result.status === 'WIN_MIN') scores[stratId]++; }); });
             
+            // Ordenação por score respeitando a trava de performance
             let bestStrat = null; let maxScore = 0;
-            Object.entries(scores).forEach(([strat, score]) => { if (score > maxScore) { maxScore = score; bestStrat = strat; } });
+            Object.entries(scores).forEach(([strat, score]) => { 
+                if (score > maxScore && this.performanceEvaluator.isAllowed(strat)) { 
+                    maxScore = score; 
+                    bestStrat = strat; 
+                } 
+            });
             if (bestStrat && maxScore >= (timeline.length * 0.40)) { this.activeStrategyId = bestStrat; }
         }
 
-        // EXECUÇÃO DO HOTFIX 376.2: Passa a injetar o stake base estrutural da estratégia
         if (this.activeStrategyId) {
             const strat = AutoSettlementEngine.getStrategies()[this.activeStrategyId];
             const sizingResult = this.sizingEngine.calculateOperationalSizing(this.cooldownGuard.currentBankroll, this.currentVixPercent, strat.stake);
@@ -399,6 +418,23 @@ export class LivePaperOrchestrator {
         console.log(' Pressione ENTER para retornar à operação...');
     }
 
+    private renderWeightsMatrix(): void {
+        console.clear();
+        const weights = this.performanceEvaluator.getAllWeights();
+        console.log('======================================================');
+        console.log(' 📊 XAI: INSPEÇÃO DE REGIME E QUARENTENA DE SINAIS');
+        console.log('======================================================');
+        Object.entries(weights).forEach(([stratId, weight]) => {
+            const name = AutoSettlementEngine.getStrategies()[stratId].name;
+            let status = '\x1b[32m[ALINHADO]\x1b[0m';
+            if (weight < 1.0) status = '\x1b[33m[ALERTADO]\x1b[0m';
+            if (weight < 0.6) status = '\x1b[31m[SILENCIADO - QUARENTENA]\x1b[0m';
+            console.log(` > ${name.padEnd(20, ' ')} : Peso ${weight.toFixed(1)} | Status: ${status}`);
+        });
+        console.log('------------------------------------------------------');
+        console.log(' Pressione ENTER para retornar à operação...');
+    }
+
     private attachEventListeners(): void {
         this.rl.on('line', (line) => {
             const cmd = line.trim().toLowerCase();
@@ -424,12 +460,11 @@ export class LivePaperOrchestrator {
                 console.log(' trios              : Abre o Scanner de Padrões (Triplicação).');
                 console.log(' heatmap            : Mapeia números Quentes e Frios.');
                 console.log(' stats              : Exibe a estatística geral da mesa.');
+                console.log(' weights            : Inspeciona os pesos ativos de regime.');
                 console.log('\n [ GESTÃO DE RISCO ]');
                 console.log(' provider pragmatic : Ajusta Floor do Provedor p/ R$ 0.10.');
                 console.log(' provider evolution : Ajusta Floor do Provedor p/ R$ 0.50.');
                 console.log(' setbankroll <v>    : Calibra banca inicial.');
-                console.log('\n [ SISTEMA ]');
-                console.log(' exit / quit        : Salva o estado criptografado e encerra.');
                 console.log('------------------------------------------------------');
                 console.log(' Pressione ENTER para retornar à operação...');
                 this.inputMode = 'VIEW_ONLY';
@@ -439,6 +474,7 @@ export class LivePaperOrchestrator {
 
             if (cmd === 'heatmap') { this.renderHeatmap(); this.inputMode = 'VIEW_ONLY'; this.rl.prompt(); return; }
             if (cmd === 'stats') { this.renderStats(); this.inputMode = 'VIEW_ONLY'; this.rl.prompt(); return; }
+            if (cmd === 'weights') { this.renderWeightsMatrix(); this.inputMode = 'VIEW_ONLY'; this.rl.prompt(); return; }
             if (cmd === 'timeline') { console.clear(); console.log(`\n Histórico: \x1b[36m${this.mesaTracker.getTimeline(15)}\x1b[0m\n [ENTER] para voltar...`); this.inputMode = 'VIEW_ONLY'; this.rl.prompt(); return; }
             
             if (cmd === 'trios') { 
@@ -482,16 +518,23 @@ export class LivePaperOrchestrator {
             if (this.inputMode === 'VIEW_ONLY') { this.inputMode = 'NUMBER'; this.renderTerminalHud(); return; }
 
             if (this.inputMode === 'CONFIRM_TRADE') {
+                const executedStratId = this.activeStrategyId!;
                 if (cmd === 's' || cmd === 'sim' || cmd === 'y') {
                     if (this.pendingResult.status === 'WIN_MAX' || this.pendingResult.status === 'WIN_MIN') {
                         this.cooldownGuard.registerOutcome(true, this.cooldownGuard.currentBankroll + this.pendingResult.netAmount);
-                        this.registerStatOutcome(true, this.activeStrategyId!);
+                        this.registerStatOutcome(true, executedStratId);
+                        
+                        // FEEDBACK LOOP POSITIVO: Aumenta o peso do algoritmo na mesa
+                        this.performanceEvaluator.registerWin(executedStratId);
                         this.voiceCopilot.speak('Green liquidado.');
                     } else if (this.pendingResult.status === 'PUSH') {
                         this.cooldownGuard.registerOutcome(true, this.cooldownGuard.currentBankroll);
                     } else {
                         this.cooldownGuard.registerOutcome(false, this.cooldownGuard.currentBankroll - Math.abs(this.pendingResult.netAmount));
-                        this.registerStatOutcome(false, this.activeStrategyId!);
+                        this.registerStatOutcome(false, executedStratId);
+                        
+                        // FEEDBACK LOOP NEGATIVO: Aplica a quarentena pelo Loss
+                        this.performanceEvaluator.registerLoss(executedStratId);
                         this.voiceCopilot.speak('Red absorvido.');
                     }
                     this.saveSystemState();
@@ -556,8 +599,6 @@ export class LivePaperOrchestrator {
             this.mesaTracker.addNumber(num); 
             if (this.activeStrategyId) { 
                 this.pendingResult = this.settlementEngine.evaluate(num, this.activeStrategyId); 
-                
-                // HOTFIX 376.2: Aplica a multiplicação baseada na escala real das fichas unitárias alocadas
                 this.pendingResult.netAmount = this.pendingResult.netAmount * this.currentStakeMultiplier;
 
                 this.inputMode = 'CONFIRM_TRADE'; this.renderTerminalHud(); return; 
@@ -618,7 +659,7 @@ export class LivePaperOrchestrator {
             if (this.triplicacaoPatternFound) console.log(` ALGORITMO ... [${this.triplicacaoTypeFound}] - Padrão: ${this.triplicacaoPatternFound}`);
             console.log(` AÇÃO ........ \x1b[32mENTRAR\x1b[0m`);
             console.log(` STAKE LOU .. \x1b[32mR$ ${this.dynamicStakeCalculated.toFixed(2)}\x1b[0m (Múltipla Base: R$ ${strat.stake.toFixed(2)})`);
-            this.rl.setPrompt('roleta/comando > ');
+            rl.setPrompt('roleta/comando > ');
         } 
         else {
             console.log(` AÇÃO ........ \x1b[33mOBSERVAR\x1b[0m`);
