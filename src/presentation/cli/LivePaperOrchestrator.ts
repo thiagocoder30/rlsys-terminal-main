@@ -284,7 +284,6 @@ export class LivePaperOrchestrator {
             if (bestStrat && maxScore >= (timeline.length * 0.40)) { this.activeStrategyId = bestStrat; }
         }
 
-        // Calcula a Stake Dinâmica (Sizing) se houver sinal
         if (this.activeStrategyId) {
             this.dynamicStakeCalculated = this.sizingEngine.calculateStake(this.cooldownGuard.currentBankroll, this.currentVixPercent);
         }
@@ -296,7 +295,34 @@ export class LivePaperOrchestrator {
             
             if (cmd === 'exit' || cmd === 'quit') { this.saveSystemState(); console.log('\n[!] Estado criptografado salvo. Encerrando...'); this.rl.close(); return; }
             
-            // Controle Administrativo de Provedor
+            // ==========================================
+            // NOVO: MENU DE AJUDA / HELP
+            // ==========================================
+            if (cmd === 'help' || cmd === 'ajuda') {
+                console.clear();
+                console.log('======================================================');
+                console.log(' ⚙️ RL.SYS CORE - MANUAL DE COMANDOS (HELP)');
+                console.log('======================================================');
+                console.log(' [ INSERÇÃO DE DADOS ]');
+                console.log(' <0-36>             : Registra o número do giro na roleta.');
+                console.log(' sync <n,n,...>     : Insere múltiplos números (Warmup).');
+                console.log('\n [ AUDITORIA E ANÁLISE (XAI) ]');
+                console.log(' timeline           : Exibe a fita dos últimos 15 giros.');
+                console.log(' trios              : Abre o Scanner de Padrões e Triplicação.');
+                console.log('\n [ GESTÃO DE RISCO ]');
+                console.log(' provider pragmatic : Ajusta Floor do Provedor p/ R$ 0.10.');
+                console.log(' provider evolution : Ajusta Floor do Provedor p/ R$ 0.50.');
+                console.log(' setbankroll <v>    : Calibra banca inicial (Ex: setbankroll 50).');
+                console.log('\n [ SISTEMA ]');
+                console.log(' help / ajuda       : Exibe este painel de consulta.');
+                console.log(' exit / quit        : Salva o estado criptografado e encerra.');
+                console.log('------------------------------------------------------');
+                console.log(' Pressione ENTER para retornar à operação...');
+                this.inputMode = 'VIEW_ONLY';
+                this.rl.prompt();
+                return;
+            }
+
             if (cmd === 'provider pragmatic') { this.sizingEngine.setProvider('PRAGMATIC'); this.saveSystemState(); this.generateNextTrade(); this.renderTerminalHud(); return; }
             if (cmd === 'provider evolution') { this.sizingEngine.setProvider('EVOLUTION'); this.saveSystemState(); this.generateNextTrade(); this.renderTerminalHud(); return; }
 
@@ -343,7 +369,6 @@ export class LivePaperOrchestrator {
                 
                 this.inputMode = 'NUMBER'; this.pendingResult = null; this.activeStrategyId = null;
                 
-                // Atualiza e verifica o Trailing Stop
                 this.trailingStopGuard.updatePeak(this.cooldownGuard.currentBankroll);
                 const stopStatus = this.trailingStopGuard.checkStop(this.cooldownGuard.currentBankroll);
                 
@@ -393,7 +418,6 @@ export class LivePaperOrchestrator {
                 const strat = AutoSettlementEngine.getStrategies()[this.activeStrategyId];
                 this.pendingResult = this.settlementEngine.evaluate(num, this.activeStrategyId); 
                 
-                // Escala linearmente o lucro/prejuízo com base na aposta dinâmica
                 const stakeMultiplier = this.dynamicStakeCalculated / strat.stake;
                 this.pendingResult.netAmount = this.pendingResult.netAmount * stakeMultiplier;
 
