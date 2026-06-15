@@ -3,8 +3,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { IBankrollRepository } from '../../domain/interfaces/IBankrollRepository';
 import { IAnalyticsEngine } from '../../domain/interfaces/IAnalyticsEngine';
+import { PositionSizingEngine, CasinoProvider } from '../../domain/risk/PositionSizingEngine';
+import { TrailingStopGuard } from '../../domain/risk/TrailingStopGuard';
 
-// Importações legadas
 const { DynamicEmotionalCooldownGuard } = require('../../domain/risk/DynamicEmotionalCooldownGuard.js');
 const { TermuxTtsVoiceCopilot } = require('../../infrastructure/audio/TermuxTtsVoiceCopilot.js');
 const { AutoSettlementEngine } = require('../../domain/financial/AutoSettlementEngine.js');
@@ -13,6 +14,9 @@ export class LivePaperOrchestrator {
     private rl: readline.Interface;
     private bankrollRepo: IBankrollRepository;
     private mesaTracker: IAnalyticsEngine;
+    private sizingEngine: PositionSizingEngine;
+    private trailingStopGuard!: TrailingStopGuard;
+    
     private voiceCopilot: any;
     private settlementEngine: any;
     private cooldownGuard: any;
@@ -27,6 +31,7 @@ export class LivePaperOrchestrator {
     private currentVixPercent: number = 0;
     private toxicTableLockUntil: number | null = null;
     private forceObserveRound: boolean = false;
+    private dynamicStakeCalculated: number = 0.50;
     
     private isDailyHardLocked: boolean = false;
     private hardLockDateEpoch: number | null = null;
@@ -48,10 +53,10 @@ export class LivePaperOrchestrator {
     ) {
         this.bankrollRepo = bankrollRepo;
         this.mesaTracker = mesaTracker;
+        this.sizingEngine = new PositionSizingEngine();
         
         this.voiceCopilot = new TermuxTtsVoiceCopilot();
         this.settlementEngine = new AutoSettlementEngine();
-        
         this.rl = readline.createInterface({ input: process.stdin, output: process.stdout });
         
         const dataDir = path.join(__dirname, '..', '..', '..', 'data');
@@ -64,9 +69,13 @@ export class LivePaperOrchestrator {
         if (this.savedState && this.savedState.initialBankroll) {
             this.initialBankroll = this.savedState.initialBankroll;
         }
+        if (this.savedState && this.savedState.provider) {
+            this.sizingEngine.setProvider(this.savedState.provider as CasinoProvider);
+        }
         
         this.cooldownGuard = new DynamicEmotionalCooldownGuard(this.initialBankroll, this.savedState);
         this.sessionStats.startBankroll = this.cooldownGuard.currentBankroll;
+        this.trailingStopGuard = new TrailingStopGuard(this.sessionStats.startBankroll);
         
         this.isDailyHardLocked = this.savedState?.isDailyHardLocked || false;
         this.hardLockDateEpoch = this.savedState?.hardLockDateEpoch || null;
@@ -103,6 +112,7 @@ export class LivePaperOrchestrator {
         const currentSnapshot = this.cooldownGuard.exportState();
         currentSnapshot.isDailyHardLocked = this.isDailyHardLocked;
         currentSnapshot.hardLockDateEpoch = this.hardLockDateEpoch;
+        currentSnapshot.provider = this.sizingEngine.getProvider();
         this.bankrollRepo.save(currentSnapshot);
     }
 
@@ -116,7 +126,8 @@ export class LivePaperOrchestrator {
                 action: action,
                 outcome: outcome || 'OBSERVE',
                 netAmount: netAmount || 0,
-                bankroll: parseFloat(this.cooldownGuard.currentBankroll.toFixed(2))
+                bankroll: parseFloat(this.cooldownGuard.currentBankroll.toFixed(2)),
+                provider: this.sizingEngine.getProvider()
             };
             fs.appendFileSync(this.historicalLogPath, JSON.stringify(logEntry) + '\n', 'utf8');
         } catch (err) {}
@@ -164,11 +175,8 @@ export class LivePaperOrchestrator {
     private renderExecutiveReport(reason: string): void {
         console.clear();
         const profit = this.cooldownGuard.currentBankroll - this.sessionStats.startBankroll;
-        
-        // CORREÇÃO TS2365: Separação do valor bruto (number) do valor formatado (string)
         const percentRaw = this.sessionStats.startBankroll > 0 ? (profit / this.sessionStats.startBankroll) * 100 : 0;
         const percentStr = percentRaw.toFixed(2);
-        
         const totalTrades = this.sessionStats.wins + this.sessionStats.losses;
         const hitRateStr = totalTrades > 0 ? ((this.sessionStats.wins / totalTrades) * 100).toFixed(1) : "0.0";
         
@@ -260,19 +268,26 @@ export class LivePaperOrchestrator {
                 if (colorTarget && parityTarget) {
                     if (colorStats.dominantRatio >= parityStats.dominantRatio) parityTarget = null; else colorTarget = null;
                 }
-                if (colorTarget) { this.triplicacaoTypeFound = 'COR'; this.triplicacaoPatternFound = colorStats.dominantPattern; this.activeStrategyId = colorTarget === 'A' ? 'TRIPLICACAO_RED' : 'TRIPLICACAO_BLACK'; return; }
-                if (parityTarget) { this.triplicacaoTypeFound = 'PARIDADE'; this.triplicacaoPatternFound = parityStats.dominantPattern; this.activeStrategyId = parityTarget === 'A' ? 'TRIPLICACAO_EVEN' : 'TRIPLICACAO_ODD'; return; }
+                if (colorTarget) { this.triplicacaoTypeFound = 'COR'; this.triplicacaoPatternFound = colorStats.dominantPattern; this.activeStrategyId = colorTarget === 'A' ? 'TRIPLICACAO_RED' : 'TRIPLICACAO_BLACK'; }
+                else if (parityTarget) { this.triplicacaoTypeFound = 'PARIDADE'; this.triplicacaoPatternFound = parityStats.dominantPattern; this.activeStrategyId = parityTarget === 'A' ? 'TRIPLICACAO_EVEN' : 'TRIPLICACAO_ODD'; }
             }
         }
 
-        const timeline = history.slice(-15); 
-        let scores: Record<string, number> = { 'HEDGE_BLACK_COL3': 0, 'HEDGE_RED_COL2': 0, 'SECTOR_OMEGA': 0, 'SECTOR_ALPHA': 0, 'FUSION_SECTOR': 0 };
-        const engineStrategies = AutoSettlementEngine.getStrategies();
-        timeline.forEach(num => { Object.keys(scores).forEach(stratId => { const result = engineStrategies[stratId].evaluate(num); if (result.status === 'WIN_MAX' || result.status === 'WIN_MIN') scores[stratId]++; }); });
-        
-        let bestStrat = null; let maxScore = 0;
-        Object.entries(scores).forEach(([strat, score]) => { if (score > maxScore) { maxScore = score; bestStrat = strat; } });
-        if (bestStrat && maxScore >= (timeline.length * 0.40)) { this.activeStrategyId = bestStrat; }
+        if (!this.activeStrategyId) {
+            const timeline = history.slice(-15); 
+            let scores: Record<string, number> = { 'HEDGE_BLACK_COL3': 0, 'HEDGE_RED_COL2': 0, 'SECTOR_OMEGA': 0, 'SECTOR_ALPHA': 0, 'FUSION_SECTOR': 0 };
+            const engineStrategies = AutoSettlementEngine.getStrategies();
+            timeline.forEach(num => { Object.keys(scores).forEach(stratId => { const result = engineStrategies[stratId].evaluate(num); if (result.status === 'WIN_MAX' || result.status === 'WIN_MIN') scores[stratId]++; }); });
+            
+            let bestStrat = null; let maxScore = 0;
+            Object.entries(scores).forEach(([strat, score]) => { if (score > maxScore) { maxScore = score; bestStrat = strat; } });
+            if (bestStrat && maxScore >= (timeline.length * 0.40)) { this.activeStrategyId = bestStrat; }
+        }
+
+        // Calcula a Stake Dinâmica (Sizing) se houver sinal
+        if (this.activeStrategyId) {
+            this.dynamicStakeCalculated = this.sizingEngine.calculateStake(this.cooldownGuard.currentBankroll, this.currentVixPercent);
+        }
     }
 
     private attachEventListeners(): void {
@@ -281,6 +296,10 @@ export class LivePaperOrchestrator {
             
             if (cmd === 'exit' || cmd === 'quit') { this.saveSystemState(); console.log('\n[!] Estado criptografado salvo. Encerrando...'); this.rl.close(); return; }
             
+            // Controle Administrativo de Provedor
+            if (cmd === 'provider pragmatic') { this.sizingEngine.setProvider('PRAGMATIC'); this.saveSystemState(); this.generateNextTrade(); this.renderTerminalHud(); return; }
+            if (cmd === 'provider evolution') { this.sizingEngine.setProvider('EVOLUTION'); this.saveSystemState(); this.generateNextTrade(); this.renderTerminalHud(); return; }
+
             if (cmd.startsWith('setbankroll ')) {
                 const newVal = parseFloat(cmd.replace('setbankroll ', '').trim());
                 if (isNaN(newVal) || newVal <= 0) { console.log('Inválido.'); this.rl.prompt(); return; }
@@ -288,6 +307,7 @@ export class LivePaperOrchestrator {
                 this.activeStrategyId = null; this.inputMode = 'NUMBER'; this.pendingResult = null; this.toxicTableLockUntil = null;
                 this.isDailyHardLocked = false; this.hardLockDateEpoch = null;
                 this.sessionStats = { startBankroll: newVal, wins: 0, losses: 0, entropyBlocks: 0, strategyWins: {}, vixReadings: [] };
+                this.trailingStopGuard = new TrailingStopGuard(newVal);
                 this.saveSystemState(); this.generateNextTrade(); this.renderTerminalHud(); return;
             }
             
@@ -323,6 +343,16 @@ export class LivePaperOrchestrator {
                 
                 this.inputMode = 'NUMBER'; this.pendingResult = null; this.activeStrategyId = null;
                 
+                // Atualiza e verifica o Trailing Stop
+                this.trailingStopGuard.updatePeak(this.cooldownGuard.currentBankroll);
+                const stopStatus = this.trailingStopGuard.checkStop(this.cooldownGuard.currentBankroll);
+                
+                if (stopStatus.isStopped) {
+                    this.isDailyHardLocked = true; this.hardLockDateEpoch = Date.now(); this.saveSystemState();
+                    this.renderExecutiveReport(stopStatus.reason);
+                    this.rl.prompt(); return;
+                }
+
                 if (this.cooldownGuard.isSessionEnded) {
                     this.isDailyHardLocked = true; this.hardLockDateEpoch = Date.now(); this.saveSystemState();
                     this.renderExecutiveReport('META GLOBAL OU STOP LOSS ATINGIDO');
@@ -359,7 +389,16 @@ export class LivePaperOrchestrator {
             if (isNaN(num) || num < 0 || num > 36) { console.log('Entrada inválida.'); this.rl.prompt(); return; }
 
             this.mesaTracker.addNumber(num); 
-            if (this.activeStrategyId) { this.pendingResult = this.settlementEngine.evaluate(num, this.activeStrategyId); this.inputMode = 'CONFIRM_TRADE'; this.renderTerminalHud(); return; }
+            if (this.activeStrategyId) { 
+                const strat = AutoSettlementEngine.getStrategies()[this.activeStrategyId];
+                this.pendingResult = this.settlementEngine.evaluate(num, this.activeStrategyId); 
+                
+                // Escala linearmente o lucro/prejuízo com base na aposta dinâmica
+                const stakeMultiplier = this.dynamicStakeCalculated / strat.stake;
+                this.pendingResult.netAmount = this.pendingResult.netAmount * stakeMultiplier;
+
+                this.inputMode = 'CONFIRM_TRADE'; this.renderTerminalHud(); return; 
+            }
             
             this.logDataForLaboratory(num, 'OBSERVE', 'NO_PATTERN', 0);
             this.generateNextTrade(); this.renderTerminalHud();
@@ -384,6 +423,8 @@ export class LivePaperOrchestrator {
         const historyLength = this.mesaTracker.getHistory().length;
         if (historyLength >= 10) { console.log(` ENTROPIA DA MESA. ${vixColor}${this.currentVixPercent.toFixed(1)}% (VIX)\x1b[0m`); } 
         else { console.log(` ENTROPIA DA MESA. \x1b[36mAguardando Warmup...\x1b[0m`); }
+        
+        console.log(` PROVEDOR ATIVO .. \x1b[36m${this.sizingEngine.getProvider()}\x1b[0m (Floor: R$ ${this.sizingEngine.getProvider() === 'EVOLUTION' ? '0.50' : '0.10'})`);
         console.log('------------------------------------------------------');
         
         if (toxicLockActive) {
@@ -405,7 +446,7 @@ export class LivePaperOrchestrator {
             if (this.pendingResult.status === 'PUSH') { color = '\x1b[33m'; label = 'PUSH (Empate)'; }
             console.log(` ${color}RESULTADO: ${label} | R$ ${this.pendingResult.netAmount.toFixed(2)}\x1b[0m`);
             console.log('------------------------------------------------------');
-            console.log(` [?] Você executou a estratégia [${stratName}]?`);
+            console.log(` [?] Você executou a estratégia [${stratName}] com Stake R$ ${this.dynamicStakeCalculated.toFixed(2)}?`);
             this.rl.setPrompt('Confirme (s/n) > ');
         } 
         else if (this.activeStrategyId) {
@@ -413,7 +454,7 @@ export class LivePaperOrchestrator {
             console.log(` ESTRATÉGIA .. \x1b[36m${strat.name}\x1b[0m`);
             if (this.triplicacaoPatternFound) console.log(` ALGORITMO ... [${this.triplicacaoTypeFound}] - Padrão: ${this.triplicacaoPatternFound}`);
             console.log(` AÇÃO ........ \x1b[32mENTRAR\x1b[0m`);
-            console.log(` STAKE ....... R$ ${strat.stake.toFixed(2)}`);
+            console.log(` STAKE ....... R$ ${this.dynamicStakeCalculated.toFixed(2)} (Kelly Sizing via VIX)`);
             this.rl.setPrompt('roleta/comando > ');
         } 
         else {
