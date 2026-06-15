@@ -36,6 +36,8 @@ export class LivePaperOrchestrator {
     private isDailyHardLocked: boolean = false;
     private hardLockDateEpoch: number | null = null;
     
+    private liveTimer: any = null; // Thread para o Contador Regressivo
+    
     private sessionStats = {
         startBankroll: 0,
         wins: 0,
@@ -73,12 +75,10 @@ export class LivePaperOrchestrator {
             this.sizingEngine.setProvider(this.savedState.provider as CasinoProvider);
         }
         
-        // Recuperação de Memória RAM (Histórico de Giros)
         if (this.savedState && Array.isArray(this.savedState.history)) {
             this.savedState.history.forEach((num: number) => this.mesaTracker.addNumber(num));
         }
 
-        // Recuperação do Bloqueio de Mesa Tóxica (Cooldown 15m)
         if (this.savedState && this.savedState.toxicTableLockUntil) {
             this.toxicTableLockUntil = this.savedState.toxicTableLockUntil;
         }
@@ -97,9 +97,28 @@ export class LivePaperOrchestrator {
             this.renderExecutiveReport('SESSÃO JÁ FINALIZADA HOJE OU QUARENTENA ATIVA');
         } else {
             this.renderTerminalHud();
+            this.manageLiveTimer();
         }
 
         this.attachEventListeners();
+    }
+
+    // Gerenciador Assíncrono do Relógio em Tempo Real
+    private manageLiveTimer(): void {
+        if (this.checkToxicTableLock() && !this.liveTimer) {
+            this.liveTimer = setInterval(() => {
+                if (!this.checkToxicTableLock()) {
+                    clearInterval(this.liveTimer);
+                    this.liveTimer = null;
+                    if (this.inputMode !== 'VIEW_ONLY') this.renderTerminalHud();
+                } else {
+                    if (this.inputMode !== 'VIEW_ONLY') this.renderTerminalHud();
+                }
+            }, 1000);
+        } else if (!this.checkToxicTableLock() && this.liveTimer) {
+            clearInterval(this.liveTimer);
+            this.liveTimer = null;
+        }
     }
 
     private isSameDay(epochA: number, epochB: number): boolean {
@@ -123,8 +142,6 @@ export class LivePaperOrchestrator {
         currentSnapshot.isDailyHardLocked = this.isDailyHardLocked;
         currentSnapshot.hardLockDateEpoch = this.hardLockDateEpoch;
         currentSnapshot.provider = this.sizingEngine.getProvider();
-        
-        // Persistindo RAM no Cofre
         currentSnapshot.history = this.mesaTracker.getHistory();
         currentSnapshot.toxicTableLockUntil = this.toxicTableLockUntil;
         
@@ -335,10 +352,6 @@ export class LivePaperOrchestrator {
         }
         
         console.log('------------------------------------------------------');
-        console.log(' [!] Aviso: Cassinos usam isso para induzir a Falácia');
-        console.log('     do Apostador. O sistema RL.SYS usa para atestar a');
-        console.log('     Variância. Não utilize como sinal preditivo.');
-        console.log('------------------------------------------------------');
         console.log(' Pressione ENTER para retornar à operação...');
     }
 
@@ -386,7 +399,13 @@ export class LivePaperOrchestrator {
         this.rl.on('line', (line) => {
             const cmd = line.trim().toLowerCase();
             
-            if (cmd === 'exit' || cmd === 'quit') { this.saveSystemState(); console.log('\n[!] Estado criptografado salvo. Encerrando...'); this.rl.close(); return; }
+            if (cmd === 'exit' || cmd === 'quit') { 
+                if (this.liveTimer) clearInterval(this.liveTimer);
+                this.saveSystemState(); 
+                console.log('\n[!] Estado criptografado salvo. Encerrando...'); 
+                this.rl.close(); 
+                return; 
+            }
             
             if (cmd === 'help' || cmd === 'ajuda') {
                 console.clear();
@@ -453,7 +472,6 @@ export class LivePaperOrchestrator {
                 this.sessionStats = { startBankroll: newVal, wins: 0, losses: 0, entropyBlocks: 0, strategyWins: {}, vixReadings: [] };
                 this.trailingStopGuard = new TrailingStopGuard(newVal);
                 
-                // Zera o rastreador
                 this.mesaTracker = new (this.mesaTracker.constructor as any)();
                 
                 this.saveSystemState(); this.generateNextTrade(); this.renderTerminalHud(); return;
@@ -528,12 +546,15 @@ export class LivePaperOrchestrator {
                     }
                 });
                 
-                // Trava tática para impedir VIX acima de 95%
                 this.generateNextTrade();
                 if (numbers.length > 20 && this.currentVixPercent > 95.0) { 
-                    this.toxicTableLockUntil = Date.now() + (15 * 60 * 1000); 
-                    this.voiceCopilot.speak('Atenção. Entropia máxima detectada.');
-                    this.saveSystemState();
+                    // CORREÇÃO CRÍTICA DE SOBRESCRITA (Lock Overwrite Fix)
+                    if (!this.toxicTableLockUntil || Date.now() >= this.toxicTableLockUntil) {
+                        this.toxicTableLockUntil = Date.now() + (15 * 60 * 1000); 
+                        this.voiceCopilot.speak('Atenção. Entropia máxima detectada. Mesa trancada.');
+                        this.saveSystemState();
+                        this.manageLiveTimer(); // Inicia o relógio
+                    }
                 }
                 
                 this.renderTerminalHud(); return;
@@ -581,9 +602,14 @@ export class LivePaperOrchestrator {
         console.log('------------------------------------------------------');
         
         if (toxicLockActive) {
-            const remaining = Math.ceil((this.toxicTableLockUntil! - Date.now()) / 60000);
+            // CÁLCULO DE TEMPO EXATO PARA O CONTADOR REGRESSIVO
+            const remainingMs = this.toxicTableLockUntil! - Date.now();
+            const mins = Math.floor(remainingMs / 60000);
+            const secs = Math.floor((remainingMs % 60000) / 1000);
+            const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            
             console.log(`\x1b[31m ☣️ MESA TÓXICA REJEITADA PELO SISTEMA (VIX > 95%)\x1b[0m`);
-            console.log(` AÇÃO: Feche a corretora. Retorne em ${remaining} minutos.`);
+            console.log(` AÇÃO: Feche a corretora. Retorne em \x1b[1m${timeStr}\x1b[0m.`);
             this.rl.setPrompt('comando > ');
         }
         else if (lockStatus) {
@@ -615,6 +641,7 @@ export class LivePaperOrchestrator {
             this.rl.setPrompt('roleta/comando > ');
         }
         console.log('======================================================');
-        this.rl.prompt();
+        // Preserva o que o usuário estava digitando ao re-renderizar
+        this.rl.prompt(true);
     }
 }
