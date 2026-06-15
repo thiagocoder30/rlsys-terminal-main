@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { IBankrollRepository } from '../../domain/interfaces/IBankrollRepository';
 import { IAnalyticsEngine } from '../../domain/interfaces/IAnalyticsEngine';
 
-// Importações legadas (A serem refatoradas nas próximas Sprints)
+// Importações legadas
 const { DynamicEmotionalCooldownGuard } = require('../../domain/risk/DynamicEmotionalCooldownGuard.js');
 const { TermuxTtsVoiceCopilot } = require('../../infrastructure/audio/TermuxTtsVoiceCopilot.js');
 const { AutoSettlementEngine } = require('../../domain/financial/AutoSettlementEngine.js');
@@ -46,7 +46,6 @@ export class LivePaperOrchestrator {
         bankrollRepo: IBankrollRepository,
         mesaTracker: IAnalyticsEngine
     ) {
-        // Injeção de Dependência explícita
         this.bankrollRepo = bankrollRepo;
         this.mesaTracker = mesaTracker;
         
@@ -84,7 +83,6 @@ export class LivePaperOrchestrator {
         this.attachEventListeners();
     }
 
-    // A lógica de negócio essencial foi encapsulada como métodos de classe estritos
     private isSameDay(epochA: number, epochB: number): boolean {
         if (!epochA || !epochB) return false;
         const d1 = new Date(epochA); const d2 = new Date(epochB);
@@ -121,7 +119,7 @@ export class LivePaperOrchestrator {
                 bankroll: parseFloat(this.cooldownGuard.currentBankroll.toFixed(2))
             };
             fs.appendFileSync(this.historicalLogPath, JSON.stringify(logEntry) + '\n', 'utf8');
-        } catch (err) { /* Falha silenciosa para não quebrar runtime */ }
+        } catch (err) {}
     }
 
     private registerStatOutcome(isWin: boolean, strategyId: string): void {
@@ -166,16 +164,20 @@ export class LivePaperOrchestrator {
     private renderExecutiveReport(reason: string): void {
         console.clear();
         const profit = this.cooldownGuard.currentBankroll - this.sessionStats.startBankroll;
-        const percent = ((profit / this.sessionStats.startBankroll) * 100).toFixed(2);
+        
+        // CORREÇÃO TS2365: Separação do valor bruto (number) do valor formatado (string)
+        const percentRaw = this.sessionStats.startBankroll > 0 ? (profit / this.sessionStats.startBankroll) * 100 : 0;
+        const percentStr = percentRaw.toFixed(2);
+        
         const totalTrades = this.sessionStats.wins + this.sessionStats.losses;
-        const hitRate = totalTrades > 0 ? ((this.sessionStats.wins / totalTrades) * 100).toFixed(1) : "0.0";
+        const hitRateStr = totalTrades > 0 ? ((this.sessionStats.wins / totalTrades) * 100).toFixed(1) : "0.0";
         
         console.log('======================================================');
         console.log(' 📑 DOSSIÊ EXECUTIVO - SESSÃO ENCERRADA');
         console.log('======================================================');
         console.log(` GATILHO ......... ${reason}`);
-        console.log(` 💰 RESULTADO LÍQ. R$ ${profit > 0 ? '+' : ''}${profit.toFixed(2)} (${percent > 0 ? '+' : ''}${percent}%)`);
-        console.log(` 🎯 HIT RATE ..... ${hitRate}% (${this.sessionStats.wins}W / ${this.sessionStats.losses}L)`);
+        console.log(` 💰 RESULTADO LÍQ. R$ ${profit > 0 ? '+' : ''}${profit.toFixed(2)} (${percentRaw > 0 ? '+' : ''}${percentStr}%)`);
+        console.log(` 🎯 HIT RATE ..... ${hitRateStr}% (${this.sessionStats.wins}W / ${this.sessionStats.losses}L)`);
         console.log(` 🛡️  DEFESAS VIX .. ${this.sessionStats.entropyBlocks} bloqueios contra o caos`);
         console.log(` 🏆 MVP SESSÃO ... ${this.getMvpStrategy()}`);
         console.log('------------------------------------------------------');
