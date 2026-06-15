@@ -5,17 +5,18 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { DynamicEmotionalCooldownGuard } = require('../src/domain/risk/DynamicEmotionalCooldownGuard.js');
 const { TermuxTtsVoiceCopilot } = require('../src/infrastructure/audio/TermuxTtsVoiceCopilot.js');
-const { FileBankrollRepository } = require('../src/infrastructure/persistence/FileBankrollRepository.js');
+const { SecureBankrollRepository } = require('../src/infrastructure/persistence/SecureBankrollRepository.js');
 const { AutoSettlementEngine } = require('../src/domain/financial/AutoSettlementEngine.js');
 const { LiveMesaTracker } = require('../src/domain/analytics/LiveMesaTracker.js');
 
 const voiceCopilot = new TermuxTtsVoiceCopilot();
-const bankrollRepo = new FileBankrollRepository();
+const bankrollRepo = new SecureBankrollRepository();
 const settlementEngine = new AutoSettlementEngine();
 const mesaTracker = new LiveMesaTracker();
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
+// A carga agora passa pela malha criptográfica (HMAC)
 let savedState = bankrollRepo.load();
 let initialBankroll = 100.00;
 if (savedState && savedState.initialBankroll) initialBankroll = savedState.initialBankroll;
@@ -30,7 +31,6 @@ let currentVixPercent = 0;
 let toxicTableLockUntil = null; 
 let forceObserveRound = false; 
 
-// MÉTODOS DE AUDITORIA E RELATÓRIO
 let sessionStats = {
     startBankroll: cooldownGuard.currentBankroll,
     wins: 0,
@@ -40,10 +40,10 @@ let sessionStats = {
     vixReadings: []
 };
 
+// Se a carga acusar violação, as variáveis de Hard Lock serão populadas automaticamente
 let isDailyHardLocked = savedState?.isDailyHardLocked || false;
 let hardLockDateEpoch = savedState?.hardLockDateEpoch || null;
 
-// Garante a existência do diretório de dados históricos
 const dataDir = path.join(__dirname, '..', 'data');
 if (!fs.existsSync(dataDir)) { fs.mkdirSync(dataDir, { recursive: true }); }
 const historicalLogPath = path.join(dataDir, 'historical-spins.log');
@@ -68,10 +68,10 @@ function saveSystemState() {
     const currentSnapshot = cooldownGuard.exportState();
     currentSnapshot.isDailyHardLocked = isDailyHardLocked;
     currentSnapshot.hardLockDateEpoch = hardLockDateEpoch;
+    // Salva encapsulando no envelope criptográfico
     bankrollRepo.save(currentSnapshot);
 }
 
-// NOVO: Função de log assíncrono append-only para o laboratório
 function logDataForLaboratory(number, action, outcome, netAmount) {
     try {
         const logEntry = {
@@ -85,9 +85,7 @@ function logDataForLaboratory(number, action, outcome, netAmount) {
             bankroll: parseFloat(cooldownGuard.currentBankroll.toFixed(2))
         };
         fs.appendFileSync(historicalLogPath, JSON.stringify(logEntry) + '\n', 'utf8');
-    } catch (err) {
-        // Silencioso para não quebrar a UX do terminal
-    }
+    } catch (err) {}
 }
 
 function registerStatOutcome(isWin, strategyId) {
@@ -239,13 +237,17 @@ function generateNextTrade() {
 function startOrchestrator() {
   verifyDailyLock();
   generateNextTrade();
-  if (isDailyHardLocked) renderExecutiveReport('SESSÃO JÁ FINALIZADA HOJE');
-  else renderTerminalHud();
+  
+  if (isDailyHardLocked) {
+      renderExecutiveReport('SESSÃO JÁ FINALIZADA HOJE OU QUARENTENA ATIVA');
+  } else {
+      renderTerminalHud();
+  }
 
   rl.on('line', (line) => {
     const cmd = line.trim().toLowerCase();
     
-    if (cmd === 'exit' || cmd === 'quit') { saveSystemState(); console.log('\n[!] Estado protegido. Encerrando...'); rl.close(); return; }
+    if (cmd === 'exit' || cmd === 'quit') { saveSystemState(); console.log('\n[!] Estado criptografado salvo. Encerrando...'); rl.close(); return; }
     
     if (cmd.startsWith('setbankroll ')) {
       const newVal = parseFloat(cmd.replace('setbankroll ', '').trim());
@@ -315,7 +317,6 @@ function startOrchestrator() {
       numbers.forEach(n => { 
         if (!isNaN(n) && n >= 0 && n <= 36) {
            mesaTracker.addNumber(n);
-           // Registra no log histórico como observação pura durante sincronização massiva
            logDataForLaboratory(n, 'OBSERVE', 'SYNC_FEED', 0);
         }
       });
@@ -330,7 +331,6 @@ function startOrchestrator() {
     mesaTracker.addNumber(num); 
     if (activeStrategyId) { pendingResult = settlementEngine.evaluate(num, activeStrategyId); inputMode = 'CONFIRM_TRADE'; renderTerminalHud(); return; }
     
-    // Se o sistema sugeriu OBSERVAR, registra diretamente na esteira histórica
     logDataForLaboratory(num, 'OBSERVE', 'NO_PATTERN', 0);
     generateNextTrade(); renderTerminalHud();
   });
