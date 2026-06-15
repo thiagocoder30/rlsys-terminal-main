@@ -1,13 +1,24 @@
 export class StrategyPerformanceEvaluator {
     private weights: Map<string, number> = new Map();
     private readonly MIN_THRESHOLD = 0.6; 
-    
-    // CALIBRAÇÃO ROTA A: Penalidade de 0.5 força o peso de 1.0 a cair para 0.5 instantaneamente,
-    // quebrando o circuito e silenciando a estratégia no primeiro erro.
-    private readonly DEGRADATION_FACTOR = 0.5; 
+    private readonly DEGRADATION_FACTOR = 0.5; // Penalidade direta (Circuit Breaker)
+    private readonly SYMPATHETIC_PENALTY = 0.4; // Penalidade para irmãs da mesma família
     private readonly BONIFICATION_FACTOR = 0.2; 
     private readonly MAX_WEIGHT = 1.2;
     private readonly MIN_WEIGHT = 0.1;
+
+    // Mapeamento de Correlação de Risco
+    private readonly strategyFamilies: Record<string, string> = {
+        'SECTOR_OMEGA': 'SECTORS',
+        'SECTOR_ALPHA': 'SECTORS',
+        'FUSION_SECTOR': 'SECTORS',
+        'HEDGE_BLACK_COL3': 'HEDGES',
+        'HEDGE_RED_COL2': 'HEDGES',
+        'TRIPLICACAO_RED': 'PATTERNS',
+        'TRIPLICACAO_BLACK': 'PATTERNS',
+        'TRIPLICACAO_EVEN': 'PATTERNS',
+        'TRIPLICACAO_ODD': 'PATTERNS'
+    };
 
     constructor(strategyIds: string[]) {
         strategyIds.forEach(id => this.weights.set(id, 1.0));
@@ -21,10 +32,25 @@ export class StrategyPerformanceEvaluator {
         return this.getWeight(strategyId) >= this.MIN_THRESHOLD;
     }
 
-    public registerLoss(strategyId: string): void {
+    private applyPenalty(strategyId: string, penalty: number): void {
         const current = this.getWeight(strategyId);
-        const next = Math.max(this.MIN_WEIGHT, current - this.DEGRADATION_FACTOR);
+        const next = Math.max(this.MIN_WEIGHT, current - penalty);
         this.weights.set(strategyId, Math.round(next * 10) / 10);
+    }
+
+    public registerLoss(strategyId: string): void {
+        const family = this.strategyFamilies[strategyId] || 'UNKNOWN';
+
+        // 1. Penaliza a estratégia que executou o erro e quebrou o circuito
+        this.applyPenalty(strategyId, this.DEGRADATION_FACTOR);
+
+        // 2. Penalidade Simpática: Degrada a confiança nas estratégias da mesma família
+        // Se uma falhou, a probabilidade da irmã falhar devido ao regime da mesa é altíssima.
+        this.weights.forEach((_, key) => {
+            if (key !== strategyId && this.strategyFamilies[key] === family) {
+                this.applyPenalty(key, this.SYMPATHETIC_PENALTY);
+            }
+        });
     }
 
     public registerWin(strategyId: string): void {
@@ -39,7 +65,6 @@ export class StrategyPerformanceEvaluator {
         return record;
     }
 
-    // Injeção de estado vindo do cofre criptográfico
     public setWeights(record: Record<string, number>): void {
         Object.entries(record).forEach(([key, val]) => {
             this.weights.set(key, val);
