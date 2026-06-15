@@ -61,7 +61,6 @@ export class LivePaperOrchestrator {
         this.mesaTracker = mesaTracker;
         this.sizingEngine = new PositionSizingEngine();
         
-        // Inicializa a malha com todas as assinaturas válidas da engine financeira
         const availableStrategies = Object.keys(AutoSettlementEngine.getStrategies());
         this.performanceEvaluator = new StrategyPerformanceEvaluator(availableStrategies);
         
@@ -89,6 +88,11 @@ export class LivePaperOrchestrator {
 
         if (this.savedState && this.savedState.toxicTableLockUntil) {
             this.toxicTableLockUntil = this.savedState.toxicTableLockUntil;
+        }
+
+        // PERSISTÊNCIA DA QUARENTENA: Recupera a matriz de pesos salva no disco
+        if (this.savedState && this.savedState.strategyWeights) {
+            this.performanceEvaluator.setWeights(this.savedState.strategyWeights);
         }
         
         this.cooldownGuard = new DynamicEmotionalCooldownGuard(this.initialBankroll, this.savedState);
@@ -151,6 +155,9 @@ export class LivePaperOrchestrator {
         currentSnapshot.provider = this.sizingEngine.getProvider();
         currentSnapshot.history = this.mesaTracker.getHistory();
         currentSnapshot.toxicTableLockUntil = this.toxicTableLockUntil;
+        
+        // Salvando matriz de aprendizado criptografada em disco
+        currentSnapshot.strategyWeights = this.performanceEvaluator.getAllWeights();
         
         this.bankrollRepo.save(currentSnapshot);
     }
@@ -324,7 +331,6 @@ export class LivePaperOrchestrator {
                 if (colorTarget) prospectiveId = colorTarget === 'A' ? 'TRIPLICACAO_RED' : 'TRIPLICACAO_BLACK';
                 else if (parityTarget) prospectiveId = parityTarget === 'A' ? 'TRIPLICACAO_EVEN' : 'TRIPLICACAO_ODD';
                 
-                // CRÍTICO DA SPRINT 377: Auditoria de Quarentena de Sinal antes de expor a sugestão
                 if (prospectiveId && this.performanceEvaluator.isAllowed(prospectiveId)) {
                     this.activeStrategyId = prospectiveId;
                     if (colorTarget) { this.triplicacaoTypeFound = 'COR'; this.triplicacaoPatternFound = colorStats.dominantPattern; }
@@ -339,7 +345,6 @@ export class LivePaperOrchestrator {
             const engineStrategies = AutoSettlementEngine.getStrategies();
             timeline.forEach(num => { Object.keys(scores).forEach(stratId => { const result = engineStrategies[stratId].evaluate(num); if (result.status === 'WIN_MAX' || result.status === 'WIN_MIN') scores[stratId]++; }); });
             
-            // Ordenação por score respeitando a trava de performance
             let bestStrat = null; let maxScore = 0;
             Object.entries(scores).forEach(([strat, score]) => { 
                 if (score > maxScore && this.performanceEvaluator.isAllowed(strat)) { 
@@ -523,8 +528,6 @@ export class LivePaperOrchestrator {
                     if (this.pendingResult.status === 'WIN_MAX' || this.pendingResult.status === 'WIN_MIN') {
                         this.cooldownGuard.registerOutcome(true, this.cooldownGuard.currentBankroll + this.pendingResult.netAmount);
                         this.registerStatOutcome(true, executedStratId);
-                        
-                        // FEEDBACK LOOP POSITIVO: Aumenta o peso do algoritmo na mesa
                         this.performanceEvaluator.registerWin(executedStratId);
                         this.voiceCopilot.speak('Green liquidado.');
                     } else if (this.pendingResult.status === 'PUSH') {
@@ -533,7 +536,7 @@ export class LivePaperOrchestrator {
                         this.cooldownGuard.registerOutcome(false, this.cooldownGuard.currentBankroll - Math.abs(this.pendingResult.netAmount));
                         this.registerStatOutcome(false, executedStratId);
                         
-                        // FEEDBACK LOOP NEGATIVO: Aplica a quarentena pelo Loss
+                        // DEGRADAÇÃO AGRESSIVA ROTA A: Peso cai para 0.5, cortando o sinal imediatamente
                         this.performanceEvaluator.registerLoss(executedStratId);
                         this.voiceCopilot.speak('Red absorvido.');
                     }
@@ -659,7 +662,7 @@ export class LivePaperOrchestrator {
             if (this.triplicacaoPatternFound) console.log(` ALGORITMO ... [${this.triplicacaoTypeFound}] - Padrão: ${this.triplicacaoPatternFound}`);
             console.log(` AÇÃO ........ \x1b[32mENTRAR\x1b[0m`);
             console.log(` STAKE LOU .. \x1b[32mR$ ${this.dynamicStakeCalculated.toFixed(2)}\x1b[0m (Múltipla Base: R$ ${strat.stake.toFixed(2)})`);
-            rl.setPrompt('roleta/comando > ');
+            this.rl.setPrompt('roleta/comando > ');
         } 
         else {
             console.log(` AÇÃO ........ \x1b[33mOBSERVAR\x1b[0m`);
