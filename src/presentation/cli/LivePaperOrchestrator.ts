@@ -254,9 +254,6 @@ export class LivePaperOrchestrator {
         }
     }
 
-    // ==========================================
-    // PAINÉIS RESTAURADOS (XAI)
-    // ==========================================
     private renderExecutiveReport(reason: string): void {
         console.clear();
         console.log('======================================================');
@@ -334,17 +331,18 @@ export class LivePaperOrchestrator {
         console.clear();
         const weights = this.performanceEvaluator.getAllWeights();
         console.log('======================================================');
-        console.log(' 📊 XAI: INSPEÇÃO DE REGIME E CHAVEAMENTO MANUAL');
+        console.log(' 📊 XAI: CONTROLE GRANULAR DE ESTRATÉGIAS');
+        console.log('    (Use o texto em colchetes azuis no comando disable/enable)');
         console.log('======================================================');
         Object.entries(weights).forEach(([stratId, weight]) => {
             const name = AutoSettlementEngine.getStrategies()[stratId].name;
             if (this.disabledStrategies.has(stratId)) {
-                console.log(` > \x1b[90m${name.padEnd(30, ' ')} [DESLIGADA PELO USUÁRIO]\x1b[0m`);
+                console.log(` > \x1b[36m[${stratId}]\x1b[0m - \x1b[90m${name.padEnd(20, ' ')} [DESLIGADA]\x1b[0m`);
             } else {
                 let status = '\x1b[32m[ALINHADO]\x1b[0m';
                 if (weight < 1.0) status = '\x1b[33m[ALERTADO]\x1b[0m';
                 if (weight < 0.6) status = '\x1b[31m[SILENCIADO PELA IA]\x1b[0m';
-                console.log(` > ${name.padEnd(20, ' ')} : Peso ${weight.toFixed(1)} | Status: ${status}`);
+                console.log(` > \x1b[36m[${stratId}]\x1b[0m - ${name.padEnd(15, ' ')} : Peso ${weight.toFixed(1)} | ${status}`);
             }
         });
         console.log('------------------------------------------------------');
@@ -360,14 +358,27 @@ export class LivePaperOrchestrator {
                 this.saveSystemState(); console.log('\n[!] Estado salvo. Encerrando...'); this.rl.close(); return; 
             }
 
-            // ESCAPE RESTAURADO: Se estiver no modo VIEW_ONLY, qualquer Enter volta pra operação
             if (this.inputMode === 'VIEW_ONLY') { 
                 this.inputMode = 'NUMBER'; this.renderTerminalHud(); return; 
             }
 
             if (this.isDailyHardLocked) { this.rl.prompt(); return; }
 
-            // LÓGICA DE CONFIRMAÇÃO DE TRADE (Que havia sido cortada)
+            // ==================================================
+            // SPRINT 382: RESTAURAÇÃO DO COMANDO SETBANKROLL
+            // ==================================================
+            if (cmd.startsWith('setbankroll ')) {
+                const newVal = parseFloat(cmd.replace('setbankroll ', '').trim());
+                if (isNaN(newVal) || newVal <= 0) { console.log('Inválido.'); this.rl.prompt(); return; }
+                this.cooldownGuard = new DynamicEmotionalCooldownGuard(newVal, null);
+                this.activeStrategyId = null; this.inputMode = 'NUMBER'; this.pendingResult = null; this.toxicTableLockUntil = null;
+                this.isDailyHardLocked = false; this.hardLockDateEpoch = null;
+                this.sessionStats = { startBankroll: newVal, wins: 0, losses: 0, entropyBlocks: 0, strategyWins: {}, vixReadings: [] };
+                this.trailingStopGuard = new TrailingStopGuard(newVal);
+                this.mesaTracker = new (this.mesaTracker.constructor as any)();
+                this.saveSystemState(); this.generateNextTrade(); this.renderTerminalHud(); return;
+            }
+
             if (this.inputMode === 'CONFIRM_TRADE') {
                 const executedStratId = this.activeStrategyId!;
                 if (cmd === 's' || cmd === 'sim' || cmd === 'y') {
@@ -404,7 +415,6 @@ export class LivePaperOrchestrator {
                 this.generateNextTrade(); this.renderTerminalHud(); return;
             }
 
-            // COMANDO UNDO 
             if (cmd === 'undo') {
                 const history = this.mesaTracker.getHistory();
                 if (history.length > 0) {
@@ -447,7 +457,6 @@ export class LivePaperOrchestrator {
             if (cmd === 'provider pragmatic') { this.sizingEngine.setProvider('PRAGMATIC'); this.saveSystemState(); this.generateNextTrade(); this.renderTerminalHud(); return; }
             if (cmd === 'provider evolution') { this.sizingEngine.setProvider('EVOLUTION'); this.saveSystemState(); this.generateNextTrade(); this.renderTerminalHud(); return; }
             
-            // XAI E TELAS RESTAURADAS
             if (cmd === 'help' || cmd === 'ajuda') {
                 console.clear();
                 console.log('======================================================');
@@ -462,10 +471,11 @@ export class LivePaperOrchestrator {
                 console.log(' trios              : Abre o Scanner de Padrões (Triplicação).');
                 console.log(' heatmap            : Mapeia números Quentes e Frios.');
                 console.log(' stats              : Exibe a estatística geral da mesa.');
-                console.log(' weights            : Inspeciona os pesos ativos de regime.');
+                console.log(' weights            : Inspeciona os pesos (Mostra os IDs Exatos).');
                 console.log('\n [ GESTÃO E ROTEAMENTO ]');
-                console.log(' disable <nome>     : Desliga estratégias (ex: disable sector).');
-                console.log(' enable <nome>      : Religa estratégias (ex: enable all).');
+                console.log(' setbankroll <v>    : Ajusta a banca inicial (Ex: setbankroll 5.08).');
+                console.log(' disable <id>       : Desliga ESTRATÉGIAS EXATAS (Olhe no painel weights).');
+                console.log(' enable <id>        : Religa estratégias (ex: enable all).');
                 console.log(' reset              : Limpa a mesa.');
                 console.log(' risk normal        : Trava o VIX em 95%.');
                 console.log('------------------------------------------------------');
