@@ -1,3 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "======================================"
+echo " RL.SYS CORE - SPRINT 387"
+echo " TRUE HOT-SWAP (BANKROLL FIX)"
+echo "======================================"
+
+ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+cd "$ROOT_DIR"
+
+echo "[1/2] Compilando Orquestrador com Isolamento de Dados..."
+cat > src/presentation/cli/LivePaperOrchestrator.ts <<'EOF'
 import * as readline from 'node:readline';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -575,3 +588,13 @@ export class LivePaperOrchestrator {
         this.rl.prompt(true);
     }
 }
+EOF
+
+git add src/presentation/cli/LivePaperOrchestrator.ts
+git add install/sprints/run-sprint-387-bankroll-hotswap.sh
+git commit -m "fix(cli): rewrite setbankroll listener to ensure true hot-swap without instantiating a new analytics mesaTracker object (Sprint 387)" > /dev/null
+
+echo "======================================"
+echo -e "\033[1;32m SPRINT 387 APLICADA COM SUCESSO \033[0m"
+echo " STATUS: HOT-SWAP VERDADEIRO GARANTIDO"
+echo "======================================"
