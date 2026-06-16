@@ -1,3 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "======================================"
+echo " RL.SYS CORE - SPRINT 388"
+echo " TRIPLICATION TRIGGER UNLOCK"
+echo "======================================"
+
+ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+cd "$ROOT_DIR"
+
+echo "[1/2] Corrigindo o Paradoxo da Janela Móvel no Orquestrador..."
+cat > src/presentation/cli/LivePaperOrchestrator.ts <<'EOF'
 import * as readline from 'node:readline';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -585,3 +598,13 @@ export class LivePaperOrchestrator {
         this.rl.prompt(true);
     }
 }
+EOF
+
+git add src/presentation/cli/LivePaperOrchestrator.ts
+git add install/sprints/run-sprint-388-triplication-unlock.sh
+git commit -m "fix(cli): correct mathematical lock preventing Triplication strategy triggers and remove historical data wipe from setbankroll command (Sprint 388)" > /dev/null
+
+echo "======================================"
+echo -e "\033[1;32m SPRINT 388 APLICADA COM SUCESSO \033[0m"
+echo " STATUS: TRIPLICAÇÃO DESTRAVADA E HOT-SWAP CORRIGIDO"
+echo "======================================"
