@@ -1,3 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "======================================"
+echo " RL.SYS CORE - SPRINT 390"
+echo " ENGINE EVAL FIX & HUD TARGETS"
+echo "======================================"
+
+ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+cd "$ROOT_DIR"
+
+echo "[1/2] Corrigindo a injeção do Evaluate e adicionando coordenadas de Alvo..."
+cat > src/presentation/cli/LivePaperOrchestrator.ts <<'EOF'
 import * as readline from 'node:readline';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -604,3 +617,13 @@ export class LivePaperOrchestrator {
         this.rl.prompt(true);
     }
 }
+EOF
+
+git add src/presentation/cli/LivePaperOrchestrator.ts
+git add install/sprints/run-sprint-390-engine-eval-and-hud-targets.sh
+git commit -m "fix(cli): resolve TypeError by correctly routing strat evaluation and inject exact target coordinates to UI HUD (Sprint 390)" > /dev/null
+
+echo "======================================"
+echo -e "\033[1;32m SPRINT 390 APLICADA COM SUCESSO \033[0m"
+echo " STATUS: ERRO CORRIGIDO E ALVOS INJETADOS"
+echo "======================================"
