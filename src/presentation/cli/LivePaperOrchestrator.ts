@@ -56,21 +56,15 @@ export class LivePaperOrchestrator {
 
     private readonly historicalLogPath: string;
 
-    constructor(
-        bankrollRepo: IBankrollRepository,
-        mesaTracker: IAnalyticsEngine
-    ) {
+    constructor(bankrollRepo: IBankrollRepository, mesaTracker: IAnalyticsEngine) {
         this.bankrollRepo = bankrollRepo;
         this.mesaTracker = mesaTracker;
         this.sizingEngine = new PositionSizingEngine();
-        
         const availableStrategies = Object.keys(AutoSettlementEngine.getStrategies());
         this.performanceEvaluator = new StrategyPerformanceEvaluator(availableStrategies);
-        
         this.voiceCopilot = new TermuxTtsVoiceCopilot();
         this.settlementEngine = new AutoSettlementEngine();
         this.rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-        
         const dataDir = path.join(__dirname, '..', '..', '..', 'data');
         if (!fs.existsSync(dataDir)) { fs.mkdirSync(dataDir, { recursive: true }); }
         this.historicalLogPath = path.join(dataDir, 'historical-spins.log');
@@ -78,44 +72,25 @@ export class LivePaperOrchestrator {
 
     public async initialize(): Promise<void> {
         this.savedState = this.bankrollRepo.load();
-        if (this.savedState && this.savedState.initialBankroll) {
-            this.initialBankroll = this.savedState.initialBankroll;
-        }
-        if (this.savedState && this.savedState.provider) {
-            this.sizingEngine.setProvider(this.savedState.provider as CasinoProvider);
-        }
-        if (this.savedState && this.savedState.vixTolerance) {
-            this.vixTolerance = this.savedState.vixTolerance;
-        }
-        if (this.savedState && Array.isArray(this.savedState.history)) {
-            this.savedState.history.forEach((num: number) => this.mesaTracker.addNumber(num));
-        }
-        if (this.savedState && this.savedState.toxicTableLockUntil) {
-            this.toxicTableLockUntil = this.savedState.toxicTableLockUntil;
-        }
-        if (this.savedState && this.savedState.strategyWeights) {
-            this.performanceEvaluator.setWeights(this.savedState.strategyWeights);
-        }
-        if (this.savedState && Array.isArray(this.savedState.disabledStrategies)) {
-            this.disabledStrategies = new Set(this.savedState.disabledStrategies);
-        }
+        if (this.savedState && this.savedState.initialBankroll) { this.initialBankroll = this.savedState.initialBankroll; }
+        if (this.savedState && this.savedState.provider) { this.sizingEngine.setProvider(this.savedState.provider as CasinoProvider); }
+        if (this.savedState && this.savedState.vixTolerance) { this.vixTolerance = this.savedState.vixTolerance; }
+        if (this.savedState && Array.isArray(this.savedState.history)) { this.savedState.history.forEach((num: number) => this.mesaTracker.addNumber(num)); }
+        if (this.savedState && this.savedState.toxicTableLockUntil) { this.toxicTableLockUntil = this.savedState.toxicTableLockUntil; }
+        if (this.savedState && this.savedState.strategyWeights) { this.performanceEvaluator.setWeights(this.savedState.strategyWeights); }
+        if (this.savedState && Array.isArray(this.savedState.disabledStrategies)) { this.disabledStrategies = new Set(this.savedState.disabledStrategies); }
         
         this.cooldownGuard = new DynamicEmotionalCooldownGuard(this.initialBankroll, this.savedState);
         this.sessionStats.startBankroll = this.cooldownGuard.currentBankroll;
         this.trailingStopGuard = new TrailingStopGuard(this.sessionStats.startBankroll);
-        
         this.isDailyHardLocked = this.savedState?.isDailyHardLocked || false;
         this.hardLockDateEpoch = this.savedState?.hardLockDateEpoch || null;
 
         this.verifyDailyLock();
         this.generateNextTrade();
         
-        if (this.isDailyHardLocked) {
-            this.renderExecutiveReport('SESSÃO JÁ FINALIZADA HOJE OU QUARENTENA ATIVA');
-        } else {
-            this.renderTerminalHud();
-            this.manageLiveTimer();
-        }
+        if (this.isDailyHardLocked) { this.renderExecutiveReport('SESSÃO JÁ FINALIZADA HOJE OU QUARENTENA ATIVA'); } 
+        else { this.renderTerminalHud(); this.manageLiveTimer(); }
 
         this.attachEventListeners();
     }
@@ -124,16 +99,14 @@ export class LivePaperOrchestrator {
         if (this.checkToxicTableLock() && !this.liveTimer) {
             this.liveTimer = setInterval(() => {
                 if (!this.checkToxicTableLock()) {
-                    clearInterval(this.liveTimer);
-                    this.liveTimer = null;
+                    clearInterval(this.liveTimer); this.liveTimer = null;
                     if (this.inputMode !== 'VIEW_ONLY') this.renderTerminalHud();
                 } else {
                     if (this.inputMode !== 'VIEW_ONLY') this.renderTerminalHud();
                 }
             }, 1000);
         } else if (!this.checkToxicTableLock() && this.liveTimer) {
-            clearInterval(this.liveTimer);
-            this.liveTimer = null;
+            clearInterval(this.liveTimer); this.liveTimer = null;
         }
     }
 
@@ -146,9 +119,7 @@ export class LivePaperOrchestrator {
     private verifyDailyLock(): void {
         if (this.isDailyHardLocked) {
             if (!this.isSameDay(this.hardLockDateEpoch!, Date.now())) {
-                this.isDailyHardLocked = false; 
-                this.hardLockDateEpoch = null;
-                this.saveSystemState();
+                this.isDailyHardLocked = false; this.hardLockDateEpoch = null; this.saveSystemState();
             }
         }
     }
@@ -196,15 +167,13 @@ export class LivePaperOrchestrator {
     private checkToxicTableLock(): boolean {
         if (this.toxicTableLockUntil && Date.now() < this.toxicTableLockUntil) return true;
         if (this.toxicTableLockUntil && Date.now() >= this.toxicTableLockUntil) {
-            this.toxicTableLockUntil = null; 
-            this.saveSystemState();
+            this.toxicTableLockUntil = null; this.saveSystemState();
         }
         return false;
     }
 
     private generateNextTrade(): void {
         this.activeStrategyId = null; this.triplicacaoPatternFound = null; this.triplicacaoTypeFound = null;
-
         const fullHistory = this.mesaTracker.getHistory();
         const REDS = new Set(AutoSettlementEngine.RED_NUMS);
         const operationalHistory = fullHistory.slice(-this.OPERATIONAL_WINDOW_SIZE);
@@ -213,11 +182,8 @@ export class LivePaperOrchestrator {
             const reversedHistory = [...operationalHistory].reverse();
             const colorStats = this.computeTriplicacao(reversedHistory, v => REDS.has(v) ? 'A' : 'B');
             const parityStats = this.computeTriplicacao(reversedHistory, v => v % 2 === 0 ? 'A' : 'B');
-
             this.currentVixPercent = (colorStats.vix + parityStats.vix) / 2;
-            if (this.currentVixPercent > 0 && !this.checkToxicTableLock()) {
-                this.sessionStats.vixReadings.push(this.currentVixPercent);
-            }
+            if (this.currentVixPercent > 0 && !this.checkToxicTableLock()) { this.sessionStats.vixReadings.push(this.currentVixPercent); }
         }
 
         if (this.isDailyHardLocked) return;
@@ -228,7 +194,6 @@ export class LivePaperOrchestrator {
         if (this.currentVixPercent > this.vixTolerance) { this.sessionStats.entropyBlocks++; return; }
 
         const reversedHistory = [...operationalHistory].reverse();
-        
         if (reversedHistory.length % 3 === 2) {
             const inicio = reversedHistory[1]; const confirmacao = reversedHistory[0];
             if (inicio !== 0 && confirmacao !== 0) {
@@ -275,8 +240,7 @@ export class LivePaperOrchestrator {
             let bestStrat = null; let maxScore = 0;
             Object.entries(scores).forEach(([strat, score]) => { 
                 if (score > maxScore && this.performanceEvaluator.isAllowed(strat) && !this.disabledStrategies.has(strat)) { 
-                    maxScore = score; 
-                    bestStrat = strat; 
+                    maxScore = score; bestStrat = strat; 
                 } 
             });
             if (bestStrat && maxScore >= (timeline.length * 0.40)) { this.activeStrategyId = bestStrat; }
@@ -290,6 +254,9 @@ export class LivePaperOrchestrator {
         }
     }
 
+    // ==========================================
+    // PAINÉIS RESTAURADOS (XAI)
+    // ==========================================
     private renderExecutiveReport(reason: string): void {
         console.clear();
         console.log('======================================================');
@@ -297,10 +264,92 @@ export class LivePaperOrchestrator {
         console.log('======================================================');
     }
     
-    private renderTacticalReport(): void {}
-    private renderHeatmap(): void {}
-    private renderStats(): void {}
-    private renderWeightsMatrix(): void {}
+    private renderTacticalReport(): void {
+        console.clear();
+        console.log('======================================================');
+        console.log(' ⏸️  RELATÓRIO TÁTICO - MODO PAUSA');
+        console.log('======================================================');
+    }
+
+    private renderHeatmap(): void {
+        console.clear();
+        const freqMap = this.mesaTracker.getFrequencies();
+        const historyLength = this.mesaTracker.getHistory().length;
+        const sortedFreq = Array.from(freqMap.entries()).sort((a, b) => b[1] - a[1]);
+        
+        console.log('======================================================');
+        console.log(` 🌡️  XAI: HEATMAP TOPOGRÁFICO (Amostra Acumulada: ${historyLength} giros)`);
+        console.log('======================================================');
+        
+        if (historyLength === 0) { console.log(' \x1b[33mAguardando dados...\x1b[0m'); } else {
+            console.log(' \x1b[31m🔥 HOT NUMBERS (Mais frequentes):\x1b[0m');
+            for (let i = 0; i < 5 && i < sortedFreq.length; i++) {
+                if (sortedFreq[i][1] > 0) { console.log(`    Número \x1b[1m${sortedFreq[i][0].toString().padStart(2, ' ')}\x1b[0m : ${sortedFreq[i][1]} aparições`); }
+            }
+            console.log('\n \x1b[36m❄️  COLD NUMBERS (Menos frequentes/Ausentes):\x1b[0m');
+            for (let i = sortedFreq.length - 1; i >= sortedFreq.length - 5 && i >= 0; i--) {
+                console.log(`    Número \x1b[1m${sortedFreq[i][0].toString().padStart(2, ' ')}\x1b[0m : ${sortedFreq[i][1]} aparições`);
+            }
+        }
+        console.log('------------------------------------------------------');
+        console.log(' Pressione ENTER para retornar à operação...');
+    }
+
+    private renderStats(): void {
+        console.clear();
+        const stats = this.mesaTracker.getDistributionStats();
+        console.log('======================================================');
+        console.log(` 📊 XAI: DISTRIBUIÇÃO DA MESA (Amostra Acumulada: ${stats.total} giros)`);
+        console.log('======================================================');
+        
+        if (stats.total === 0) { console.log(' \x1b[33mAguardando dados da mesa...\x1b[0m'); } else {
+            const pRed = ((stats.red / stats.total) * 100).toFixed(1);
+            const pBlack = ((stats.black / stats.total) * 100).toFixed(1);
+            const pZero = ((stats.zero / stats.total) * 100).toFixed(1);
+            const pEven = ((stats.even / stats.total) * 100).toFixed(1);
+            const pOdd = ((stats.odd / stats.total) * 100).toFixed(1);
+            const pLow = ((stats.low / stats.total) * 100).toFixed(1);
+            const pHigh = ((stats.high / stats.total) * 100).toFixed(1);
+            const pD1 = ((stats.dozen1 / stats.total) * 100).toFixed(1);
+            const pD2 = ((stats.dozen2 / stats.total) * 100).toFixed(1);
+            const pD3 = ((stats.dozen3 / stats.total) * 100).toFixed(1);
+            const pC1 = ((stats.col1 / stats.total) * 100).toFixed(1);
+            const pC2 = ((stats.col2 / stats.total) * 100).toFixed(1);
+            const pC3 = ((stats.col3 / stats.total) * 100).toFixed(1);
+
+            console.log(` \x1b[31mVermelho\x1b[0m : ${stats.red.toString().padStart(3, ' ')} vezes (${pRed}%) | \x1b[30m\x1b[47mPreto\x1b[0m: ${stats.black.toString().padStart(3, ' ')} vezes (${pBlack}%)`);
+            console.log(` \x1b[32mZero (0)\x1b[0m : ${stats.zero.toString().padStart(3, ' ')} vezes (${pZero}%)`);
+            console.log(' ----------------------------------------------------');
+            console.log(` Pares    : ${stats.even.toString().padStart(3, ' ')} vezes (${pEven}%) | Ímpares: ${stats.odd.toString().padStart(3, ' ')} vezes (${pOdd}%)`);
+            console.log(` Baixos   : ${stats.low.toString().padStart(3, ' ')} vezes (${pLow}%) | Altos  : ${stats.high.toString().padStart(3, ' ')} vezes (${pHigh}%)`);
+            console.log(' ----------------------------------------------------');
+            console.log(` \x1b[36mDúzias\x1b[0m   : 1ª [${stats.dozen1.toString().padStart(3, ' ')} | ${pD1}%] - 2ª [${stats.dozen2.toString().padStart(3, ' ')} | ${pD2}%] - 3ª [${stats.dozen3.toString().padStart(3, ' ')} | ${pD3}%]`);
+            console.log(` \x1b[36mColunas\x1b[0m  : 1ª [${stats.col1.toString().padStart(3, ' ')} | ${pC1}%] - 2ª [${stats.col2.toString().padStart(3, ' ')} | ${pC2}%] - 3ª [${stats.col3.toString().padStart(3, ' ')} | ${pC3}%]`);
+        }
+        console.log('------------------------------------------------------');
+        console.log(' Pressione ENTER para retornar à operação...');
+    }
+
+    private renderWeightsMatrix(): void {
+        console.clear();
+        const weights = this.performanceEvaluator.getAllWeights();
+        console.log('======================================================');
+        console.log(' 📊 XAI: INSPEÇÃO DE REGIME E CHAVEAMENTO MANUAL');
+        console.log('======================================================');
+        Object.entries(weights).forEach(([stratId, weight]) => {
+            const name = AutoSettlementEngine.getStrategies()[stratId].name;
+            if (this.disabledStrategies.has(stratId)) {
+                console.log(` > \x1b[90m${name.padEnd(30, ' ')} [DESLIGADA PELO USUÁRIO]\x1b[0m`);
+            } else {
+                let status = '\x1b[32m[ALINHADO]\x1b[0m';
+                if (weight < 1.0) status = '\x1b[33m[ALERTADO]\x1b[0m';
+                if (weight < 0.6) status = '\x1b[31m[SILENCIADO PELA IA]\x1b[0m';
+                console.log(` > ${name.padEnd(20, ' ')} : Peso ${weight.toFixed(1)} | Status: ${status}`);
+            }
+        });
+        console.log('------------------------------------------------------');
+        console.log(' Pressione ENTER para retornar à operação...');
+    }
 
     private attachEventListeners(): void {
         this.rl.on('line', (line) => {
@@ -308,31 +357,65 @@ export class LivePaperOrchestrator {
             
             if (cmd === 'exit' || cmd === 'quit') { 
                 if (this.liveTimer) clearInterval(this.liveTimer);
-                this.saveSystemState(); 
-                console.log('\n[!] Estado criptografado salvo. Encerrando...'); 
-                this.rl.close(); 
-                return; 
+                this.saveSystemState(); console.log('\n[!] Estado salvo. Encerrando...'); this.rl.close(); return; 
             }
 
-            // ==========================================
-            // SPRINT 380: COMANDO UNDO (Desfazer)
-            // ==========================================
+            // ESCAPE RESTAURADO: Se estiver no modo VIEW_ONLY, qualquer Enter volta pra operação
+            if (this.inputMode === 'VIEW_ONLY') { 
+                this.inputMode = 'NUMBER'; this.renderTerminalHud(); return; 
+            }
+
+            if (this.isDailyHardLocked) { this.rl.prompt(); return; }
+
+            // LÓGICA DE CONFIRMAÇÃO DE TRADE (Que havia sido cortada)
+            if (this.inputMode === 'CONFIRM_TRADE') {
+                const executedStratId = this.activeStrategyId!;
+                if (cmd === 's' || cmd === 'sim' || cmd === 'y') {
+                    if (this.pendingResult.status === 'WIN_MAX' || this.pendingResult.status === 'WIN_MIN') {
+                        this.cooldownGuard.registerOutcome(true, this.cooldownGuard.currentBankroll + this.pendingResult.netAmount);
+                        this.performanceEvaluator.registerWin(executedStratId);
+                        this.voiceCopilot.speak('Green liquidado.');
+                    } else if (this.pendingResult.status === 'PUSH') {
+                        this.cooldownGuard.registerOutcome(true, this.cooldownGuard.currentBankroll);
+                    } else {
+                        this.cooldownGuard.registerOutcome(false, this.cooldownGuard.currentBankroll - Math.abs(this.pendingResult.netAmount));
+                        this.performanceEvaluator.registerLoss(executedStratId);
+                        this.voiceCopilot.speak('Red absorvido.');
+                    }
+                    this.saveSystemState();
+                } else if (cmd === 'n' || cmd === 'nao' || cmd === 'não') {
+                    this.forceObserveRound = true;
+                } else { console.log('Inválido.'); this.rl.prompt(); return; }
+                
+                this.inputMode = 'NUMBER'; this.pendingResult = null; this.activeStrategyId = null;
+                this.trailingStopGuard.updatePeak(this.cooldownGuard.currentBankroll);
+                const stopStatus = this.trailingStopGuard.checkStop(this.cooldownGuard.currentBankroll);
+                
+                if (stopStatus.isStopped) {
+                    this.isDailyHardLocked = true; this.hardLockDateEpoch = Date.now(); this.saveSystemState();
+                    this.renderExecutiveReport(stopStatus.reason); this.rl.prompt(); return;
+                }
+                if (this.cooldownGuard.isSessionEnded) {
+                    this.isDailyHardLocked = true; this.hardLockDateEpoch = Date.now(); this.saveSystemState();
+                    this.renderExecutiveReport('META GLOBAL OU STOP LOSS ATINGIDO'); this.rl.prompt(); return;
+                } else if (this.cooldownGuard.isLocked()) {
+                    this.renderTacticalReport(); this.rl.prompt(); return;
+                }
+                this.generateNextTrade(); this.renderTerminalHud(); return;
+            }
+
+            // COMANDO UNDO 
             if (cmd === 'undo') {
                 const history = this.mesaTracker.getHistory();
                 if (history.length > 0) {
-                    const removedNum = history.pop(); // Remove o último número
-                    // Cria uma nova instância limpa
+                    const removedNum = history.pop();
                     this.mesaTracker = new (this.mesaTracker.constructor as any)();
-                    // Refaz o histórico sem o número errado
                     history.forEach(n => this.mesaTracker.addNumber(n));
-                    
-                    this.saveSystemState();
-                    this.generateNextTrade();
-                    
+                    this.saveSystemState(); this.generateNextTrade();
                     console.clear();
                     console.log(`\n \x1b[33m[!] DESFEITO: O número ${removedNum} foi apagado da timeline.\x1b[0m`);
                     console.log(` O VIX e os gatilhos foram recalculados instantaneamente.`);
-                    setTimeout(() => this.renderTerminalHud(), 2000);
+                    setTimeout(() => this.renderTerminalHud(), 1500);
                 } else {
                     console.log('\n \x1b[31mA timeline já está vazia.\x1b[0m');
                     setTimeout(() => this.renderTerminalHud(), 1000);
@@ -340,34 +423,31 @@ export class LivePaperOrchestrator {
                 return;
             }
 
-            // SPRINT 379: Comandos de Roteamento Manual
             if (cmd.startsWith('disable ')) {
                 const term = cmd.replace('disable ', '').trim().toUpperCase();
-                Object.keys(AutoSettlementEngine.getStrategies()).forEach(id => {
-                    if (id.includes(term)) { this.disabledStrategies.add(id); }
-                });
+                Object.keys(AutoSettlementEngine.getStrategies()).forEach(id => { if (id.includes(term)) { this.disabledStrategies.add(id); } });
                 this.saveSystemState(); this.generateNextTrade(); this.renderTerminalHud(); return;
             }
 
             if (cmd.startsWith('enable ')) {
                 const term = cmd.replace('enable ', '').trim().toUpperCase();
                 if (term === 'ALL') { this.disabledStrategies.clear(); } else {
-                    Object.keys(AutoSettlementEngine.getStrategies()).forEach(id => {
-                        if (id.includes(term)) { this.disabledStrategies.delete(id); }
-                    });
+                    Object.keys(AutoSettlementEngine.getStrategies()).forEach(id => { if (id.includes(term)) { this.disabledStrategies.delete(id); } });
                 }
                 this.saveSystemState(); this.generateNextTrade(); this.renderTerminalHud(); return;
             }
 
             if (cmd === 'reset') {
-                this.mesaTracker = new (this.mesaTracker.constructor as any)();
-                this.toxicTableLockUntil = null;
+                this.mesaTracker = new (this.mesaTracker.constructor as any)(); this.toxicTableLockUntil = null;
                 this.saveSystemState(); this.generateNextTrade(); this.renderTerminalHud(); return;
             }
 
             if (cmd === 'risk low') { this.vixTolerance = 98.0; this.saveSystemState(); this.generateNextTrade(); this.renderTerminalHud(); return; }
             if (cmd === 'risk normal') { this.vixTolerance = 95.0; this.saveSystemState(); this.generateNextTrade(); this.renderTerminalHud(); return; }
+            if (cmd === 'provider pragmatic') { this.sizingEngine.setProvider('PRAGMATIC'); this.saveSystemState(); this.generateNextTrade(); this.renderTerminalHud(); return; }
+            if (cmd === 'provider evolution') { this.sizingEngine.setProvider('EVOLUTION'); this.saveSystemState(); this.generateNextTrade(); this.renderTerminalHud(); return; }
             
+            // XAI E TELAS RESTAURADAS
             if (cmd === 'help' || cmd === 'ajuda') {
                 console.clear();
                 console.log('======================================================');
@@ -377,6 +457,12 @@ export class LivePaperOrchestrator {
                 console.log(' <0-36>             : Registra o número do giro.');
                 console.log(' undo               : Apaga o último número digitado (Corrige erro).');
                 console.log(' sync <n,n,...>     : Insere múltiplos números (Warmup).');
+                console.log('\n [ AUDITORIA E ANÁLISE (XAI) ]');
+                console.log(' timeline           : Exibe a fita dos últimos 15 giros.');
+                console.log(' trios              : Abre o Scanner de Padrões (Triplicação).');
+                console.log(' heatmap            : Mapeia números Quentes e Frios.');
+                console.log(' stats              : Exibe a estatística geral da mesa.');
+                console.log(' weights            : Inspeciona os pesos ativos de regime.');
                 console.log('\n [ GESTÃO E ROTEAMENTO ]');
                 console.log(' disable <nome>     : Desliga estratégias (ex: disable sector).');
                 console.log(' enable <nome>      : Religa estratégias (ex: enable all).');
@@ -386,10 +472,46 @@ export class LivePaperOrchestrator {
                 this.inputMode = 'VIEW_ONLY'; this.rl.prompt(); return;
             }
 
+            if (cmd === 'heatmap') { this.renderHeatmap(); this.inputMode = 'VIEW_ONLY'; this.rl.prompt(); return; }
+            if (cmd === 'stats') { this.renderStats(); this.inputMode = 'VIEW_ONLY'; this.rl.prompt(); return; }
+            if (cmd === 'weights') { this.renderWeightsMatrix(); this.inputMode = 'VIEW_ONLY'; this.rl.prompt(); return; }
             if (cmd === 'timeline') { console.clear(); console.log(`\n Histórico: \x1b[36m${this.mesaTracker.getTimeline(15)}\x1b[0m\n [ENTER] para voltar...`); this.inputMode = 'VIEW_ONLY'; this.rl.prompt(); return; }
             
-            // ... (restante dos comandos padrão mantidos e operacionais) ...
-            
+            if (cmd === 'trios') { 
+                console.clear(); console.log('======================================================'); console.log(' 🧩 XAI: AUDITORIA DE TRIPLICAÇÃO (Últimos Eventos)'); console.log('======================================================'); 
+                const h = this.mesaTracker.getHistory(); 
+                if (h.length < 3) { console.log(' \x1b[33mDados insuficientes para formar trios estruturais.\x1b[0m'); } else { 
+                    const reversed = [...h].reverse(); const remainder = reversed.length % 3; const REDS = new Set(AutoSettlementEngine.RED_NUMS); 
+                    if (remainder === 2) { console.log(` \x1b[33m[PENDENTE]\x1b[0m Início: \x1b[1m${reversed[1]}\x1b[0m | Confirmação: \x1b[1m${reversed[0]}\x1b[0m | Finalização: ?`); } 
+                    else if (remainder === 1) { console.log(` \x1b[33m[PENDENTE]\x1b[0m Início: \x1b[1m${reversed[0]}\x1b[0m | Confirmação: ? | Finalização: ?`); } 
+                    let printed = 0; 
+                    for (let i = remainder; i < reversed.length && printed < 8; i += 3) { 
+                        const f = reversed[i]; const c = reversed[i+1]; const inc = reversed[i+2]; 
+                        if ([inc, c, f].includes(0)) { console.log(` \x1b[31m[ANULADO]\x1b[0m  Trio com Zero: (${inc}, ${c}, ${f})`); } else { 
+                            const cor = [inc, c, f].map(v => REDS.has(v) ? 'R' : 'B'); let pCor = 'N/A'; 
+                            if (cor[0]===cor[1] && cor[1]===cor[2]) pCor = 'TC '; else if (cor[0]===cor[1] && cor[1]!==cor[2]) pCor = 'NTC'; else if (cor[0]!==cor[1] && cor[1]!==cor[2] && cor[0]===cor[2]) pCor = 'TA '; else if (cor[0]!==cor[1] && cor[1]===cor[2]) pCor = 'NTA'; 
+                            const par = [inc, c, f].map(v => v%2===0 ? 'P' : 'I'); let pPar = 'N/A'; 
+                            if (par[0]===par[1] && par[1]===par[2]) pPar = 'TC '; else if (par[0]===par[1] && par[1]!==par[2]) pPar = 'NTC'; else if (par[0]!==par[1] && par[1]!==par[2] && par[0]===par[2]) pPar = 'TA '; else if (par[0]!==par[1] && par[1]===par[2]) pPar = 'NTA'; 
+                            console.log(` \x1b[32m[FECHADO]\x1b[0m  (${inc}, ${c}, ${f}) => Cor: \x1b[36m${pCor}\x1b[0m | Paridade: \x1b[36m${pPar}\x1b[0m`); 
+                        } printed++; 
+                    } 
+                } 
+                console.log('------------------------------------------------------'); console.log(' Pressione ENTER para voltar...'); this.inputMode = 'VIEW_ONLY'; this.rl.prompt(); return; 
+            }
+
+            if (this.cooldownGuard.isLocked() || this.checkToxicTableLock()) {
+                if (!cmd.startsWith('sync ')) {
+                    if (!this.checkToxicTableLock()) this.cooldownGuard.registerOutcome(false, this.cooldownGuard.currentBankroll); 
+                    this.saveSystemState(); this.renderTerminalHud(); return;
+                }
+            }
+
+            if (cmd.startsWith('sync ')) {
+                const numbers = cmd.replace('sync ', '').split(',').map(n => parseInt(n.trim(), 10));
+                numbers.forEach(n => { if (!isNaN(n) && n >= 0 && n <= 36) { this.mesaTracker.addNumber(n); } });
+                this.generateNextTrade(); this.renderTerminalHud(); return;
+            }
+
             const num = parseInt(cmd, 10);
             if (isNaN(num) || num < 0 || num > 36) { this.rl.prompt(); return; }
 
@@ -427,17 +549,25 @@ export class LivePaperOrchestrator {
             console.log(`\x1b[31m ☣️ MESA TÓXICA REJEITADA PELO SISTEMA (VIX > ${this.vixTolerance.toFixed(1)}%)\x1b[0m`);
             this.rl.setPrompt('comando > ');
         }
+        else if (lockStatus) {
+            console.log(`\x1b[31m 🛑 TRAVA DE PROTEÇÃO DE CAPITAL ATIVA\x1b[0m`);
+            console.log(` MOTIVO: ${lockStatus.reason} | TEMPO: ${lockStatus.time}`);
+            this.rl.setPrompt('comando > ');
+        } 
         else if (this.inputMode === 'CONFIRM_TRADE') {
             const stratName = AutoSettlementEngine.getStrategies()[this.activeStrategyId!].name;
             let color = '\x1b[31m'; let label = 'RED (Loss)';
             if (this.pendingResult.status === 'WIN_MAX' || this.pendingResult.status === 'WIN_MIN') { color = '\x1b[32m'; label = 'GREEN'; }
+            if (this.pendingResult.status === 'PUSH') { color = '\x1b[33m'; label = 'PUSH (Empate)'; }
             console.log(` ${color}RESULTADO: ${label} | R$ ${this.pendingResult.netAmount.toFixed(2)}\x1b[0m`);
-            console.log(` [?] Você executou a [${stratName}] com Stake R$ ${this.dynamicStakeCalculated.toFixed(2)}?`);
+            console.log('------------------------------------------------------');
+            console.log(` [?] Você executou a estratégia [${stratName}] com Stake LOU de R$ ${this.dynamicStakeCalculated.toFixed(2)}?`);
             this.rl.setPrompt('Confirme (s/n) > ');
         } 
         else if (this.activeStrategyId) {
             const strat = AutoSettlementEngine.getStrategies()[this.activeStrategyId];
             console.log(` ESTRATÉGIA .. \x1b[36m${strat.name}\x1b[0m`);
+            if (this.triplicacaoPatternFound) console.log(` ALGORITMO ... [${this.triplicacaoTypeFound}] - Padrão: ${this.triplicacaoPatternFound}`);
             console.log(` AÇÃO ........ \x1b[32mENTRAR\x1b[0m`);
             console.log(` STAKE LOU .. \x1b[32mR$ ${this.dynamicStakeCalculated.toFixed(2)}\x1b[0m`);
             this.rl.setPrompt('roleta/comando > ');
