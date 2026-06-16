@@ -15,9 +15,8 @@ class AutoSettlementEngine {
             'TRIPLICACAO_BLACK': { name: 'Triplicação (Alvo: PRETO)', stake: 0.10, evaluate: (n) => ({ status: 'LOSS', netAmount: -0.10 }) },
             'TRIPLICACAO_EVEN': { name: 'Triplicação (Alvo: PAR)', stake: 0.10, evaluate: (n) => ({ status: 'LOSS', netAmount: -0.10 }) },
             'TRIPLICACAO_ODD': { name: 'Triplicação (Alvo: ÍMPAR)', stake: 0.10, evaluate: (n) => ({ status: 'LOSS', netAmount: -0.10 }) },
-            // SPRINT 385: Injeção da sua estratégia no mapa global do orquestrador
             'CROSS_GRID_HEDGE': { 
-                name: CrossGridHedgeStrategy.name, 
+                name: CrossGridHedgeStrategy.strategyName, // FIX SPRINT 386: Lendo a propriedade correta
                 stake: CrossGridHedgeStrategy.stake,
                 evaluate: (drawn, anchor) => CrossGridHedgeStrategy.evaluate(drawn, anchor)
             }
