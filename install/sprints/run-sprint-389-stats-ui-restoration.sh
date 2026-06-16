@@ -1,3 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "======================================"
+echo " RL.SYS CORE - SPRINT 389"
+echo " STATS UI RESTORATION (DOZENS/COLS)"
+echo "======================================"
+
+ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+cd "$ROOT_DIR"
+
+echo "[1/2] Restaurando medidores de Dúzias e Colunas no painel analítico..."
+cat > src/presentation/cli/LivePaperOrchestrator.ts <<'EOF'
 import * as readline from 'node:readline';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -592,3 +605,13 @@ export class LivePaperOrchestrator {
         this.rl.prompt(true);
     }
 }
+EOF
+
+git add src/presentation/cli/LivePaperOrchestrator.ts
+git add install/sprints/run-sprint-389-stats-ui-restoration.sh
+git commit -m "fix(cli): restore dozens and columns distribution metrics to the stats XAI panel (Sprint 389)" > /dev/null
+
+echo "======================================"
+echo -e "\033[1;32m SPRINT 389 APLICADA COM SUCESSO \033[0m"
+echo " STATUS: MEDIDORES DE COLUNAS/DÚZIAS RESTAURADOS"
+echo "======================================"
