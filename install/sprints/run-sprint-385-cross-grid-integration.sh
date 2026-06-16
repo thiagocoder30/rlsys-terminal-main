@@ -1,3 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "======================================"
+echo " RL.SYS CORE - SPRINT 385"
+echo " INTEGRATION: CROSS-GRID HEDGES UI"
+echo "======================================"
+
+ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+cd "$ROOT_DIR"
+
+echo "[1/2] Atualizando o Motor de Liquidação para incluir a nova estratégia no weights..."
+cat > src/domain/financial/AutoSettlementEngine.js <<'EOF'
 const { CrossGridHedgeStrategy } = require('./strategies/CrossGridHedgeStrategy');
 
 class AutoSettlementEngine {
@@ -26,3 +39,14 @@ class AutoSettlementEngine {
 }
 
 module.exports = { AutoSettlementEngine };
+EOF
+
+echo "[2/2] Atualizando o Git com os vínculos de exibição de tela..."
+git add src/domain/financial/AutoSettlementEngine.js
+git add install/sprints/run-sprint-385-cross-grid-integration.sh
+git commit -m "fix(cli): integrate CrossGridHedgeStrategy into AutoSettlementEngine mapping to expose it on weights UI panel (Sprint 385)" > /dev/null
+
+echo "======================================"
+echo -e "\033[1;32m SPRINT 385 INTEGRADA COM SUCESSO \033[0m"
+echo " PASTA: install/sprints/"
+echo "======================================"
