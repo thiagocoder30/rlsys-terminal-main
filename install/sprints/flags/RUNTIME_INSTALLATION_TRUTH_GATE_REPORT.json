@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-06-16T22:18:31-03:00",
+  "inputs": {
+    "ledger": "/data/data/com.termux/files/home/rlsys-terminal-main/install/sprints/flags/RUNTIME_DATA_INTEGRITY_SHIELD_REPORT.json",
+    "receipt": "/data/data/com.termux/files/home/rlsys-terminal-main/install/sprints/logs/receipt_RUNTIME_20260616221041.json"
+  },
+  "validation": {
+    "jsonValid": 1,
+    "receiptValid": 1,
+    "ledgerStatus": "UNKNOWN"
+  },
+  "score": {
+    "trustScore": 80,
+    "coherence": "0"
+  },
+  "result": {
+    "status": "TRUTH_CONFIRMED"
+  }
+}

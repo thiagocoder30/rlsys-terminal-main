@@ -1,0 +1,15 @@
+{
+  "generatedAt": "2026-06-16T22:24:38-03:00",
+  "sprintId": "418",
+  "contract": {
+    "score": 60,
+    "status": "PARTIAL_CONTRACT_VIOLATION"
+  },
+  "expected": {
+    "ledger": "/data/data/com.termux/files/home/rlsys-terminal-main/install/sprints/flags/RUNTIME_INSTALLATION_TRUTH_GATE_REPORT.json",
+    "receipt": "/data/data/com.termux/files/home/rlsys-terminal-main/install/sprints/logs/receipt_RUNTIME_418.json"
+  },
+  "violations": [
+  "MISSING_RECEIPT"
+]
+}

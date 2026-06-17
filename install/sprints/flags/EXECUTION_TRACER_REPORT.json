@@ -1,0 +1,28 @@
+{
+  "generatedAt": "2026-06-16T23:50:48Z",
+  "hookedExecutionPaths": [
+  ],
+  "hookedStrategies": [
+
+  ],
+  "unhookedStrategies": [
+    "StrategyRankingEngine",
+    "StrategyCooldownEngine",
+    "StrategyRuntimeOrchestrator",
+    "MultiStrategyRuntimeCoordinator",
+    "StrategyRegistry",
+    "StrategyEnsembleEngine",
+    "StrategyRecommendationEngine",
+    "StrategyDashboardEngine",
+    "StrategyCooldownVisualizer",
+    "StrategyResultLedgerEngine",
+    "FusionReduzida",
+    "Triplicacao",
+    "StrategyStatusPresenter",
+    "OperatorActionCenter",
+    "StrategyCapabilityMap",
+    "StrategyExplainabilityEngine",
+    "StrategyRecoveryEngine",
+    "StrategyCompatibilityEngine"
+  ]
+}

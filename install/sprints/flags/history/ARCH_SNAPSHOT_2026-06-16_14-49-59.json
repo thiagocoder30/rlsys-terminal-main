@@ -1,0 +1,26 @@
+{
+  "project": "RL.SYS CORE",
+  "generated_at": "2026-06-16_14-49-59",
+
+  "structure": {
+    "application": ["src/application","session","journal","controllers","decision","backtesting","live","knowledge","operator","health","ledger","pipeline","telemetry","config","ocr","reporting","observability","warmup","services","runtime","setup","stress","orchestrators","orchestration","release","research"],
+    "domain": ["src/domain","runtime","confidence","session","financial","financial/strategies","learning-weight-adjustment","benchmark","institutional-readiness-review-v2","comparison","snapshot","recommendation","replay","shared","temporal","bankroll","bankroll/session-time","learning-memory","performance","strategy","multi-session-analytics","persistence","institutional-recommendation-trace-bridge","ocr","statistics","institutional-pattern-discovery","vision","warmup-upload-ingestion","ledger","adaptive-confidence","learning-confidence-validation","backtesting","warmup","outcome-correlation","explainability","events","enforcement","authorization","research","services","knowledge","decision","supervision","table-reputation","strategy-reputation","validation","certification","certification/multi-session","certification/threshold-calibration","certification/final-paper-certification-report","certification/paper-stability-stress-test","certification/paper-runtime","entities","regime","math","institutional-knowledge-graph","simulation","security","institutional-hud-summary","institutional-explainability","learning","institutional-decision-trace","journal","reporting","operator","finance","risk","context-similarity","datasets","institutional-recommendation","analytics","institutional-audit-timeline","stress","memory","interfaces","institutional-event-ledger","usecases","sequential"],
+    "infrastructure": ["src/infrastructure","ai","runtime","research","paper-operational","repositories","persistence","ocr","replay","adapters","telemetry","audio","journal","ledger","audit","storage","risk","database","http","http/middleware","defenses","di","observability"]
+  },
+
+  "core_modules": [
+    "RuntimeKernel",
+    "RuntimeShutdownCoordinator",
+    "JsonLinesReplayRepository"
+  ],
+
+  "entrypoints": [
+    "src/main.ts"
+  ],
+
+  "architecture_style": "HYBRID_LAYERED_RUNTIME",
+
+  "critical_flow": [
+    "CLI -> Kernel -> ShutdownCoordinator -> ReplayRepository"
+  ]
+}

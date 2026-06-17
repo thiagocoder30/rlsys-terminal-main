@@ -1,0 +1,47 @@
+{
+  "AnalyticsDecisionEngine": {
+    "sourceFile": "src/application/runtime/AnalyticsDecisionEngine.ts",
+    "referencedBy": [
+      "src/application/runtime/PaperTestOperatorConsole.ts"
+    ],
+    "dependencies": []
+  },
+  "FusionHeatmapIntegrationEngine": {
+    "sourceFile": "src/application/runtime/FusionHeatmapIntegrationEngine.ts",
+    "referencedBy": [],
+    "dependencies": [
+      "WheelHeatmapAnalyticsEngine"
+    ]
+  },
+  "InstitutionalMultiStrategyConsensusRuntime": {
+    "sourceFile": "src/application/runtime/InstitutionalMultiStrategyConsensusRuntime.ts",
+    "referencedBy": [],
+    "dependencies": []
+  },
+  "AdaptiveConsensusConfidenceEngine": {
+    "sourceFile": "src/application/runtime/AdaptiveConsensusConfidenceEngine.ts",
+    "referencedBy": [],
+    "dependencies": []
+  },
+  "WheelHeatmapAnalyticsEngine": {
+    "sourceFile": "src/domain/analytics/WheelHeatmapAnalyticsEngine.ts",
+    "referencedBy": [
+      "src/application/runtime/FusionHeatmapIntegrationEngine.ts"
+    ],
+    "dependencies": []
+  },
+  "TriplicacaoPatternEngine": {
+    "sourceFile": "src/domain/analytics/TriplicacaoPatternEngine.ts",
+    "referencedBy": [
+      "src/domain/analytics/TriplicacaoAdvancedProbabilityEngine.ts"
+    ],
+    "dependencies": []
+  },
+  "TriplicacaoAdvancedProbabilityEngine": {
+    "sourceFile": "src/domain/analytics/TriplicacaoAdvancedProbabilityEngine.ts",
+    "referencedBy": [],
+    "dependencies": [
+      "TriplicacaoPatternEngine"
+    ]
+  }
+}

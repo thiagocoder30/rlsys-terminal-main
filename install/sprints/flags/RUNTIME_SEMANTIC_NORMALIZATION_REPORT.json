@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-06-17T00:48:34Z",
+  "model": "SEMANTIC_NORMALIZATION_V1",
+  "inputs": {
+    "nodes": 18,
+    "edges": 39,
+    "hooked": 1,
+    "orphans": 1,
+    "bottlenecks": 1
+  },
+  "semantic": {
+    "centralityScore": 132,
+    "executionDensity": 49,
+    "imbalance": 7,
+    "semanticScore": 100,
+    "status": "STRUCTURALLY_STRONG"
+  },
+  "interpretation": {
+    "mode": "STRUCTURAL_GRAPH_INTELLIGENCE",
+    "note": "system now evaluates topology influence, not raw counts"
+  }
+}

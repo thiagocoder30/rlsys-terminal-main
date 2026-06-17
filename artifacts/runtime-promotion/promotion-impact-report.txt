@@ -1,0 +1,18 @@
+RL.SYS CORE - Runtime Promotion Report
+
+AnalyticsDecisionEngine
+{
+  "sourceFile": "src/application/runtime/AnalyticsDecisionEngine.ts",
+  "referencedBy": [
+    "src/application/runtime/PaperTestOperatorConsole.ts"
+  ],
+  "dependencies": []
+}
+
+Promotion Candidates
+[
+  "TriplicacaoAdvancedProbabilityEngine",
+  "FusionHeatmapIntegrationEngine",
+  "InstitutionalMultiStrategyConsensusRuntime",
+  "AdaptiveConsensusConfidenceEngine"
+]

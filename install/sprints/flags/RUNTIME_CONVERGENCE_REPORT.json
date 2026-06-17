@@ -1,0 +1,28 @@
+{
+  "generatedAt":"2026-06-17T08:40:36-03:00",
+  "model":"RUNTIME_CONVERGENCE_ENGINE_V1",
+
+  "artifacts": {
+    "expected": 6,
+    "found": 6
+  },
+
+  "scores": {
+    "trust": 0,
+    "contract": 60,
+    "lifecycle": 100,
+    "integrity": 100,
+    "causal": 98,
+    "semantic": 100
+  },
+
+  "convergence": {
+    "score": 76,
+    "status": "STABLE"
+  },
+
+  "phaseGate": {
+    "nextPhase": "INSTITUTIONAL_WARMUP_INTELLIGENCE",
+    "authorized": true
+  }
+}

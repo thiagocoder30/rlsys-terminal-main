@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-06-16T21:54:46-03:00",
+  "inputs": {
+    "hooked": 1,
+    "orphansBefore": 0,
+    "bottlenecksAfter": 1,
+    "flowNullDetected": 0
+1,
+    "causalScoreBefore": 98
+  },
+  "recovery": {
+    "repairsApplied": 0,
+    "flowRepaired": 0
+  },
+  "result": {
+    "causalScoreAfter": 98,
+    "status": "SELF_HEALED_STRONG"
+  }
+}

@@ -1,3 +1,25 @@
+#!/bin/bash
+
+set -euo pipefail
+
+ROOT=$(git rev-parse --show-toplevel)
+
+LOG_DIR="install/sprints/logs"
+mkdir -p "$LOG_DIR"
+
+TS=$(date +"%Y-%m-%d_%H-%M-%S")
+
+LOG="$LOG_DIR/e0-1-main-entrypoint-final_$TS.log"
+
+log() {
+  echo "[$(date +"%H:%M:%S")] [INFO] $1" | tee -a "$LOG"
+}
+
+log "E0.1 FINAL ENTRYPOINT FIX START"
+
+cd "$ROOT"
+
+cat > src/main.ts <<'EOF'
 import readline from 'readline/promises';
 
 import { RuntimeKernel } from './application/runtime/RuntimeKernel';
@@ -63,3 +85,19 @@ bootstrap().catch(err => {
   console.error('[FATAL]', err);
   process.exit(1);
 });
+EOF
+
+log "ENTRYPOINT UPDATED WITH VALID SHUTDOWN CONTRACT"
+
+npm run build || {
+  log "BUILD FAILED"
+  exit 1
+}
+
+log "BUILD SUCCESS"
+
+echo ""
+echo "=============================="
+echo "PASS E0.1 FINAL ENTRYPOINT FIX"
+echo "SYSTEM IS NOW TYPE-CORRECT"
+echo "=============================="

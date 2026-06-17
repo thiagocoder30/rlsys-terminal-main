@@ -1,0 +1,25 @@
+{
+  "generatedAt": "2026-06-17T00:42:42Z",
+  "execution": {
+    "hooked": 1,
+    "unhooked": 0
+  },
+  "health": {
+    "orphans": 0,
+    "bottlenecks": 1,
+    "deadModules": 0
+  },
+  "coherence": {
+    "score": 39,
+    "status": "DEGRADED"
+  },
+  "recovery": {
+    "mode": "AUTO_REPAIR",
+    "parser": "HYBRID_JQ_FALLBACK"
+  },
+  "semantic": {
+    "enabled": true,
+    "score": 100,
+    "status": "STRUCTURALLY_STRONG"
+  }
+}

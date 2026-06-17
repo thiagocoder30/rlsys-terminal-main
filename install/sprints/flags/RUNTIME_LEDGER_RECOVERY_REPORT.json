@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-06-17T00:42:43Z",
+  "inputs": {
+    "hooked": 1,
+    "orphans": 1,
+    "bottlenecks": 1,
+    "unhooked": 0,
+    "nodes": 18
+  },
+  "recovery": {
+    "repairedHooks": 1,
+    "repairedOrphans": 0,
+    "repairedBottlenecks": 1
+  },
+  "coherence": {
+    "score": 39,
+    "status": "DEGRADED"
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "generatedAt": "2026-06-16T22:32:36.110Z",
+  "strategies": [
+    {
+      "name": "MultiStrategyRuntimeCoordinator",
+      "domain": "runtime",
+      "risk": "HIGH",
+      "source": "src/domain/strategy/MultiStrategyRuntimeCoordinator.js"
+    },
+    {
+      "name": "OperatorActionCenter",
+      "domain": "strategy",
+      "risk": "LOW",
+      "source": "src/domain/strategy/OperatorActionCenter.js"
+    },
+    {
+      "name": "StrategyCapabilityMap",
+      "domain": "strategy",
+      "risk": "LOW",
+      "source": "src/domain/strategy/StrategyCapabilityMap.ts"
+    },
+    {
+      "name": "StrategyCompatibilityEngine",
+      "domain": "compatibility",
+      "risk": "LOW",
+      "source": "src/domain/strategy/StrategyCompatibilityEngine.js"
+    },
+    {
+      "name": "StrategyCooldownEngine",
+      "domain": "cooldown",
+      "risk": "LOW",
+      "source": "src/domain/strategy/StrategyCooldownEngine.js"
+    },
+    {
+      "name": "StrategyCooldownVisualizer",
+      "domain": "cooldown",
+      "risk": "LOW",
+      "source": "src/domain/strategy/StrategyCooldownVisualizer.js"
+    },
+    {
+      "name": "StrategyDashboardEngine",
+      "domain": "strategy",
+      "risk": "LOW",
+      "source": "src/domain/strategy/StrategyDashboardEngine.js"
+    },
+    {
+      "name": "StrategyEnsembleEngine",
+      "domain": "ensemble",
+      "risk": "MEDIUM",
+      "source": "src/domain/strategy/StrategyEnsembleEngine.ts"
+    },
+    {
+      "name": "StrategyExplainabilityEngine",
+      "domain": "strategy",
+      "risk": "LOW",
+      "source": "src/domain/strategy/StrategyExplainabilityEngine.js"
+    },
+    {
+      "name": "StrategyRankingEngine",
+      "domain": "ranking",
+      "risk": "MEDIUM",
+      "source": "src/domain/strategy/StrategyRankingEngine.ts"
+    },
+    {
+      "name": "StrategyRecommendationEngine",
+      "domain": "recommendation",
+      "risk": "MEDIUM",
+      "source": "src/domain/strategy/StrategyRecommendationEngine.js"
+    },
+    {
+      "name": "StrategyRecoveryEngine",
+      "domain": "recovery",
+      "risk": "HIGH",
+      "source": "src/domain/strategy/StrategyRecoveryEngine.js"
+    },
+    {
+      "name": "StrategyRegistry",
+      "domain": "strategy",
+      "risk": "LOW",
+      "source": "src/domain/strategy/StrategyRegistry.ts"
+    },
+    {
+      "name": "StrategyResultLedgerEngine",
+      "domain": "strategy",
+      "risk": "LOW",
+      "source": "src/domain/strategy/StrategyResultLedgerEngine.js"
+    },
+    {
+      "name": "StrategyRuntimeOrchestrator",
+      "domain": "runtime",
+      "risk": "HIGH",
+      "source": "src/domain/strategy/StrategyRuntimeOrchestrator.js"
+    },
+    {
+      "name": "StrategyStatusPresenter",
+      "domain": "strategy",
+      "risk": "LOW",
+      "source": "src/domain/strategy/StrategyStatusPresenter.js"
+    }
+  ]
+}

@@ -1,0 +1,257 @@
+{
+  "generatedAt": "2026-06-16T22:39:23.722Z",
+  "scannedFiles": 18,
+  "nodes": [
+    {
+      "id": "FusionReduzida"
+    },
+    {
+      "id": "MultiStrategyRuntimeCoordinator"
+    },
+    {
+      "id": "OperatorActionCenter"
+    },
+    {
+      "id": "StrategyCapabilityMap"
+    },
+    {
+      "id": "StrategyCompatibilityEngine"
+    },
+    {
+      "id": "StrategyCooldownEngine"
+    },
+    {
+      "id": "StrategyCooldownVisualizer"
+    },
+    {
+      "id": "StrategyDashboardEngine"
+    },
+    {
+      "id": "StrategyEnsembleEngine"
+    },
+    {
+      "id": "StrategyExplainabilityEngine"
+    },
+    {
+      "id": "StrategyRankingEngine"
+    },
+    {
+      "id": "StrategyRecommendationEngine"
+    },
+    {
+      "id": "StrategyRecoveryEngine"
+    },
+    {
+      "id": "StrategyRegistry"
+    },
+    {
+      "id": "StrategyResultLedgerEngine"
+    },
+    {
+      "id": "StrategyRuntimeOrchestrator"
+    },
+    {
+      "id": "StrategyStatusPresenter"
+    },
+    {
+      "id": "Triplicacao"
+    }
+  ],
+  "edges": [
+    {
+      "from": "MultiStrategyRuntimeCoordinator",
+      "to": "./StrategyRuntimeOrchestrator",
+      "relation": "REQUIRE"
+    },
+    {
+      "from": "MultiStrategyRuntimeCoordinator",
+      "to": "StrategyRuntimeOrchestrator",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "MultiStrategyRuntimeCoordinator",
+      "to": "Error",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "MultiStrategyRuntimeCoordinator",
+      "to": "Set",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyCapabilityMap",
+      "to": "Map",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyCompatibilityEngine",
+      "to": "Error",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyCooldownEngine",
+      "to": "Error",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyCooldownVisualizer",
+      "to": "Set",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyDashboardEngine",
+      "to": "Error",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyEnsembleEngine",
+      "to": "../shared/Result",
+      "relation": "IMPORT"
+    },
+    {
+      "from": "StrategyEnsembleEngine",
+      "to": "Error",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyEnsembleEngine",
+      "to": "Map",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyEnsembleEngine",
+      "to": "DomainError",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyExplainabilityEngine",
+      "to": "Set",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyRankingEngine",
+      "to": "Error",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyRecommendationEngine",
+      "to": "Error",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyRecoveryEngine",
+      "to": "Error",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyRegistry",
+      "to": "./impl/Triplicacao",
+      "relation": "IMPORT"
+    },
+    {
+      "from": "StrategyRegistry",
+      "to": "./impl/FusionReduzida",
+      "relation": "IMPORT"
+    },
+    {
+      "from": "StrategyRegistry",
+      "to": "Map",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyRegistry",
+      "to": "Error",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyRegistry",
+      "to": "Triplicacao",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyRegistry",
+      "to": "FusionReduzida",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyResultLedgerEngine",
+      "to": "Error",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyRuntimeOrchestrator",
+      "to": "./StrategyCooldownEngine",
+      "relation": "REQUIRE"
+    },
+    {
+      "from": "StrategyRuntimeOrchestrator",
+      "to": "./StrategyRecoveryEngine",
+      "relation": "REQUIRE"
+    },
+    {
+      "from": "StrategyRuntimeOrchestrator",
+      "to": "./StrategyCompatibilityEngine",
+      "relation": "REQUIRE"
+    },
+    {
+      "from": "StrategyRuntimeOrchestrator",
+      "to": "./StrategyRecommendationEngine",
+      "relation": "REQUIRE"
+    },
+    {
+      "from": "StrategyRuntimeOrchestrator",
+      "to": "./StrategyExplainabilityEngine",
+      "relation": "REQUIRE"
+    },
+    {
+      "from": "StrategyRuntimeOrchestrator",
+      "to": "./StrategyStatusPresenter",
+      "relation": "REQUIRE"
+    },
+    {
+      "from": "StrategyRuntimeOrchestrator",
+      "to": "StrategyCooldownEngine",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyRuntimeOrchestrator",
+      "to": "StrategyRecoveryEngine",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyRuntimeOrchestrator",
+      "to": "StrategyCompatibilityEngine",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyRuntimeOrchestrator",
+      "to": "StrategyRecommendationEngine",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyRuntimeOrchestrator",
+      "to": "StrategyExplainabilityEngine",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyRuntimeOrchestrator",
+      "to": "StrategyStatusPresenter",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "StrategyRuntimeOrchestrator",
+      "to": "Set",
+      "relation": "INSTANTIATES"
+    },
+    {
+      "from": "FusionReduzida",
+      "to": "../StrategyRegistry",
+      "relation": "IMPORT"
+    },
+    {
+      "from": "Triplicacao",
+      "to": "../StrategyRegistry",
+      "relation": "IMPORT"
+    }
+  ]
+}

@@ -1,0 +1,597 @@
+{
+  "generatedAt": "2026-06-16T22:35:09.727Z",
+  "nodes": [
+    {
+      "id": "MultiStrategyRuntimeCoordinator",
+      "domain": "runtime",
+      "risk": "HIGH"
+    },
+    {
+      "id": "OperatorActionCenter",
+      "domain": "strategy",
+      "risk": "LOW"
+    },
+    {
+      "id": "StrategyCapabilityMap",
+      "domain": "strategy",
+      "risk": "LOW"
+    },
+    {
+      "id": "StrategyCompatibilityEngine",
+      "domain": "compatibility",
+      "risk": "LOW"
+    },
+    {
+      "id": "StrategyCooldownEngine",
+      "domain": "cooldown",
+      "risk": "LOW"
+    },
+    {
+      "id": "StrategyCooldownVisualizer",
+      "domain": "cooldown",
+      "risk": "LOW"
+    },
+    {
+      "id": "StrategyDashboardEngine",
+      "domain": "strategy",
+      "risk": "LOW"
+    },
+    {
+      "id": "StrategyEnsembleEngine",
+      "domain": "ensemble",
+      "risk": "MEDIUM"
+    },
+    {
+      "id": "StrategyExplainabilityEngine",
+      "domain": "strategy",
+      "risk": "LOW"
+    },
+    {
+      "id": "StrategyRankingEngine",
+      "domain": "ranking",
+      "risk": "MEDIUM"
+    },
+    {
+      "id": "StrategyRecommendationEngine",
+      "domain": "recommendation",
+      "risk": "MEDIUM"
+    },
+    {
+      "id": "StrategyRecoveryEngine",
+      "domain": "recovery",
+      "risk": "HIGH"
+    },
+    {
+      "id": "StrategyRegistry",
+      "domain": "strategy",
+      "risk": "LOW"
+    },
+    {
+      "id": "StrategyResultLedgerEngine",
+      "domain": "strategy",
+      "risk": "LOW"
+    },
+    {
+      "id": "StrategyRuntimeOrchestrator",
+      "domain": "runtime",
+      "risk": "HIGH"
+    },
+    {
+      "id": "StrategyStatusPresenter",
+      "domain": "strategy",
+      "risk": "LOW"
+    }
+  ],
+  "edges": [
+    {
+      "from": "MultiStrategyRuntimeCoordinator",
+      "to": "StrategyRecoveryEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "MultiStrategyRuntimeCoordinator",
+      "to": "StrategyRuntimeOrchestrator",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "OperatorActionCenter",
+      "to": "StrategyCapabilityMap",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "OperatorActionCenter",
+      "to": "StrategyCompatibilityEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "OperatorActionCenter",
+      "to": "StrategyCooldownEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "OperatorActionCenter",
+      "to": "StrategyCooldownVisualizer",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "OperatorActionCenter",
+      "to": "StrategyDashboardEngine",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "OperatorActionCenter",
+      "to": "StrategyExplainabilityEngine",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "OperatorActionCenter",
+      "to": "StrategyRegistry",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "OperatorActionCenter",
+      "to": "StrategyResultLedgerEngine",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "OperatorActionCenter",
+      "to": "StrategyStatusPresenter",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyCapabilityMap",
+      "to": "OperatorActionCenter",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyCapabilityMap",
+      "to": "StrategyCompatibilityEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCapabilityMap",
+      "to": "StrategyCooldownEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCapabilityMap",
+      "to": "StrategyCooldownVisualizer",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCapabilityMap",
+      "to": "StrategyDashboardEngine",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyCapabilityMap",
+      "to": "StrategyExplainabilityEngine",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyCapabilityMap",
+      "to": "StrategyRegistry",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyCapabilityMap",
+      "to": "StrategyResultLedgerEngine",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyCapabilityMap",
+      "to": "StrategyStatusPresenter",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyCompatibilityEngine",
+      "to": "OperatorActionCenter",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCompatibilityEngine",
+      "to": "StrategyCapabilityMap",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCompatibilityEngine",
+      "to": "StrategyCooldownEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCompatibilityEngine",
+      "to": "StrategyCooldownVisualizer",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCompatibilityEngine",
+      "to": "StrategyDashboardEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCompatibilityEngine",
+      "to": "StrategyExplainabilityEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCompatibilityEngine",
+      "to": "StrategyRegistry",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCompatibilityEngine",
+      "to": "StrategyResultLedgerEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCompatibilityEngine",
+      "to": "StrategyStatusPresenter",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCooldownEngine",
+      "to": "OperatorActionCenter",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCooldownEngine",
+      "to": "StrategyCapabilityMap",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCooldownEngine",
+      "to": "StrategyCompatibilityEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCooldownEngine",
+      "to": "StrategyCooldownVisualizer",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyCooldownEngine",
+      "to": "StrategyDashboardEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCooldownEngine",
+      "to": "StrategyExplainabilityEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCooldownEngine",
+      "to": "StrategyRegistry",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCooldownEngine",
+      "to": "StrategyResultLedgerEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCooldownEngine",
+      "to": "StrategyStatusPresenter",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCooldownVisualizer",
+      "to": "OperatorActionCenter",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCooldownVisualizer",
+      "to": "StrategyCapabilityMap",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCooldownVisualizer",
+      "to": "StrategyCompatibilityEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCooldownVisualizer",
+      "to": "StrategyCooldownEngine",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyCooldownVisualizer",
+      "to": "StrategyDashboardEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCooldownVisualizer",
+      "to": "StrategyExplainabilityEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCooldownVisualizer",
+      "to": "StrategyRegistry",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCooldownVisualizer",
+      "to": "StrategyResultLedgerEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyCooldownVisualizer",
+      "to": "StrategyStatusPresenter",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyDashboardEngine",
+      "to": "OperatorActionCenter",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyDashboardEngine",
+      "to": "StrategyCapabilityMap",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyDashboardEngine",
+      "to": "StrategyCompatibilityEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyDashboardEngine",
+      "to": "StrategyCooldownEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyDashboardEngine",
+      "to": "StrategyCooldownVisualizer",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyDashboardEngine",
+      "to": "StrategyExplainabilityEngine",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyDashboardEngine",
+      "to": "StrategyRegistry",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyDashboardEngine",
+      "to": "StrategyResultLedgerEngine",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyDashboardEngine",
+      "to": "StrategyStatusPresenter",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyEnsembleEngine",
+      "to": "StrategyRankingEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyEnsembleEngine",
+      "to": "StrategyRecommendationEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyExplainabilityEngine",
+      "to": "OperatorActionCenter",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyExplainabilityEngine",
+      "to": "StrategyCapabilityMap",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyExplainabilityEngine",
+      "to": "StrategyCompatibilityEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyExplainabilityEngine",
+      "to": "StrategyCooldownEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyExplainabilityEngine",
+      "to": "StrategyCooldownVisualizer",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyExplainabilityEngine",
+      "to": "StrategyDashboardEngine",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyExplainabilityEngine",
+      "to": "StrategyRegistry",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyExplainabilityEngine",
+      "to": "StrategyResultLedgerEngine",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyExplainabilityEngine",
+      "to": "StrategyStatusPresenter",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyRankingEngine",
+      "to": "StrategyEnsembleEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyRankingEngine",
+      "to": "StrategyRecommendationEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyRecommendationEngine",
+      "to": "StrategyEnsembleEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyRecommendationEngine",
+      "to": "StrategyRankingEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyRecoveryEngine",
+      "to": "MultiStrategyRuntimeCoordinator",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyRecoveryEngine",
+      "to": "StrategyRuntimeOrchestrator",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyRegistry",
+      "to": "OperatorActionCenter",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyRegistry",
+      "to": "StrategyCapabilityMap",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyRegistry",
+      "to": "StrategyCompatibilityEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyRegistry",
+      "to": "StrategyCooldownEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyRegistry",
+      "to": "StrategyCooldownVisualizer",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyRegistry",
+      "to": "StrategyDashboardEngine",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyRegistry",
+      "to": "StrategyExplainabilityEngine",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyRegistry",
+      "to": "StrategyResultLedgerEngine",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyRegistry",
+      "to": "StrategyStatusPresenter",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyResultLedgerEngine",
+      "to": "OperatorActionCenter",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyResultLedgerEngine",
+      "to": "StrategyCapabilityMap",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyResultLedgerEngine",
+      "to": "StrategyCompatibilityEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyResultLedgerEngine",
+      "to": "StrategyCooldownEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyResultLedgerEngine",
+      "to": "StrategyCooldownVisualizer",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyResultLedgerEngine",
+      "to": "StrategyDashboardEngine",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyResultLedgerEngine",
+      "to": "StrategyExplainabilityEngine",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyResultLedgerEngine",
+      "to": "StrategyRegistry",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyResultLedgerEngine",
+      "to": "StrategyStatusPresenter",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyRuntimeOrchestrator",
+      "to": "MultiStrategyRuntimeCoordinator",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyRuntimeOrchestrator",
+      "to": "StrategyRecoveryEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyStatusPresenter",
+      "to": "OperatorActionCenter",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyStatusPresenter",
+      "to": "StrategyCapabilityMap",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyStatusPresenter",
+      "to": "StrategyCompatibilityEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyStatusPresenter",
+      "to": "StrategyCooldownEngine",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyStatusPresenter",
+      "to": "StrategyCooldownVisualizer",
+      "relation": "SAME_RISK"
+    },
+    {
+      "from": "StrategyStatusPresenter",
+      "to": "StrategyDashboardEngine",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyStatusPresenter",
+      "to": "StrategyExplainabilityEngine",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyStatusPresenter",
+      "to": "StrategyRegistry",
+      "relation": "SAME_DOMAIN"
+    },
+    {
+      "from": "StrategyStatusPresenter",
+      "to": "StrategyResultLedgerEngine",
+      "relation": "SAME_DOMAIN"
+    }
+  ]
+}

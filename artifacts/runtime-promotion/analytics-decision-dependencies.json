@@ -1,0 +1,7 @@
+{
+  "sourceFile": "src/application/runtime/AnalyticsDecisionEngine.ts",
+  "referencedBy": [
+    "src/application/runtime/PaperTestOperatorConsole.ts"
+  ],
+  "dependencies": []
+}

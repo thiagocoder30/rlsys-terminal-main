@@ -1,0 +1,15 @@
+{
+  "generatedAt": "2026-06-17T00:33:27Z",
+  "flowHealthScore": 68,
+  "executionBalanceIndex": 180,
+  "status": "STABLE",
+  "inputs": {
+    "nodes": 18,
+    "edges": 39,
+    "orphans": 1,
+    "deadModules": 1,
+    "bottlenecks": 1
+  },
+  "model": "runtime-flow-reconciliation-v1",
+  "interpretation": "execution-flow-not-just-structure"
+}

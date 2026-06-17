@@ -1,0 +1,14 @@
+{
+  "generatedAt": "2026-06-17T00:19:11Z",
+  "coherenceScore": 100,
+  "status": "STRONG",
+  "inputs": {
+    "hookedCount": 18,
+    "orphanSignals": 1,
+    "deadSignals": 1
+  },
+  "interpretation": {
+    "risk": "runtime drift",
+    "mode": "observability-only"
+  }
+}

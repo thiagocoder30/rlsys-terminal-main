@@ -1,0 +1,18 @@
+{
+  "generatedAt": "2026-06-17T07:15:27-03:00",
+  "sprintId": "419",
+  "lifecycle": {
+    "score": 100,
+    "status": "LIFECYCLE_HEALTHY"
+  },
+  "artifacts": {
+    "ledger": "/data/data/com.termux/files/home/rlsys-terminal-main/install/sprints/flags/RUNTIME_INSTALLATION_TRUTH_GATE_REPORT.json",
+    "receipt": "/data/data/com.termux/files/home/rlsys-terminal-main/install/sprints/logs/receipt_RUNTIME_419.json"
+  },
+  "autoRepair": {
+    "receiptGenerated": true
+  },
+  "violations": [
+  ""
+]
+}

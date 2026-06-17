@@ -1,0 +1,17 @@
+{
+  "generatedAt": "2026-06-16T21:51:27-03:00",
+  "inputs": {
+    "hooked": 1,
+    "orphans": 0,
+    "bottlenecks": 1,
+    "dead": 0,
+    "coherence": 100,
+    "flow": null,
+    "semantic": 100
+  },
+  "analysis": {
+    "contradictions": 0,
+    "causalScore": 98,
+    "status": "CAUSALLY_STRONG"
+  }
+}
