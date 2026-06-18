@@ -1,3 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "======================================"
+echo " RL.SYS CORE - SPRINT 445-B"
+echo " TYPESCRIPT STRICT MODE HOTFIX"
+echo "======================================"
+
+ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+cd "$ROOT_DIR"
+
+echo "[1/3] A aplicar correção de tipagem estrita no LivePaperOrchestrator..."
+cat > src/presentation/cli/LivePaperOrchestrator.ts <<'EOF'
 import * as readline from 'node:readline';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -587,3 +600,17 @@ export class LivePaperOrchestrator {
         this.rl.prompt(true);
     }
 }
+EOF
+
+echo "[2/3] A forçar a compilação máxima do TypeScript (Tsc)..."
+npx tsc
+
+echo "[3/3] A registar a correção oficial do compilador TS..."
+git add src/presentation/cli/LivePaperOrchestrator.ts
+git add install/sprints/run-sprint-445b-hotfix-tsc.sh
+git commit -m "fix(presentation): resolve TypeScript strict mode errors related to unexported modules, null indexing, and untyped tuple arrays, ensuring flawless HFT compilation (Sprint 445-B)" > /dev/null
+
+echo "======================================"
+echo -e "\033[1;32m COMPILAÇÃO E HOTFIX APLICADOS COM SUCESSO \033[0m"
+echo " STATUS: PRONTO PARA IGNIÇÃO"
+echo "======================================"
