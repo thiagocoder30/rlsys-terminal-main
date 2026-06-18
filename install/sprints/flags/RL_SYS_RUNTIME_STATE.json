@@ -1,0 +1,32 @@
+{
+  "generatedAt": "2026-06-17T17:24:46-03:00",
+  "commitId": "20260617172446",
+  "engine": "STATE_COMMIT_ENGINE_V1",
+  "latestSprint": "434",
+  "systemHealth": "GREEN",
+  "runtime": {
+    "convergence": 76,
+    "decisionScore": 70,
+    "windowConfidence": 85,
+    "regime": "CONFIRMED_OPENING"
+  },
+  "qualification": {
+    "status": "UNKNOWN",
+    "entryScore": 80
+  },
+  "timing": {
+    "phase": "EARLY_ENTRY",
+    "score": 68
+  },
+  "execution": {
+    "pressure": 54,
+    "sizing": "MEDIUM_PRESSURE_ENTRY"
+  },
+  "governance": {
+    "consistencyScore": 100,
+    "architecturalDrift": 0
+  },
+  "projectStateSprint": "427-A",
+  "runtimeStateSprint": "434",
+  "stateConsistency": "DIVERGENT"
+}
