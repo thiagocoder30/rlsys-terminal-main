@@ -1,3 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "======================================"
+echo " RL.SYS CORE - SPRINT 440"
+echo " ZERO-ALLOCATION EVENT BUS"
+echo "======================================"
+
+ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+cd "$ROOT_DIR"
+
+echo "[1/2] A instanciar o Barramento de Eventos Síncrono (Observer Pattern)..."
+mkdir -p src/application/runtime
+
+cat > src/application/runtime/RuntimeEventBus.ts <<'EOF'
 /**
  * @file RuntimeEventBus.ts
  * @description Barramento de eventos central do RL.SYS. 
@@ -78,3 +93,14 @@ export class RuntimeEventBus {
         return this.subscribers.size;
     }
 }
+EOF
+
+echo "[2/2] A registar a arquitetura reativa no controlo de versão..."
+git add src/application/runtime/RuntimeEventBus.ts
+git add install/sprints/run-sprint-440-zero-allocation-event-bus.sh
+git commit -m "feat(runtime): implement RuntimeEventBus using Observer pattern tightly coupled with SignalObjectPool to ensure O(1) zero-allocation synchronous event dispatching (Sprint 440)" > /dev/null
+
+echo "======================================"
+echo -e "\033[1;32m SPRINT 440 INSTALADA COM SUCESSO \033[0m"
+echo " STATUS: EVENT BUS ZERO-ALLOCATION ATIVADO"
+echo "======================================"
