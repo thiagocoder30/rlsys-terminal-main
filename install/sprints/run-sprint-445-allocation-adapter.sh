@@ -1,3 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "======================================"
+echo " RL.SYS CORE - SPRINT 445"
+echo " ALLOCATION ADAPTER & XAI TRANSLATOR"
+echo "======================================"
+
+ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+cd "$ROOT_DIR"
+
+echo "[1/2] A injetar o Allocation Engine e o XAI Translator no Ecrã (HUD)..."
+cat > src/presentation/cli/LivePaperOrchestrator.ts <<'EOF'
 import * as readline from 'node:readline';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -586,3 +599,14 @@ export class LivePaperOrchestrator {
         this.rl.prompt(true);
     }
 }
+EOF
+
+echo "[2/2] A formalizar as alterações do motor de tradução visual na branch local..."
+git add src/presentation/cli/LivePaperOrchestrator.ts
+git add install/sprints/run-sprint-445-allocation-adapter.sh
+git commit -m "feat(presentation): implement InstitutionalStrategyAllocationEngine and introduce XAI translation layer to render strategic explanations in plain text format on the HUD (Sprint 445)" > /dev/null
+
+echo "======================================"
+echo -e "\033[1;32m SPRINT 445 INSTALADA COM SUCESSO \033[0m"
+echo " STATUS: HUD INSTITUCIONAL EXPLICATIVO ATIVO"
+echo "======================================"
