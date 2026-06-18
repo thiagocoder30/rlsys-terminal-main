@@ -1,3 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "======================================"
+echo " RL.SYS CORE - SPRINT 443"
+echo " LIVE HEURISTICS & TELEMETRY HUD"
+echo "======================================"
+
+ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+cd "$ROOT_DIR"
+
+echo "[1/2] Arrancando Mocks e injetando Telemetria Institucional no HUD..."
+cat > src/presentation/cli/LivePaperOrchestrator.ts <<'EOF'
 import * as readline from 'node:readline';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -535,3 +548,14 @@ export class LivePaperOrchestrator {
         this.rl.prompt(true);
     }
 }
+EOF
+
+echo "[2/2] Registrando injeção de telemetria real na governaça..."
+git add src/presentation/cli/LivePaperOrchestrator.ts
+git add install/sprints/run-sprint-443-live-heuristics-hud.sh
+git commit -m "feat(presentation): remove simulated Mocks and extract real domain telemetry metrics (Convergence, Confidence, Decay, Pressure) from mesaTracker to feed the HFTPipelineCoordinator, displaying them directly on the CLI HUD (Sprint 443)" > /dev/null
+
+echo "======================================"
+echo -e "\033[1;32m SPRINT 443 APLICADA COM SUCESSO \033[0m"
+echo " STATUS: HUD DE TELEMETRIA REAL ATIVADO"
+echo "======================================"
