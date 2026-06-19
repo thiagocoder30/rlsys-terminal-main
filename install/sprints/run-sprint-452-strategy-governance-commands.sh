@@ -1,3 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "======================================"
+echo " RL.SYS CORE - SPRINT 452"
+echo " STRATEGY GOVERNANCE COMMANDS"
+echo "======================================"
+
+ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+cd "$ROOT_DIR"
+
+echo "[1/2] Injetando comandos weights, enable e disable no LivePaperOrchestrator..."
+cat > src/presentation/cli/LivePaperOrchestrator.ts <<'EOF'
 import * as readline from 'node:readline';
 import * as fs from 'node:fs';
 import * as path from 'path';
@@ -349,3 +362,12 @@ export class LivePaperOrchestrator {
         this.rl.prompt(true);
     }
 }
+EOF
+
+echo "[2/2] Recompilando o núcleo com o TypeScript Compiler estrito..."
+npx tsc
+
+echo "======================================"
+echo -e "\033[1;32m SPRINT 452 COMPILADA COM SUCESSO \033[0m"
+echo " GOVERNANÇA DE ESTRATÉGIAS PRONTA"
+echo "======================================"
