@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-06-17T14:53:01-03:00",
+  "sprint": "427-B-MR",
+  "status": "PASSED",
+  "next": "428",
+  "coherenceScore": 90,
+  "regimes": {
+    "convergence": 76,
+    "decision": "QUALIFIED_WAIT",
+    "window": "OPENING",
+    "decay": "INVALID_ENTRY_WINDOW"
+  }
+}

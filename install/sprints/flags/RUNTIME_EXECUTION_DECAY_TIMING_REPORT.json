@@ -1,0 +1,28 @@
+{
+  "generatedAt": "2026-06-17T10:59:41-03:00",
+  "model": "EXECUTION_CONFIDENCE_DECAY_TIMING_ENGINE_V1",
+  "inputs": {
+    "windowState": "OPENING",
+    "windowConfidence": 85,
+    "decisionScore": 70,
+    "regimeState": "UNKNOWN",
+    "regimeIntegrity": "LOW",
+    "gateState": "CLOSED",
+    "gateAction": "BLOCK_EXECUTION"
+  },
+  "scoring": {
+    "basePotential": 77,
+    "decay": 0,
+    "regimePenalty": 35,
+    "gatePenalty": 50,
+    "decayedScore": -8
+  },
+  "timing": {
+    "classification": "INVALID_ENTRY_WINDOW",
+    "action": "NO_ENTRY"
+  },
+  "interpretation": {
+    "meaning": "evaluates whether a valid signal is still temporally actionable or has degraded",
+    "principle": "good signals lose value over time; timing is a first-class constraint"
+  }
+}

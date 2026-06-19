@@ -1,0 +1,11 @@
+{
+  "generatedAt": "2026-06-17T14:09:07-03:00",
+  "sprint": "427-B",
+  "status": "PASSED",
+  "next": "428",
+  "contract": {
+    "snapshot": "OK",
+    "registry": "OK",
+    "convergenceThreshold": "76"
+  }
+}

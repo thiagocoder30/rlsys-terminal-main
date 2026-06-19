@@ -1,0 +1,12 @@
+{
+  "generatedAt": "2026-06-17T16:08:50-03:00",
+  "sprint": "431",
+  "consistencyScore": 100,
+  "metaRegime": "HEALTHY",
+  "inputs": {
+    "driftScore": 0,
+    "lastDelta": 1,
+    "stabilityMode": "NORMAL",
+    "threshold": 69
+  }
+}

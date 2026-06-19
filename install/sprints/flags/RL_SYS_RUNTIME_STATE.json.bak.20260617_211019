@@ -11,7 +11,7 @@
     "regime": "CONFIRMED_OPENING"
   },
   "qualification": {
-    "status": "QUALIFIED",
+    "status": "UNKNOWN",
     "entryScore": 80
   },
   "timing": {
@@ -26,7 +26,7 @@
     "consistencyScore": 100,
     "architecturalDrift": 0
   },
-  "projectStateSprint": "434",
-  "runtimeStateSprint": "434",
-  "stateConsistency": "CONSISTENT"
+  "projectStateSprint":"434",
+  "runtimeStateSprint":"434",
+  "stateConsistency":"CONSISTENT"
 }

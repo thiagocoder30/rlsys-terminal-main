@@ -1,3 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "======================================"
+echo " RL.SYS CORE - SPRINT 455"
+echo " DAILY LOCKDOWN & COMPILER OVERRIDE"
+echo "======================================"
+
+ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+cd "$ROOT_DIR"
+
+echo "[1/2] Injetando Trava Diária (.rlsys-lock) e Forçando Tipagem..."
+cat > src/presentation/cli/LivePaperOrchestrator.ts <<'EOF'
 import * as readline from 'node:readline';
 import * as fs from 'node:fs';
 import * as path from 'path';
@@ -445,3 +458,12 @@ export class LivePaperOrchestrator {
         this.rl.prompt(true);
     }
 }
+EOF
+
+echo "[2/2] Compilando. Agora passará pelo Typescript Compiler sem falhas..."
+npx tsc
+
+echo "======================================"
+echo -e "\033[1;32m SPRINT 455 INSTALADA COM SUCESSO \033[0m"
+echo " STATUS: PERSISTENT LOCK & COMPILER CORRIGIDOS"
+echo "======================================"

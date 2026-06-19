@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-06-17T09:39:22-03:00",
+  "model": "RUNTIME_EXECUTION_DECISION_ENGINE_V1",
+  "inputs": {
+    "convergence": 76,
+    "causal": 98,
+    "flow": 70
+  },
+  "decision": {
+    "score": 70,
+    "state": "QUALIFIED_WAIT",
+    "action": "HOLD",
+    "executionWindowRounds": 7
+  },
+  "interpretation": {
+    "meaning": "context-aware execution gating",
+    "note": "separates strategy quality from timing decision"
+  }
+}

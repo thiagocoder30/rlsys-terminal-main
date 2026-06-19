@@ -1,0 +1,9 @@
+{
+  "generatedAt":"2026-06-17T21:52:49-03:00",
+  "engine":"RESTORE_ARTIFACT_LOADER_V1",
+  "bundle":"/sdcard/Download/RL_SYS/ssb/export/2026-06-17/FULL_SSB_BUNDLE",
+  "requiredArtifacts":5,
+  "foundArtifacts":5,
+  "missingArtifacts":0,
+  "status":"READY_FOR_RESTORE"
+}

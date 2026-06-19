@@ -1,0 +1,21 @@
+{
+  "generatedAt": "2026-06-17T12:18:35-03:00",
+  "model": "RUNTIME_STATE_CONTRACT_ENFORCEMENT_V1",
+  "inputs": {
+    "convergence": 1,
+    "decision": 1,
+    "regime": 1,
+    "window": 1,
+    "decay": 1,
+    "snapshot": 0
+  },
+  "contract": {
+    "score": 100,
+    "status": "CONTRACT_OK",
+    "missing": ""
+  },
+  "rules": {
+    "enforced": true,
+    "noSilentFailure": true
+  }
+}

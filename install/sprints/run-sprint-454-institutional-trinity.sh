@@ -1,3 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "======================================"
+echo " RL.SYS CORE - SPRINT 454-B"
+echo " TRINITY, AUTO-SETTLEMENT & PLACEMENT"
+echo "======================================"
+
+ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+cd "$ROOT_DIR"
+
+echo "[1/2] Injetando a lógica unificada no Orquestrador..."
+cat > src/presentation/cli/LivePaperOrchestrator.ts <<'EOF'
 import * as readline from 'node:readline';
 import * as fs from 'node:fs';
 import * as path from 'path';
@@ -71,30 +84,6 @@ export class LivePaperOrchestrator {
     }
 
     public async initialize(): Promise<void> {
-        // [NOVO] VERIFICAÇÃO DO CIRCUIT BREAKER PERSISTENTE NO BOOT
-        const lockPath = path.join(process.cwd(), 'data', '.rlsys-lock');
-        if (fs.existsSync(lockPath)) {
-            try {
-                const lockData = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
-                if (Date.now() < lockData.unlockTime) {
-                    const unlockDate = new Date(lockData.unlockTime).toLocaleString('pt-BR');
-                    console.clear();
-                    console.log('\x1b[31m======================================================');
-                    console.log(' [ACESSO NEGADO] COOLDOWN INSTITUCIONAL ATIVO');
-                    console.log('======================================================\x1b[0m');
-                    console.log(` Motivo: ${lockData.reason === 'STOP_LOSS' ? 'Limite de Perda Diário Atingido.' : 'Meta de Lucro Atingida.'}`);
-                    console.log(` O sistema está travado para proteger seu capital ou lucros.`);
-                    console.log(` Volte em: \x1b[33m${unlockDate}\x1b[0m`);
-                    console.log('======================================================');
-                    process.exit(0);
-                } else {
-                    fs.unlinkSync(lockPath); // Remove o bloqueio expirado
-                }
-            } catch (e) {
-                // Ignore corrupt lock file
-            }
-        }
-
         this.savedState = this.bankrollRepo.load();
         if (this.savedState && this.savedState.initialBankroll) {
             this.initialBankroll = this.savedState.initialBankroll;
@@ -210,14 +199,15 @@ export class LivePaperOrchestrator {
             else if (id === 'TRIPLICACAO_EVEN') isWin = (num % 2 === 0);
             else if (id === 'TRIPLICACAO_ODD') isWin = (num % 2 !== 0);
             else if (id === 'CROSS_GRID_HEDGE' || id === 'FUSION_REDUZIDA') {
+                // Heurística de simulação de 2 dúzias/colunas
                 isWin = (num > 12); 
-                profitMultiplier = 0.5; 
+                profitMultiplier = 0.5; // Cobertura de 66% paga líquido 0.5 da aposta total
             }
 
             if (isWin) {
                 const profit = this.lastRecommendedStake * profitMultiplier;
                 this.cooldownGuard.currentBankroll += profit;
-                this.lastActionTakenText = `\x1b[32m[WIN] Acertou o ${num}. Lucro: +R$ ${profit.toFixed(2)}\x1b[0m`;
+                this.lastActionTakenText = `\x1b[32m[WIN] Acertou o ${num}. Lucro Adicionado: +R$ ${profit.toFixed(2)}\x1b[0m`;
             } else {
                 const loss = this.lastRecommendedStake;
                 this.cooldownGuard.currentBankroll -= loss;
@@ -254,30 +244,20 @@ export class LivePaperOrchestrator {
     }
 
     private checkCircuitBreakers(): void {
-        const lockPath = path.join(process.cwd(), 'data', '.rlsys-lock');
-        
         if (this.cooldownGuard.currentBankroll >= this.takeProfitM3) {
-            const unlockTime = Date.now() + (4 * 60 * 60 * 1000); // 4 horas de bloqueio para Win
-            fs.writeFileSync(lockPath, JSON.stringify({ unlockTime, reason: 'TAKE_PROFIT' }));
-            
             console.clear();
             console.log('\x1b[32m======================================================');
             console.log(' [CIRCUIT BREAKER] TAKE PROFIT ATINGIDO (M3)');
             console.log('======================================================\x1b[0m');
             console.log(` Banca Final: R$ ${this.cooldownGuard.currentBankroll.toFixed(2)}`);
-            console.log(' O sistema foi travado institucionalmente (Cooldown de 4h).');
             process.exit(0);
         }
         if (this.cooldownGuard.currentBankroll <= this.hardStopLoss) {
-            const unlockTime = Date.now() + (12 * 60 * 60 * 1000); // 12 horas de bloqueio para Loss
-            fs.writeFileSync(lockPath, JSON.stringify({ unlockTime, reason: 'STOP_LOSS' }));
-
             console.clear();
             console.log('\x1b[31m======================================================');
             console.log(' [CIRCUIT BREAKER] STOP LOSS INSTITUCIONAL ACIONADO');
             console.log('======================================================\x1b[0m');
             console.log(` Banca Final: R$ ${this.cooldownGuard.currentBankroll.toFixed(2)}`);
-            console.log(' O sistema foi travado institucionalmente (Cooldown de 12h).');
             process.exit(0);
         }
     }
@@ -318,19 +298,17 @@ export class LivePaperOrchestrator {
         this.currentVixPercent = (cStats.vix + pStats.vix) / 2;
 
         let highestWeight = -1;
-        let bestStrat: string | null = null;
-
-        // [CORREÇÃO TYPE STRICT] Forçando iteração segura sobre Object.keys sem callback
-        for (const id of Object.keys(this.shadowWeights)) {
+        let bestStrat = null;
+        Object.keys(this.shadowWeights).forEach(id => {
             if (!this.disabledStrategies.has(id)) {
                 if (this.shadowWeights[id] > highestWeight) {
                     highestWeight = this.shadowWeights[id];
                     bestStrat = id;
                 }
             }
-        }
+        });
         
-        let prospectiveId: string | null = bestStrat;
+        let prospectiveId = bestStrat;
         this.activeStrategyId = bestStrat;
 
         this.liveConvergence = Math.round(100 - this.currentVixPercent);
@@ -343,9 +321,9 @@ export class LivePaperOrchestrator {
 
         this.updateXaiTranslation(prospectiveId);
 
+        // INTEGRAÇÃO DE KELLY + LIMITES FÍSICOS DA MESA
         if (prospectiveId && this.xaiQualification === 'SIM') {
-            const stratStr = prospectiveId as string; // CAST ESTILIZADO E INQUEBRÁVEL
-            const isComplex = stratStr.includes('CROSS_GRID_HEDGE') || stratStr.includes('FUSION_REDUZIDA');
+            const isComplex = prospectiveId.includes('CROSS_GRID_HEDGE') || prospectiveId.includes('FUSION_REDUZIDA');
             const minFichas = isComplex ? 2 : 1; 
             const b = isComplex ? 0.5 : 1.0;
             const p = (this.liveConfidence > 0 ? this.liveConfidence : 50) / 100;
@@ -445,3 +423,12 @@ export class LivePaperOrchestrator {
         this.rl.prompt(true);
     }
 }
+EOF
+
+echo "[2/2] Compilando os novos módulos e o Auto-Settlement..."
+npx tsc
+
+echo "======================================"
+echo -e "\033[1;32m SPRINT 454-B INSTALADA COM SUCESSO \033[0m"
+echo " STATUS: POSICIONAMENTO E AUTO-CAIXA ATIVOS"
+echo "======================================"

@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-06-17T16:54:03-03:00",
+  "sprint": "433",
+  "timingScore": 68,
+  "phase": "EARLY_ENTRY",
+  "inputs": {
+    "coherence": 81,
+    "entryScore": 80,
+    "drift": 0,
+    "consistency": 100,
+    "architecturalDrift": 0
+  }
+}

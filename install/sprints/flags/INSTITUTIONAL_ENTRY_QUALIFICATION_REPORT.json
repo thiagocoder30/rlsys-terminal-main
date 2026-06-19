@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-06-17T15:02:20-03:00",
+  "sprint": "428",
+  "contextScore": 80,
+  "riskScore": 0,
+  "entryScore": 80,
+  "classification": "QUALIFIED",
+  "inputs": {
+    "coherence": 90,
+    "convergence": 76,
+    "regime": "CONFIRMED_OPENING"
+  }
+}

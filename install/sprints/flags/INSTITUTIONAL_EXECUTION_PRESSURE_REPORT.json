@@ -1,0 +1,14 @@
+{
+  "generatedAt": "2026-06-17T16:58:23-03:00",
+  "sprint": "434",
+  "executionPressure": 54,
+  "sizing": "MEDIUM_PRESSURE_ENTRY",
+  "inputs": {
+    "entryScore": 80,
+    "drift": 0,
+    "consistency": 100,
+    "architecturalDrift": 0,
+    "timingScore": 68,
+    "phase": "EARLY_ENTRY"
+  }
+}

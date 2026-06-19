@@ -1,0 +1,26 @@
+{
+  "generatedAt": "2026-06-17T10:17:03-03:00",
+  "model": "RUNTIME_REGIME_VALIDATION_SIGNAL_INTEGRITY_ENGINE_V1",
+  "inputs": {
+    "convergence": 76,
+    "causal": 98,
+    "decisionScore": 70,
+    "windowState": "OPENING"
+  },
+  "validation": {
+    "baseSignal": 81,
+    "stabilityScore": 20,
+    "integrity": "HIGH"
+  },
+  "regime": {
+    "state": "CONFIRMED_OPENING",
+    "risk": "LOW"
+  },
+  "decision": {
+    "action": "ALLOW_CANDIDATE"
+  },
+  "interpretation": {
+    "meaning": "validates whether a perceived entry window is structurally real or false-positive",
+    "principle": "prevents execution on deceptive alignment signals"
+  }
+}

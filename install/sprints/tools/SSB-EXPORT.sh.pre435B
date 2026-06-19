@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+set -e
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+
+BASE="/sdcard/Download/RL_SYS/ssb/export"
+DATE="$(date +%Y-%m-%d)"
+TIME="$(date +%H%M%S)"
+
+OUT_DIR="$BASE/$DATE"
+mkdir -p "$OUT_DIR"
+
+EXPORT_FILE="$OUT_DIR/RL_SYS_SSB_EXPORT_$TIME.txt"
+LOG_FILE="$OUT_DIR/RL_SYS_SSB_EXPORT_$TIME.log"
+
+echo "[SSB-EXPORT] START" | tee "$LOG_FILE"
+echo "[SSB-EXPORT] ROOT=$ROOT" | tee -a "$LOG_FILE"
+
+collect() {
+  local file="$1"
+  if [ -f "$ROOT/$file" ]; then
+    echo "" >> "$EXPORT_FILE"
+    echo "===== $file =====" >> "$EXPORT_FILE"
+    cat "$ROOT/$file" >> "$EXPORT_FILE"
+  else
+    echo "[WARN] Missing: $file" | tee -a "$LOG_FILE"
+  fi
+}
+
+echo "{ \"generatedAt\": \"$(date -Iseconds)\", \"system\": \"RL.SYS CORE SSB\" }" > "$EXPORT_FILE"
+
+# PROJECT STATE
+collect "install/sprints/flags/RL_SYS_PROJECT_STATE.json"
+
+# SNAPSHOT
+collect "install/sprints/flags/RUNTIME_SYSTEM_SNAPSHOT.json"
+
+# ARCHITECTURE
+collect "install/sprints/flags/ARCHITECTURE_SNAPSHOT.json"
+
+# CONVERGENCE + DECISION
+collect "install/sprints/flags/RUNTIME_CONVERGENCE_REPORT.json"
+collect "install/sprints/flags/RUNTIME_EXECUTION_DECISION_REPORT.json"
+
+# WINDOW + REGIME + DECAY
+collect "install/sprints/flags/RUNTIME_ENTRY_WINDOW_DYNAMICS_REPORT.json"
+collect "install/sprints/flags/RUNTIME_REGIME_VALIDATION_SIGNAL_INTEGRITY_REPORT.json"
+collect "install/sprints/flags/RUNTIME_EXECUTION_DECAY_TIMING_REPORT.json"
+
+# STRATEGY + INTEGRITY
+collect "install/sprints/flags/STRATEGY_TOPOLOGY_GRAPH.json"
+collect "install/sprints/flags/REAL_STRATEGY_DEPENDENCY_GRAPH.json"
+collect "install/sprints/flags/SYSTEM_INTEGRITY_REPORT.json"
+
+echo "" >> "$EXPORT_FILE"
+echo "===== METADATA =====" >> "$EXPORT_FILE"
+echo "EXPORT_TIME=$TIME" >> "$EXPORT_FILE"
+echo "DATE=$DATE" >> "$EXPORT_FILE"
+
+echo "[SSB-EXPORT] DONE"
+echo "[SSB-EXPORT] FILE=$EXPORT_FILE"
+echo "[SSB-EXPORT] LOG=$LOG_FILE"
