@@ -1,3 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "======================================"
+echo " RL.SYS CORE - SPRINT 459-C"
+echo " TACTICAL HUD, TIMELINE & HEATMAP"
+echo "======================================"
+
+ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+cd "$ROOT_DIR"
+
+echo "[1/2] Compilando Motores Visuais e Comando Stats..."
+cat > src/presentation/cli/LivePaperOrchestrator.ts <<'EOF'
 import * as readline from 'node:readline';
 import * as fs from 'node:fs';
 import * as path from 'path';
@@ -674,3 +687,12 @@ export class LivePaperOrchestrator {
         this.rl.prompt(true);
     }
 }
+EOF
+
+echo "[2/2] Aplicando validação de tipos da nova UI..."
+npx tsc
+
+echo "======================================"
+echo -e "\033[1;32m SPRINT 459-C APLICADA COM SUCESSO \033[0m"
+echo " STATUS: TIMELINE E HEATMAP NATIVOS INJETADOS"
+echo "======================================"
