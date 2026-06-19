@@ -1,3 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "======================================"
+echo " RL.SYS CORE - SPRINT 457"
+echo " ENTERPRISE OBSERVABILITY & BACKTESTING"
+echo "======================================"
+
+ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+cd "$ROOT_DIR"
+
+echo "[1/2] Compilando Motores de Telemetria, Backtest e Entropia Dinâmica..."
+cat > src/presentation/cli/LivePaperOrchestrator.ts <<'EOF'
 import * as readline from 'node:readline';
 import * as fs from 'node:fs';
 import * as path from 'path';
@@ -527,3 +540,12 @@ export class LivePaperOrchestrator {
         this.rl.prompt(true);
     }
 }
+EOF
+
+echo "[2/2] Compilando a arquitetura final com strict typing..."
+npx tsc
+
+echo "======================================"
+echo -e "\033[1;32m SPRINT 457 APLICADA COM SUCESSO \033[0m"
+echo " STATUS: ARQUITETURA SELADA & PRONTA PARA PRODUÇÃO"
+echo "======================================"
