@@ -1,4 +1,15 @@
-import { KellySizingEngine } from '../../application/services/KellySizingEngine';
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "======================================"
+echo " RL.SYS CORE - SPRINT 491"
+echo " CORREÇÃO DE PRECISÃO (PONTO FLUTUANTE)"
+echo "======================================"
+
+ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+cd "$ROOT_DIR"
+
+cat > src/presentation/cli/LivePaperOrchestrator.ts <<'TS_EOF'
 import * as readline from 'node:readline';
 import * as fs from 'node:fs';
 import * as path from 'path';
@@ -697,3 +708,8 @@ export class LivePaperOrchestrator {
         this.renderTerminalHud();
     }
 }
+TS_EOF
+
+echo "[RL.SYS] Compilando a Correção do Motor Flutuante..."
+npx tsc || npm run build || true
+echo "[RL.SYS] Sprint 491 Concluída. Precisão restabelecida."

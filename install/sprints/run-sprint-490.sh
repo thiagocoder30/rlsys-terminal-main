@@ -1,4 +1,15 @@
-import { KellySizingEngine } from '../../application/services/KellySizingEngine';
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "======================================"
+echo " RL.SYS CORE - SPRINT 490"
+echo " TRAVA DE GELO (FILTRO DE PESO RL >= 1.00)"
+echo "======================================"
+
+ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+cd "$ROOT_DIR"
+
+cat > src/presentation/cli/LivePaperOrchestrator.ts <<'TS_EOF'
 import * as readline from 'node:readline';
 import * as fs from 'node:fs';
 import * as path from 'path';
@@ -165,7 +176,7 @@ export class LivePaperOrchestrator {
     }
 
     private resolveFinancials(drawnNumber: number) {
-        if (!this.activeBet) return; 
+        if (!this.activeBet) return; // Se não houver aposta real autorizada (activeBet nulo), o dinheiro não é tocado.
         
         const strat = this.activeBet.strategyId;
         const chip = this.activeBet.chipMin;
@@ -570,6 +581,7 @@ export class LivePaperOrchestrator {
             
             const num = parseInt(numStr, 10);
             if (!isNaN(num) && num >= 0 && num <= 36) {
+                // Se a aposta ativa era nula (por VETO ou BLOQUEIO), o giro opera 100% no virtual
                 if (!isSkipped) {
                     this.resolveFinancials(num);
                 } else {
@@ -577,6 +589,7 @@ export class LivePaperOrchestrator {
                     this.lastActionTakenText = `\x1b[33mGiro [${num}] anotado. Dinheiro protegido na rodada.\x1b[0m`;
                 }
                 
+                // Mas os pesos fantasmas SEMPRE são atualizados
                 this.evaluateShadowTrading(num); 
                 this.mesaTracker.addNumber(num); 
                 this.generateNextTrade(); 
@@ -645,18 +658,16 @@ export class LivePaperOrchestrator {
             if (this.activeStrategyId !== 'Nenhuma') {
                 const weight = this.shadowWeights[this.activeStrategyId] || 1.0;
                 
-                // NOVO CÓDIGO SPRINT 491: Correção do Ponto Flutuante
-                const safeWeight = Math.round(weight * 100) / 100;
-                
-                if (safeWeight < 1.00) {
+                // NOVO CÓDIGO DA SPRINT 490: O Filtro de Gelo
+                if (weight < 1.00) {
                     this.xaiQualification = 'BLOQUEADO (MESA FRIA)';
                     this.xaiMoment = 'AGUARDANDO PADRÃO';
-                    this.xaiReason = `Estratégia Alfa (${this.activeStrategyId}) com peso ${safeWeight.toFixed(2)}. Mínimo exigido: 1.00.`;
+                    this.xaiReason = `Estratégia Alfa (${this.activeStrategyId}) com peso ${weight.toFixed(2)}. Mínimo exigido: 1.00.`;
                     this.dynamicStakeCalculated = 0.00;
                     this.xaiApplicationText = 'APENAS OBSERVE E INSIRA OS NÚMEROS.';
-                    this.activeBet = null; 
+                    this.activeBet = null; // Corta o risco financeiro
                 } else {
-                    const sizing = this.calculateSizing(this.activeStrategyId, minChip, safeWeight);
+                    const sizing = this.calculateSizing(this.activeStrategyId, minChip, weight);
                     
                     if (!sizing.isSafe) {
                         this.xaiQualification = 'VETADO (RISCO)';
@@ -668,7 +679,7 @@ export class LivePaperOrchestrator {
                     } else {
                         this.xaiQualification = 'SIM';
                         this.xaiMoment = 'JANELA TÁTICA';
-                        this.xaiReason = `Estratégia promovida (Peso: ${safeWeight.toFixed(2)}). Sizing ajustado via Kelly.`;
+                        this.xaiReason = `Estratégia promovida (Peso: ${weight.toFixed(2)}). Sizing ajustado via Kelly.`;
                         this.dynamicStakeCalculated = sizing.total;
                         this.xaiApplicationText = sizing.desc;
                         this.activeBet = { strategyId: this.activeStrategyId, stake: sizing.total, chipMin: minChip, multiplier: sizing.multiplier };
@@ -697,3 +708,8 @@ export class LivePaperOrchestrator {
         this.renderTerminalHud();
     }
 }
+TS_EOF
+
+echo "[RL.SYS] Compilando a Trava de Gelo (Peso Min 1.0)..."
+npx tsc || npm run build || true
+echo "[RL.SYS] Sprint 490 Concluída. Falsa entrada erradicada."

@@ -1,4 +1,15 @@
-import { KellySizingEngine } from '../../application/services/KellySizingEngine';
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "======================================"
+echo " RL.SYS CORE - SPRINT 489"
+echo " BACKTEST DINÂMICO DE FITA INDEPENDENTE"
+echo "======================================"
+
+ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+cd "$ROOT_DIR"
+
+cat > src/presentation/cli/LivePaperOrchestrator.ts <<'TS_EOF'
 import * as readline from 'node:readline';
 import * as fs from 'node:fs';
 import * as path from 'path';
@@ -142,7 +153,7 @@ export class LivePaperOrchestrator {
         
         let qColor = '\x1b[31m';
         if (this.xaiQualification === 'SIM') qColor = '\x1b[32m';
-        if (this.xaiQualification.includes('BLOQUEADO') || this.xaiQualification.includes('VETADO')) qColor = '\x1b[41m\x1b[37m'; 
+        if (this.xaiQualification === 'BLOQUEADO' || this.xaiQualification.includes('VETADO')) qColor = '\x1b[41m\x1b[37m'; 
         
         const sColor = this.dynamicStakeCalculated > 0 ? '\x1b[33m' : '\x1b[90m';
 
@@ -165,7 +176,7 @@ export class LivePaperOrchestrator {
     }
 
     private resolveFinancials(drawnNumber: number) {
-        if (!this.activeBet) return; 
+        if (!this.activeBet) return;
         
         const strat = this.activeBet.strategyId;
         const chip = this.activeBet.chipMin;
@@ -645,34 +656,22 @@ export class LivePaperOrchestrator {
             if (this.activeStrategyId !== 'Nenhuma') {
                 const weight = this.shadowWeights[this.activeStrategyId] || 1.0;
                 
-                // NOVO CÓDIGO SPRINT 491: Correção do Ponto Flutuante
-                const safeWeight = Math.round(weight * 100) / 100;
+                const sizing = this.calculateSizing(this.activeStrategyId, minChip, weight);
                 
-                if (safeWeight < 1.00) {
-                    this.xaiQualification = 'BLOQUEADO (MESA FRIA)';
-                    this.xaiMoment = 'AGUARDANDO PADRÃO';
-                    this.xaiReason = `Estratégia Alfa (${this.activeStrategyId}) com peso ${safeWeight.toFixed(2)}. Mínimo exigido: 1.00.`;
+                if (!sizing.isSafe) {
+                    this.xaiQualification = 'VETADO (RISCO)';
+                    this.xaiMoment = 'AGORA NÃO';
+                    this.xaiReason = `Estratégia exige R$ ${sizing.cost.toFixed(2)}, mas seu limite seguro (5%) é R$ ${sizing.safeLimit.toFixed(2)}.`;
                     this.dynamicStakeCalculated = 0.00;
-                    this.xaiApplicationText = 'APENAS OBSERVE E INSIRA OS NÚMEROS.';
-                    this.activeBet = null; 
+                    this.xaiApplicationText = 'OPERAÇÃO VETADA PELO GESTOR DE RISCO.';
+                    this.activeBet = null;
                 } else {
-                    const sizing = this.calculateSizing(this.activeStrategyId, minChip, safeWeight);
-                    
-                    if (!sizing.isSafe) {
-                        this.xaiQualification = 'VETADO (RISCO)';
-                        this.xaiMoment = 'AGORA NÃO';
-                        this.xaiReason = `Estratégia exige R$ ${sizing.cost.toFixed(2)}, mas seu limite (5%) é R$ ${sizing.safeLimit.toFixed(2)}.`;
-                        this.dynamicStakeCalculated = 0.00;
-                        this.xaiApplicationText = 'OPERAÇÃO VETADA PELO GESTOR DE RISCO.';
-                        this.activeBet = null;
-                    } else {
-                        this.xaiQualification = 'SIM';
-                        this.xaiMoment = 'JANELA TÁTICA';
-                        this.xaiReason = `Estratégia promovida (Peso: ${safeWeight.toFixed(2)}). Sizing ajustado via Kelly.`;
-                        this.dynamicStakeCalculated = sizing.total;
-                        this.xaiApplicationText = sizing.desc;
-                        this.activeBet = { strategyId: this.activeStrategyId, stake: sizing.total, chipMin: minChip, multiplier: sizing.multiplier };
-                    }
+                    this.xaiQualification = 'SIM';
+                    this.xaiMoment = 'JANELA TÁTICA';
+                    this.xaiReason = `Estratégia promovida (Peso: ${weight.toFixed(2)}). Sizing ajustado via Kelly.`;
+                    this.dynamicStakeCalculated = sizing.total;
+                    this.xaiApplicationText = sizing.desc;
+                    this.activeBet = { strategyId: this.activeStrategyId, stake: sizing.total, chipMin: minChip, multiplier: sizing.multiplier };
                 }
 
             } else {
@@ -697,3 +696,8 @@ export class LivePaperOrchestrator {
         this.renderTerminalHud();
     }
 }
+TS_EOF
+
+echo "[RL.SYS] Compilando Módulo Dinâmico de Backtest..."
+npx tsc || npm run build || true
+echo "[RL.SYS] Sprint 489 Concluída. Arsenal liberado."

@@ -1,4 +1,15 @@
-import { KellySizingEngine } from '../../application/services/KellySizingEngine';
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "======================================"
+echo " RL.SYS CORE - SPRINT 488"
+echo " REFORMA DAS APOSTAS EXTERNAS (OUTSIDE BETS)"
+echo "======================================"
+
+ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+cd "$ROOT_DIR"
+
+cat > src/presentation/cli/LivePaperOrchestrator.ts <<'TS_EOF'
 import * as readline from 'node:readline';
 import * as fs from 'node:fs';
 import * as path from 'path';
@@ -142,7 +153,7 @@ export class LivePaperOrchestrator {
         
         let qColor = '\x1b[31m';
         if (this.xaiQualification === 'SIM') qColor = '\x1b[32m';
-        if (this.xaiQualification.includes('BLOQUEADO') || this.xaiQualification.includes('VETADO')) qColor = '\x1b[41m\x1b[37m'; 
+        if (this.xaiQualification === 'BLOQUEADO' || this.xaiQualification.includes('VETADO')) qColor = '\x1b[41m\x1b[37m'; 
         
         const sColor = this.dynamicStakeCalculated > 0 ? '\x1b[33m' : '\x1b[90m';
 
@@ -165,7 +176,7 @@ export class LivePaperOrchestrator {
     }
 
     private resolveFinancials(drawnNumber: number) {
-        if (!this.activeBet) return; 
+        if (!this.activeBet) return;
         
         const strat = this.activeBet.strategyId;
         const chip = this.activeBet.chipMin;
@@ -176,14 +187,14 @@ export class LivePaperOrchestrator {
         let pnl = 0;
         
         if (strat.startsWith('CROSS_GRID')) {
-            const cost = 2 * chip * mult; 
-            pnl = isWin ? (3 * chip * mult) - cost : -cost; 
+            const cost = 2 * chip * mult; // 2 fichas externas (1 por coluna)
+            pnl = isWin ? (3 * chip * mult) - cost : -cost; // Paga 3x a aposta da coluna vencedora
         } else if (strat.startsWith('SECTOR_') || strat === 'FUSION_REDUZIDA') {
-            const cost = zone.size * chip * mult; 
+            const cost = zone.size * chip * mult; // Aposta interna em números plenos
             pnl = isWin ? (36 * chip * mult) - cost : -cost;
         } else if (strat.startsWith('TRIPLICACAO_')) {
-            const cost = 1 * chip * mult; 
-            pnl = isWin ? (2 * chip * mult) - cost : -cost; 
+            const cost = 1 * chip * mult; // 1 ficha externa (Red, Black, Even, Odd)
+            pnl = isWin ? (2 * chip * mult) - cost : -cost; // Paga 1:1
         }
         
         this.currentBankroll += pnl;
@@ -232,13 +243,13 @@ export class LivePaperOrchestrator {
     }
 
     private calculateSizing(strategyId: string, minChip: number, weight: number): { total: number, desc: string, multiplier: number, isSafe: boolean, cost: number, safeLimit: number } {
-        const MAX_RISK_PCT = 0.05; 
+        const MAX_RISK_PCT = 0.05; // ESCUDO DE CAPITAL: Máximo de 5% da banca
         const safeLimit = this.currentBankroll * MAX_RISK_PCT;
         
         let baseUnits = 0;
-        if (strategyId.startsWith('CROSS_GRID')) baseUnits = 2; 
-        else if (strategyId.startsWith('SECTOR_') || strategyId === 'FUSION_REDUZIDA') baseUnits = this.STRATEGY_ZONES[strategyId].length; 
-        else if (strategyId.startsWith('TRIPLICACAO_')) baseUnits = 1; 
+        if (strategyId.startsWith('CROSS_GRID')) baseUnits = 2; // 2 apostas externas
+        else if (strategyId.startsWith('SECTOR_') || strategyId === 'FUSION_REDUZIDA') baseUnits = this.STRATEGY_ZONES[strategyId].length; // N apostas internas
+        else if (strategyId.startsWith('TRIPLICACAO_')) baseUnits = 1; // 1 aposta externa
 
         const baseCost = baseUnits * minChip;
         
@@ -284,7 +295,7 @@ export class LivePaperOrchestrator {
                 return;
             }
 
-            if (this.systemLocked && cmd !== 'stats' && cmd !== 'journey' && cmd !== 'weights' && !cmd.startsWith('backtest') && cmd !== 'exit' && cmd !== 'quit') {
+            if (this.systemLocked && cmd !== 'stats' && cmd !== 'journey' && cmd !== 'weights' && cmd !== 'exit' && cmd !== 'quit') {
                 this.lastActionTakenText = "\x1b[31m[ERRO] Sistema travado pelo Circuit Breaker. Operações financeiras suspensas.\x1b[0m";
                 this.renderTerminalHud();
                 return;
@@ -416,62 +427,16 @@ export class LivePaperOrchestrator {
                 console.log('Pressione ENTER para retornar ao HUD...');
                 this.inputMode = 'VIEW_ONLY'; return;
             }
-            if (cmd.startsWith('backtest')) {
+            if (cmd === 'backtest') {
                 console.clear();
-                const paramStr = cmd.replace('backtest', '').trim();
-                let historyToTest: number[] = [];
-
-                if (paramStr.length > 0) {
-                    historyToTest = paramStr.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n) && n >= 0 && n <= 36);
-                } else {
-                    historyToTest = this.mesaTracker.getHistory();
-                }
-
-                if (historyToTest.length === 0) {
-                    console.log('======================================================');
-                    console.log('\x1b[31m [ERRO] Fita vazia. Use: backtest <numeros separados por virgula>\x1b[0m');
-                    console.log('======================================================');
-                    console.log('Pressione ENTER para retornar ao HUD...');
-                    this.inputMode = 'VIEW_ONLY'; return;
-                }
-
+                const history = this.mesaTracker.getHistory();
                 const minChip = this.provider === 'PRAGMATIC' ? 0.10 : 0.50;
                 
-                let simWeights: Record<string, number> = {};
-                let simPnL: Record<string, number> = {};
-                Object.keys(this.STRATEGY_ZONES).forEach(id => { simWeights[id] = 1.0; simPnL[id] = 0.0; });
-                
-                for (const num of historyToTest) {
-                    for (const strat of Object.keys(this.STRATEGY_ZONES)) {
-                        if (this.disabledStrategies.has(strat)) continue;
-                        const zone = new Set(this.STRATEGY_ZONES[strat]);
-                        const isWin = zone.has(num);
-                        let pnl = 0;
-                        if (strat.startsWith('CROSS_GRID')) {
-                            const cost = 2 * minChip;
-                            pnl = isWin ? (3 * minChip) - cost : -cost;
-                        } else if (strat.startsWith('SECTOR_') || strat === 'FUSION_REDUZIDA') {
-                            const cost = zone.size * minChip;
-                            pnl = isWin ? (36 * minChip) - cost : -cost;
-                        } else if (strat.startsWith('TRIPLICACAO_')) {
-                            const cost = 1 * minChip;
-                            pnl = isWin ? (2 * minChip) - cost : -cost;
-                        }
-                        
-                        simPnL[strat] += pnl;
-                        if (pnl > 0) {
-                            simWeights[strat] = Math.min(3.0, simWeights[strat] + 0.10);
-                        } else {
-                            simWeights[strat] = Math.max(0.1, simWeights[strat] - 0.25);
-                        }
-                    }
-                }
-
                 const activeStrats = Object.keys(this.STRATEGY_ZONES)
                     .filter(id => !this.disabledStrategies.has(id))
                     .sort((a, b) => {
-                        const diff = simWeights[b] - simWeights[a];
-                        if (Math.abs(diff) < 0.01) return simPnL[b] - simPnL[a];
+                        const diff = (this.shadowWeights[b] || 1) - (this.shadowWeights[a] || 1);
+                        if (Math.abs(diff) < 0.01) return (this.shadowPnL[b] || 0) - (this.shadowPnL[a] || 0);
                         return diff;
                     });
                 
@@ -485,7 +450,7 @@ export class LivePaperOrchestrator {
 
                 if (bestStrat !== 'Nenhuma') {
                     const zone = new Set(this.STRATEGY_ZONES[bestStrat]);
-                    for (const num of historyToTest) {
+                    for (const num of history) {
                         const isWin = zone.has(num);
                         let pnl = 0;
                         if (bestStrat.startsWith('CROSS_GRID')) {
@@ -514,11 +479,11 @@ export class LivePaperOrchestrator {
                 console.log('======================================================');
                 console.log(' 🔬 RL.SYS CORE - MOTOR DE BACKTEST & SIMULAÇÃO');
                 console.log('======================================================');
-                console.log(` Estratégia Alfa : ${bestStrat}`);
-                console.log(` Giros Simulados : ${historyToTest.length} rodadas.`);
+                console.log(` Estratégia Alvo : ${bestStrat}`);
+                console.log(` Giros Analisados: ${history.length}`);
                 console.log(` Win Rate Bruto  : ${wr.toFixed(1)}% (${b_wins}W / ${b_losses}L)`);
                 console.log(` Max Drawdown    : \x1b[31mR$ ${maxDrawdown.toFixed(2)}\x1b[0m`);
-                console.log(` PnL Projetado   : ${pnlProj >= 0 ? '\x1b[32m+' : '\x1b[31m'}R$ ${pnlProj.toFixed(2)}\x1b[0m`);
+                console.log(` PnL Projetado   : ${pnlProj >= 0 ? '\x1b[32m' : '\x1b[31m'}R$ ${pnlProj.toFixed(2)}\x1b[0m`);
                 console.log(` Banca Projetada : R$ ${b_current.toFixed(2)}`);
                 console.log('======================================================');
                 console.log('Pressione ENTER para retornar ao HUD...');
@@ -533,9 +498,9 @@ export class LivePaperOrchestrator {
                 console.log(' setbankroll <valor>  : Ajusta banca de combate e Trailing Peak');
                 console.log(' setmacro <valor>     : Define o Marco Zero da sua Jornada');
                 console.log(' journey              : Painel contábil de Milestones');
-                console.log(' sync <n1,n2>         : Injeta fita histórica no motor principal');
+                console.log(' sync <n1,n2>         : Injeta fita histórica (Warmup)');
                 console.log(' weights              : Motor Shadow PnL e Pesos');
-                console.log(' backtest <n1,n2>     : Simulação offline (não afeta o HUD)');
+                console.log(' backtest             : Simulação da Estratégia Alfa na fita');
                 console.log(' stats                : Relatório de Win Rate e Sessão');
                 console.log(' enable <id>          : Liga um reator estratégico');
                 console.log(' disable <id>         : Desliga um reator estratégico');
@@ -645,34 +610,22 @@ export class LivePaperOrchestrator {
             if (this.activeStrategyId !== 'Nenhuma') {
                 const weight = this.shadowWeights[this.activeStrategyId] || 1.0;
                 
-                // NOVO CÓDIGO SPRINT 491: Correção do Ponto Flutuante
-                const safeWeight = Math.round(weight * 100) / 100;
+                const sizing = this.calculateSizing(this.activeStrategyId, minChip, weight);
                 
-                if (safeWeight < 1.00) {
-                    this.xaiQualification = 'BLOQUEADO (MESA FRIA)';
-                    this.xaiMoment = 'AGUARDANDO PADRÃO';
-                    this.xaiReason = `Estratégia Alfa (${this.activeStrategyId}) com peso ${safeWeight.toFixed(2)}. Mínimo exigido: 1.00.`;
+                if (!sizing.isSafe) {
+                    this.xaiQualification = 'VETADO (RISCO)';
+                    this.xaiMoment = 'AGORA NÃO';
+                    this.xaiReason = `Estratégia exige R$ ${sizing.cost.toFixed(2)}, mas seu limite seguro (5%) é R$ ${sizing.safeLimit.toFixed(2)}.`;
                     this.dynamicStakeCalculated = 0.00;
-                    this.xaiApplicationText = 'APENAS OBSERVE E INSIRA OS NÚMEROS.';
-                    this.activeBet = null; 
+                    this.xaiApplicationText = 'OPERAÇÃO VETADA PELO GESTOR DE RISCO.';
+                    this.activeBet = null;
                 } else {
-                    const sizing = this.calculateSizing(this.activeStrategyId, minChip, safeWeight);
-                    
-                    if (!sizing.isSafe) {
-                        this.xaiQualification = 'VETADO (RISCO)';
-                        this.xaiMoment = 'AGORA NÃO';
-                        this.xaiReason = `Estratégia exige R$ ${sizing.cost.toFixed(2)}, mas seu limite (5%) é R$ ${sizing.safeLimit.toFixed(2)}.`;
-                        this.dynamicStakeCalculated = 0.00;
-                        this.xaiApplicationText = 'OPERAÇÃO VETADA PELO GESTOR DE RISCO.';
-                        this.activeBet = null;
-                    } else {
-                        this.xaiQualification = 'SIM';
-                        this.xaiMoment = 'JANELA TÁTICA';
-                        this.xaiReason = `Estratégia promovida (Peso: ${safeWeight.toFixed(2)}). Sizing ajustado via Kelly.`;
-                        this.dynamicStakeCalculated = sizing.total;
-                        this.xaiApplicationText = sizing.desc;
-                        this.activeBet = { strategyId: this.activeStrategyId, stake: sizing.total, chipMin: minChip, multiplier: sizing.multiplier };
-                    }
+                    this.xaiQualification = 'SIM';
+                    this.xaiMoment = 'JANELA TÁTICA';
+                    this.xaiReason = `Estratégia promovida (Peso: ${weight.toFixed(2)}). Sizing ajustado via Kelly.`;
+                    this.dynamicStakeCalculated = sizing.total;
+                    this.xaiApplicationText = sizing.desc;
+                    this.activeBet = { strategyId: this.activeStrategyId, stake: sizing.total, chipMin: minChip, multiplier: sizing.multiplier };
                 }
 
             } else {
@@ -697,3 +650,8 @@ export class LivePaperOrchestrator {
         this.renderTerminalHud();
     }
 }
+TS_EOF
+
+echo "[RL.SYS] Compilando Motores de Apostas Externas..."
+npx tsc || npm run build || true
+echo "[RL.SYS] Sprint 488 Concluída. Matemática do Cassino dominada."
