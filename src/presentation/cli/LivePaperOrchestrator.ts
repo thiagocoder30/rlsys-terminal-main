@@ -44,6 +44,7 @@ export class LivePaperOrchestrator {
     private activeBet: { strategyId: string, stake: number, chipMin: number, multiplier: number } | null = null;
 
     private readonly STRATEGY_ZONES: Record<string, number[]> = {
+        'DYNAMIC_NEIGHBORS': [], // Alvo dinâmico calculado on-the-fly
         'FUSION_REDUZIDA': [17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31],
         'PATTERN_FRANCESA': [31,9,22,18,29,7,28,12,35,3,26,25,17,34,6,27,13,36,11,30,8,23],
         'ZONE_P2': [0,1,2,5,6,8,9,10,12,13,14,16,17,19,20,23,24,26,27,28,30,31,32,34,35],
@@ -56,6 +57,8 @@ export class LivePaperOrchestrator {
         'CROSS_DOZEN_1_3': [1,2,3,4,5,6,7,8,9,10,11,12, 25,26,27,28,29,30,31,32,33,34,35,36],
         'CROSS_DOZEN_2_3': [13,14,15,16,17,18,19,20,21,22,23,24, 25,26,27,28,29,30,31,32,33,34,35,36]
     };
+
+    private readonly WHEEL_ORDER = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
 
     constructor(bankrollRepo: IBankrollRepository, mesaTracker: IAnalyticsEngine) {
         this.bankrollRepo = bankrollRepo;
@@ -80,6 +83,27 @@ export class LivePaperOrchestrator {
         
         this.generateNextTrade();
         this.attachEventListeners();
+    }
+
+    private getDynamicNeighbors(lastNum: number): number[] {
+        if (lastNum === -1) return [];
+        const idx = this.WHEEL_ORDER.indexOf(lastNum);
+        if (idx === -1) return [];
+        const len = this.WHEEL_ORDER.length;
+        return [
+            this.WHEEL_ORDER[(idx - 2 + len) % len],
+            this.WHEEL_ORDER[(idx - 1 + len) % len],
+            this.WHEEL_ORDER[idx],
+            this.WHEEL_ORDER[(idx + 1) % len],
+            this.WHEEL_ORDER[(idx + 2) % len]
+        ];
+    }
+
+    private getZone(stratId: string, lastNum: number): number[] {
+        if (stratId === 'DYNAMIC_NEIGHBORS') {
+            return this.getDynamicNeighbors(lastNum);
+        }
+        return this.STRATEGY_ZONES[stratId] || [];
     }
 
     private formatNumberColor(num: number): string {
@@ -126,7 +150,7 @@ export class LivePaperOrchestrator {
         const sessionTakeProfit = this.initialBankroll * 1.20;
 
         console.log('\x1b[36m======================================================\x1b[0m');
-        console.log(' RL.SYS CORE - TACTICAL ORCHESTRATOR [V5.17b]');
+        console.log(' RL.SYS CORE - TACTICAL ORCHESTRATOR [V5.18b]');
         console.log('\x1b[36m======================================================\x1b[0m');
         const minChip = this.provider === 'PRAGMATIC' ? 0.10 : 0.50;
         console.log(` MESA / PROVEDOR . ${this.provider} (Ficha Mín: R$ ${minChip.toFixed(2)})`);
@@ -170,10 +194,15 @@ export class LivePaperOrchestrator {
     private resolveFinancials(drawnNumber: number) {
         if (!this.activeBet) return; 
         
+        const history = this.mesaTracker.getHistory();
+        const lastNum = history.length > 0 ? history[history.length - 1] : -1;
+        
         const strat = this.activeBet.strategyId;
         const chip = this.activeBet.chipMin;
         const mult = this.activeBet.multiplier;
-        const zone = new Set(this.STRATEGY_ZONES[strat]);
+        
+        const zoneList = this.getZone(strat, lastNum);
+        const zone = new Set(zoneList);
         const isWin = zone.has(drawnNumber);
         
         let pnl = 0;
@@ -208,11 +237,12 @@ export class LivePaperOrchestrator {
         for (const strat of Object.keys(this.STRATEGY_ZONES)) {
             if (this.disabledStrategies.has(strat)) continue;
             
-            if (strat === 'PATTERN_FRANCESA' && lastNum !== 28 && lastNum !== 29) {
-                continue; 
-            }
+            if (strat === 'PATTERN_FRANCESA' && lastNum !== 28 && lastNum !== 29) continue; 
             
-            const zone = new Set(this.STRATEGY_ZONES[strat]);
+            const zoneList = this.getZone(strat, lastNum);
+            if (zoneList.length === 0) continue;
+            
+            const zone = new Set(zoneList);
             const isWin = zone.has(drawnNumber);
             let pnl = 0;
             
@@ -234,21 +264,27 @@ export class LivePaperOrchestrator {
         }
     }
 
-    private calculateSizing(strategyId: string, minChip: number, weight: number): { total: number, desc: string, multiplier: number, isSafe: boolean, cost: number, safeLimit: number } {
+    private calculateSizing(strategyId: string, minChip: number, weight: number, lastNum: number): { total: number, desc: string, multiplier: number, isSafe: boolean, cost: number, safeLimit: number } {
         const MAX_RISK_PCT = 0.05; 
         const safeLimit = this.currentBankroll * MAX_RISK_PCT;
+        
+        const zoneList = this.getZone(strategyId, lastNum);
         
         let baseUnits = 0;
         if (strategyId.startsWith('CROSS_GRID') || strategyId.startsWith('CROSS_DOZEN')) {
             baseUnits = 2; 
         } else {
-            baseUnits = this.STRATEGY_ZONES[strategyId].length; 
+            baseUnits = zoneList.length; 
+        }
+
+        if (baseUnits === 0) {
+            return { total: 0, desc: 'Sem histórico para alvo dinâmico.', multiplier: 0, isSafe: false, cost: 0, safeLimit };
         }
 
         const baseCost = baseUnits * minChip;
         
         if (baseCost > safeLimit) {
-            return { total: 0, desc: `Risco extremo detectado.`, multiplier: 0, isSafe: false, cost: baseCost, safeLimit: safeLimit };
+            return { total: 0, desc: `Risco extremo detectado. Custo R$ ${baseCost.toFixed(2)} excede limite R$ ${safeLimit.toFixed(2)}.`, multiplier: 0, isSafe: false, cost: baseCost, safeLimit: safeLimit };
         }
 
         const kellyFraction = Math.max(0.01, weight / 100);
@@ -274,6 +310,10 @@ export class LivePaperOrchestrator {
             if (strategyId === 'CROSS_DOZEN_1_2') dozDesc = 'Dúzia 1 e Dúzia 2';
             if (strategyId === 'CROSS_DOZEN_1_3') dozDesc = 'Dúzia 1 e Dúzia 3';
             return { total: totalCost, desc: `\x1b[32m${dozDesc} (R$ ${dozCost.toFixed(2)} cada. Aposta Externa)\x1b[0m`, multiplier, isSafe: true, cost: baseCost, safeLimit };
+        }
+        if (strategyId === 'DYNAMIC_NEIGHBORS') {
+            const unitCost = minChip * multiplier;
+            return { total: totalCost, desc: `\x1b[32mÚltimo [${lastNum}] + 2 Vizinhos (${zoneList.join(', ')}) (R$ ${unitCost.toFixed(2)}/cada)\x1b[0m`, multiplier, isSafe: true, cost: baseCost, safeLimit };
         }
         
         const unitCost = minChip * multiplier;
@@ -355,7 +395,10 @@ export class LivePaperOrchestrator {
                 console.log(` Entropia (VIX)    : ${this.currentVixPercent.toFixed(1)}% (Mesa ${this.currentVixPercent > 95 ? '\x1b[31mCaótica\x1b[0m' : '\x1b[32mEstável\x1b[0m'})`);
                 
                 if (this.activeStrategyId && this.activeStrategyId !== 'Nenhuma') {
-                    const zoneSize = this.STRATEGY_ZONES[this.activeStrategyId].length;
+                    const history = this.mesaTracker.getHistory();
+                    const lastNum = history.length > 0 ? history[history.length - 1] : -1;
+                    const zoneList = this.getZone(this.activeStrategyId, lastNum);
+                    const zoneSize = zoneList.length;
                     const winProb = (zoneSize / 37) * 100;
                     const weight = this.shadowWeights[this.activeStrategyId] || 1.0;
                     
@@ -550,14 +593,17 @@ export class LivePaperOrchestrator {
                             continue;
                         }
                         
-                        const zone = new Set(this.STRATEGY_ZONES[strat]);
+                        const zoneList = this.getZone(strat, simPrevNum);
+                        if (zoneList.length === 0) continue;
+
+                        const zone = new Set(zoneList);
                         const isWin = zone.has(num);
                         let pnl = 0;
                         if (strat.startsWith('CROSS_GRID') || strat.startsWith('CROSS_DOZEN')) {
                             const cost = 2 * minChip;
                             pnl = isWin ? (3 * minChip) - cost : -cost;
                         } else {
-                            const cost = zone.size * minChip;
+                            const cost = zoneList.length * minChip;
                             pnl = isWin ? (36 * minChip) - cost : -cost;
                         }
                         
@@ -586,19 +632,25 @@ export class LivePaperOrchestrator {
                 let bPrevNum = -1;
 
                 if (bestStrat !== 'Nenhuma') {
-                    const zone = new Set(this.STRATEGY_ZONES[bestStrat]);
                     for (const num of historyToTest) {
                         if (bestStrat === 'PATTERN_FRANCESA' && bPrevNum !== 28 && bPrevNum !== 29) {
                             bPrevNum = num;
                             continue;
                         }
+                        const zoneList = this.getZone(bestStrat, bPrevNum);
+                        if (zoneList.length === 0) {
+                            bPrevNum = num;
+                            continue;
+                        }
+
+                        const zone = new Set(zoneList);
                         const isWin = zone.has(num);
                         let pnl = 0;
                         if (bestStrat.startsWith('CROSS_GRID') || bestStrat.startsWith('CROSS_DOZEN')) {
                             const cost = 2 * minChip;
                             pnl = isWin ? (3 * minChip) - cost : -cost;
                         } else {
-                            const cost = zone.size * minChip;
+                            const cost = zoneList.length * minChip;
                             pnl = isWin ? (36 * minChip) - cost : -cost;
                         }
                         
@@ -752,6 +804,7 @@ export class LivePaperOrchestrator {
                 .filter(id => !this.disabledStrategies.has(id))
                 .filter(id => {
                     if (id === 'PATTERN_FRANCESA') return lastNum === 28 || lastNum === 29;
+                    if (id === 'DYNAMIC_NEIGHBORS') return lastNum !== -1;
                     return true;
                 })
                 .sort((a, b) => {
@@ -778,7 +831,7 @@ export class LivePaperOrchestrator {
                     break;
                 }
                 
-                const sizing = this.calculateSizing(stratId, minChip, safeWeight);
+                const sizing = this.calculateSizing(stratId, minChip, safeWeight, lastNum);
                 
                 if (!sizing.isSafe) {
                     if (!topVetoedStrat) {
