@@ -13,6 +13,46 @@ const STRATEGY_ZONES: Record<string, number[]> = {
     'CROSS_DOZEN_2_3': [13,14,15,16,17,18,19,20,21,22,23,24, 25,26,27,28,29,30,31,32,33,34,35,36]
 };
 
+// ==========================================
+// HELPERS DE MATEMÁTICA FRANCESA EXATA
+// ==========================================
+const getBaseUnits = (strat: string) => {
+    if (strat.startsWith('CROSS_')) return 2;
+    if (strat === 'ZONE_TIERS') return 6;
+    if (strat === 'ZONE_VOISINS') return 9;
+    if (strat === 'ZONE_ORPHELINS') return 5;
+    return STRATEGY_ZONES[strat].length;
+};
+
+const calculatePayout = (strat: string, drawnNumber: number, unitCost: number, totalCost: number) => {
+    if (!STRATEGY_ZONES[strat].includes(drawnNumber)) return 0;
+    
+    // Tiers: 6 Splits (Dividida paga 17:1 = 18x multiplicador da ficha)
+    if (strat === 'ZONE_TIERS') return unitCost * 18;
+    
+    if (strat === 'ZONE_ORPHELINS') {
+        // Orphelins: O 1 é Pleno (35:1). O 17 cruza em 2 splits (recebe 18x de cada).
+        if (drawnNumber === 1 || drawnNumber === 17) return unitCost * 36;
+        // Restante dos números (6, 9, 14, 20, 31, 34) são um Split único (17:1)
+        return unitCost * 18;
+    }
+    
+    if (strat === 'ZONE_VOISINS') {
+        // Trio 0/2/3: 2 fichas apostadas. Paga 11:1 por ficha = 12x * 2 = 24x
+        if ([0, 2, 3].includes(drawnNumber)) return unitCost * 24; 
+        // Canto (Corner) 25/26/28/29: 2 fichas apostadas. Paga 8:1 por ficha = 9x * 2 = 18x
+        if ([25, 26, 28, 29].includes(drawnNumber)) return unitCost * 18; 
+        // Demais splits (4/7, 12/15, 18/21, 19/22, 32/35): 1 ficha apostada. Paga 17:1 = 18x
+        return unitCost * 18; 
+    }
+    
+    // Colunas e Dúzias
+    if (strat.startsWith('CROSS_')) return totalCost * 1.5;
+    
+    // Cobertura Plena (Potinho, Fusão, Vizinhos Custom): Cada número é um pleno (35:1)
+    return unitCost * 36;
+};
+
 const loadCache = <T>(key: string, fallback: T): T => {
     try {
         const saved = localStorage.getItem(key);
@@ -21,32 +61,32 @@ const loadCache = <T>(key: string, fallback: T): T => {
 };
 
 export function useTacticalEngine(initialBankroll = 55.00) {
-    // ESTADOS BÁSICOS
     const [baseBankroll, setBaseBankroll] = useState<number>(() => loadCache('rl_base_bankroll', initialBankroll));
     const [bankroll, setBankroll] = useState<number>(() => loadCache('rl_bankroll', initialBankroll));
     const [peakBankroll, setPeakBankroll] = useState<number>(() => loadCache('rl_peak', initialBankroll));
     const [timeline, setTimeline] = useState<number[]>(() => loadCache('rl_timeline', []));
     const [provider, setProvider] = useState<'PRAGMATIC' | 'EVOLUTION'>(() => loadCache('rl_provider', 'PRAGMATIC'));
     const [disabledStrategies, setDisabledStrategies] = useState<string[]>(() => loadCache('rl_disabled_strats', []));
+    
     const [shadowWeights, setShadowWeights] = useState<Record<string, number>>(() => {
         const defaultWeights: Record<string, number> = {};
         Object.keys(STRATEGY_ZONES).forEach(k => defaultWeights[k] = 1.0);
         return loadCache('rl_weights', defaultWeights);
     });
+    
     const [shadowPnL, setShadowPnL] = useState<Record<string, number>>(() => {
         const defaultPnl: Record<string, number> = {};
         Object.keys(STRATEGY_ZONES).forEach(k => defaultPnl[k] = 0.0);
         return loadCache('rl_pnl', defaultPnl);
     });
+
     const [sessionWins, setSessionWins] = useState<number>(() => loadCache('rl_wins', 0));
     const [sessionLosses, setSessionLosses] = useState<number>(() => loadCache('rl_losses', 0));
-    const [actionLogs, setActionLogs] = useState<string[]>(() => loadCache('rl_logs', ['[SISTEMA] Motor Online. Proteção Anti-Crash (Cold Storage) Ativa.']));
+    const [actionLogs, setActionLogs] = useState<string[]>(() => loadCache('rl_logs', ['[SISTEMA] Motor Atualizado. Matemática Francesa Exata Acoplada.']));
 
-    // 1. CORREÇÃO: PERSISTÊNCIA DOS ESTADOS SIGMA
     const [burnIn, setBurnIn] = useState<number>(() => loadCache('rl_burnin', 15));
     const [cooldown, setCooldown] = useState<number>(() => loadCache('rl_cooldown', 0));
     
-    // 2. CORREÇÃO: HIDRATAÇÃO DAS REFERÊNCIAS (Memória Contígua e Arrays)
     const cachedMarkov = loadCache<number[]>('rl_markov', []);
     const markovMatrix = useRef<Float64Array>(new Float64Array(cachedMarkov.length === 1369 ? cachedMarkov : 1369)); 
     
@@ -56,7 +96,6 @@ export function useTacticalEngine(initialBankroll = 55.00) {
     }
     const drawdownTracker = useRef<number[]>(loadCache('rl_drawdown', []));
 
-    // ESTADOS EFÊMEROS (Não precisam ir para cache, pois dependem da fita)
     const [vix, setVix] = useState(0.0);
     const [activeStrategy, setActiveStrategy] = useState<string | null>(null);
     const [activeStake, setActiveStake] = useState<number>(0);
@@ -73,7 +112,6 @@ export function useTacticalEngine(initialBankroll = 55.00) {
     const targetProfit = baseBankroll * TAKE_PROFIT_PCT;
     const stopLoss = baseBankroll * STOP_LOSS_PCT;
 
-    // 3. GRAVAÇÃO PRINCIPAL DE CACHE
     useEffect(() => {
         localStorage.setItem('rl_base_bankroll', JSON.stringify(baseBankroll));
         localStorage.setItem('rl_bankroll', JSON.stringify(bankroll));
@@ -90,7 +128,6 @@ export function useTacticalEngine(initialBankroll = 55.00) {
         localStorage.setItem('rl_cooldown', JSON.stringify(cooldown));
     }, [baseBankroll, bankroll, peakBankroll, timeline, provider, disabledStrategies, shadowWeights, shadowPnL, sessionWins, sessionLosses, actionLogs, burnIn, cooldown]);
 
-    // 4. GRAVAÇÃO DE REFS (Disparado apenas quando a timeline atualiza)
     useEffect(() => {
         localStorage.setItem('rl_pnl_history', JSON.stringify(pnlHistory.current));
         localStorage.setItem('rl_drawdown', JSON.stringify(drawdownTracker.current));
@@ -194,13 +231,7 @@ export function useTacticalEngine(initialBankroll = 55.00) {
         }
 
         if (bestStrat) {
-            const zoneSize = STRATEGY_ZONES[bestStrat].length;
-            let baseUnits = zoneSize;
-            if (bestStrat.startsWith('CROSS_')) baseUnits = 2;
-            else if (bestStrat === 'ZONE_TIERS') baseUnits = 6;
-            else if (bestStrat === 'ZONE_VOISINS') baseUnits = 9;
-            else if (bestStrat === 'ZONE_ORPHELINS') baseUnits = 5;
-
+            const baseUnits = getBaseUnits(bestStrat);
             const baseCost = baseUnits * minChip;
             const kellyFraction = Math.max(0.01, highestWeight / 100);
             let targetStake = bankroll * kellyFraction;
@@ -261,23 +292,14 @@ export function useTacticalEngine(initialBankroll = 55.00) {
             return next.length > 15 ? next.slice(next.length - 15) : next;
         });
 
+        // 1. Dano Financeiro da Banca (Se houve tiro)
         if (isFinantial && activeStrategy && !isLocked && burnIn === 0 && cooldown === 0) {
-            const zone = STRATEGY_ZONES[activeStrategy];
-            const isWin = zone.includes(drawnNumber);
-            let payout = 0; let cost = activeStake;
-
-            if (isWin) {
-                if (activeStrategy.startsWith('CROSS_')) payout = cost * 1.5;
-                else {
-                    let baseUnits = zone.length;
-                    if (activeStrategy === 'ZONE_TIERS') baseUnits = 6;
-                    if (activeStrategy === 'ZONE_VOISINS') baseUnits = 9;
-                    if (activeStrategy === 'ZONE_ORPHELINS') baseUnits = 5;
-                    payout = (cost / baseUnits) * 36;
-                }
-            }
-
-            const pnl = isWin ? (payout - cost) : -cost;
+            const baseUnits = getBaseUnits(activeStrategy);
+            const unitCost = activeStake / baseUnits;
+            const payout = calculatePayout(activeStrategy, drawnNumber, unitCost, activeStake);
+            
+            const pnl = payout > 0 ? (payout - activeStake) : -activeStake;
+            
             if (pnl > 0) {
                 setSessionWins(w => w + 1);
                 logAction(`[WIN] Giro ${drawnNumber} | Lucro: + R$ ${pnl.toFixed(2)}`);
@@ -305,6 +327,7 @@ export function useTacticalEngine(initialBankroll = 55.00) {
             logAction(`[TRACK] Giro ${drawnNumber} processado.`);
         }
 
+        // 2. Atualização das Matrizes Fantasmas (O Motor de Análise)
         setShadowWeights(prev => {
             const nextW = { ...prev };
             setShadowPnL(prevPnl => {
@@ -312,30 +335,22 @@ export function useTacticalEngine(initialBankroll = 55.00) {
                 for (const strat of Object.keys(STRATEGY_ZONES)) {
                     const isWin = STRATEGY_ZONES[strat].includes(drawnNumber);
                     
+                    // Cálculo da Recompensa do Peso
                     let winReward = 0.15; let lossPenalty = 0.20;
                     if (strat.startsWith('CROSS_')) { winReward = 0.10; lossPenalty = 0.35; } 
                     else if (['ZONE_VOISINS', 'SECTOR_POTINHO', 'FUSION_REDUZIDA'].includes(strat)) { winReward = 0.15; lossPenalty = 0.20; } 
                     else { winReward = 0.25; lossPenalty = 0.10; }
 
-                    if (isWin) {
-                        nextW[strat] = Math.min(3.0, nextW[strat] + winReward);
-                        if (strat.startsWith('CROSS_')) nextP[strat] += (minChip * 1);
-                        else {
-                            let baseUnits = STRATEGY_ZONES[strat].length;
-                            if (strat === 'ZONE_TIERS') baseUnits = 6;
-                            if (strat === 'ZONE_VOISINS') baseUnits = 9;
-                            if (strat === 'ZONE_ORPHELINS') baseUnits = 5;
-                            nextP[strat] += ((36 * minChip) - (baseUnits * minChip));
-                        }
-                    } else {
-                        nextW[strat] = Math.max(0.1, nextW[strat] - lossPenalty);
-                        let baseUnits = STRATEGY_ZONES[strat].length;
-                        if (strat.startsWith('CROSS_')) baseUnits = 2;
-                        if (strat === 'ZONE_TIERS') baseUnits = 6;
-                        if (strat === 'ZONE_VOISINS') baseUnits = 9;
-                        if (strat === 'ZONE_ORPHELINS') baseUnits = 5;
-                        nextP[strat] -= (baseUnits * minChip);
-                    }
+                    if (isWin) nextW[strat] = Math.min(3.0, nextW[strat] + winReward);
+                    else nextW[strat] = Math.max(0.1, nextW[strat] - lossPenalty);
+
+                    // Cálculo Exato do Lucro Virtual (Shadow PnL)
+                    const baseUnits = getBaseUnits(strat);
+                    const totalCost = baseUnits * minChip;
+                    const payout = calculatePayout(strat, drawnNumber, minChip, totalCost);
+                    
+                    const pnl = payout > 0 ? (payout - totalCost) : -totalCost;
+                    nextP[strat] += pnl;
 
                     pnlHistory.current[strat].push(nextP[strat]);
                     if (pnlHistory.current[strat].length > 20) pnlHistory.current[strat].shift();
@@ -367,27 +382,20 @@ export function useTacticalEngine(initialBankroll = 55.00) {
 
             Object.keys(STRATEGY_ZONES).forEach(strat => {
                 const isWin = STRATEGY_ZONES[strat].includes(num);
+                
                 let winReward = 0.15; let lossPenalty = 0.20;
                 if (strat.startsWith('CROSS_')) { winReward = 0.10; lossPenalty = 0.35; } 
                 else if (!['ZONE_VOISINS', 'SECTOR_POTINHO', 'FUSION_REDUZIDA'].includes(strat)) { winReward = 0.25; lossPenalty = 0.10; }
 
-                if (isWin) { 
-                    newW[strat] = Math.min(3.0, newW[strat] + winReward); 
-                    let baseUnits = STRATEGY_ZONES[strat].length;
-                    if (strat === 'ZONE_TIERS') baseUnits = 6;
-                    if (strat === 'ZONE_VOISINS') baseUnits = 9;
-                    if (strat === 'ZONE_ORPHELINS') baseUnits = 5;
-                    newP[strat] += strat.startsWith('CROSS_') ? (minChip * 1) : ((36 * minChip) - (baseUnits * minChip));
-                } 
-                else { 
-                    newW[strat] = Math.max(0.1, newW[strat] - lossPenalty); 
-                    let baseUnits = STRATEGY_ZONES[strat].length;
-                    if (strat.startsWith('CROSS_')) baseUnits = 2;
-                    if (strat === 'ZONE_TIERS') baseUnits = 6;
-                    if (strat === 'ZONE_VOISINS') baseUnits = 9;
-                    if (strat === 'ZONE_ORPHELINS') baseUnits = 5;
-                    newP[strat] -= (baseUnits * minChip);
-                }
+                if (isWin) newW[strat] = Math.min(3.0, newW[strat] + winReward);
+                else newW[strat] = Math.max(0.1, newW[strat] - lossPenalty);
+
+                const baseUnits = getBaseUnits(strat);
+                const totalCost = baseUnits * minChip;
+                const payout = calculatePayout(strat, num, minChip, totalCost);
+                
+                const pnl = payout > 0 ? (payout - totalCost) : -totalCost;
+                newP[strat] += pnl;
 
                 pnlHistory.current[strat].push(newP[strat]);
                 if (pnlHistory.current[strat].length > 20) pnlHistory.current[strat].shift();
@@ -406,9 +414,7 @@ export function useTacticalEngine(initialBankroll = 55.00) {
 
     const undoSpin = useCallback(() => {
         setTimeline(prev => prev.length > 0 ? prev.slice(0, -1) : prev);
-        // Desfazer também deve estornar a memória Markoviana se formos preciosistas, 
-        // mas estornar a timeline já reflete na UI visualmente.
-        logAction(`[UNDO] Último giro estornado.`);
+        logAction(`[UNDO] Último giro estornado visualmente.`);
     }, [logAction]);
 
     return {
