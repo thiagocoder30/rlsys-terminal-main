@@ -21,7 +21,6 @@ const loadCache = <T>(key: string, fallback: T): T => {
 };
 
 export function useTacticalEngine(initialBankroll = 55.00) {
-    // Adicionado o estado de Base para travar o cálculo dinâmico de metas de sessão
     const [baseBankroll, setBaseBankroll] = useState<number>(() => loadCache('rl_base_bankroll', initialBankroll));
     const [bankroll, setBankroll] = useState<number>(() => loadCache('rl_bankroll', initialBankroll));
     const [peakBankroll, setPeakBankroll] = useState<number>(() => loadCache('rl_peak', initialBankroll));
@@ -43,7 +42,7 @@ export function useTacticalEngine(initialBankroll = 55.00) {
 
     const [sessionWins, setSessionWins] = useState<number>(() => loadCache('rl_wins', 0));
     const [sessionLosses, setSessionLosses] = useState<number>(() => loadCache('rl_losses', 0));
-    const [actionLogs, setActionLogs] = useState<string[]>(() => loadCache('rl_logs', ['[SISTEMA] Alvos Dinâmicos Acoplados. Coração CLI Ativo.']));
+    const [actionLogs, setActionLogs] = useState<string[]>(() => loadCache('rl_logs', ['[SISTEMA] Blindagem Nível Titânio Ativa.']));
 
     const [vix, setVix] = useState(0.0);
     const [activeStrategy, setActiveStrategy] = useState<string | null>(null);
@@ -52,12 +51,10 @@ export function useTacticalEngine(initialBankroll = 55.00) {
     const [isLocked, setIsLocked] = useState(false);
     const [lockReason, setLockReason] = useState("");
 
-    // Constantes de Doutrina: +20% Take Profit e -15% Stop Loss
     const TAKE_PROFIT_PCT = 1.20;
     const STOP_LOSS_PCT = 0.85;
     const minChip = provider === 'PRAGMATIC' ? 0.10 : 0.50;
 
-    // Cálculo dinâmico atrelado à base ativa da sessão
     const targetProfit = baseBankroll * TAKE_PROFIT_PCT;
     const stopLoss = baseBankroll * STOP_LOSS_PCT;
 
@@ -80,7 +77,6 @@ export function useTacticalEngine(initialBankroll = 55.00) {
     }, []);
 
     useEffect(() => {
-        // Circuit Breaker verificado contra a matriz dinâmica de risco
         if (bankroll <= stopLoss) {
             if (!isLocked) logAction(`[ALERTA] CIRCUIT BREAKER: STOP LOSS ATINGIDO (R$ ${stopLoss.toFixed(2)}).`);
             setIsLocked(true); setLockReason("STOP LOSS ATINGIDO"); setActiveStrategy(null); return;
@@ -92,7 +88,6 @@ export function useTacticalEngine(initialBankroll = 55.00) {
 
         setIsLocked(false); setLockReason("");
 
-        // Cálculo Real de Entropia Baseada em Clusters (Fórmula CLI)
         if (timeline.length > 3) {
             const uniqueNumbers = new Set(timeline.slice(-12)).size;
             const repetitions = timeline.slice(-12).length - uniqueNumbers;
@@ -102,7 +97,12 @@ export function useTacticalEngine(initialBankroll = 55.00) {
             setVix(0.0);
         }
 
-        const requiredWeight = vix > 85 ? 1.35 : 1.05;
+        // ====== BARREIRA TITÂNIO DE PROTEÇÃO DE CAPITAL ======
+        // Rigor matemático restaurado igual à versão CLI. 
+        // VIX alto (Caos) exige peso massivo (1.50). VIX baixo (Estável) exige peso prudente (1.25).
+        const requiredWeight = vix > 85 ? 1.50 : 1.25;
+        // ======================================================
+
         let bestStrat = null; let highestWeight = 0;
 
         for (const [strat, weight] of Object.entries(shadowWeights)) {
@@ -124,7 +124,7 @@ export function useTacticalEngine(initialBankroll = 55.00) {
             const kellyFraction = Math.max(0.01, highestWeight / 100);
             let targetStake = bankroll * kellyFraction;
             
-            const safeLimit = bankroll * 0.05;
+            const safeLimit = bankroll * 0.05; // Teto de segurança irredutível: Max 5% da banca
             if (targetStake > safeLimit) targetStake = safeLimit;
             
             let multiplier = Math.floor(targetStake / baseCost);
@@ -282,10 +282,15 @@ export function useTacticalEngine(initialBankroll = 55.00) {
         logAction(`[SYS] Nova Base Finanças: R$ ${val.toFixed(2)}. Metas Realinhadas.`);
     };
 
+    const undoSpin = useCallback(() => {
+        setTimeline(prev => prev.length > 0 ? prev.slice(0, -1) : prev);
+        logAction(`[UNDO] Último giro estornado do radar térmico.`);
+    }, [logAction]);
+
     return {
         bankroll, peakBankroll, vix, timeline, activeStrategy, activeStake, activeDesc,
         isLocked, lockReason, stopLoss, targetProfit,
         shadowWeights, shadowPnL, sessionWins, sessionLosses, provider, setProvider, disabledStrategies, toggleStrategy,
-        actionLogs, processSpin, skipSpin, syncTape, setManualBankroll
+        actionLogs, processSpin, skipSpin, undoSpin, syncTape, setManualBankroll
     };
 }
