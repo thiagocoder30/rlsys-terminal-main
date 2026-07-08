@@ -42,7 +42,7 @@ export function useTacticalEngine(initialBankroll = 55.00) {
 
     const [sessionWins, setSessionWins] = useState<number>(() => loadCache('rl_wins', 0));
     const [sessionLosses, setSessionLosses] = useState<number>(() => loadCache('rl_losses', 0));
-    const [actionLogs, setActionLogs] = useState<string[]>(() => loadCache('rl_logs', ['[SISTEMA] Blindagem Nível Titânio Ativa.']));
+    const [actionLogs, setActionLogs] = useState<string[]>(() => loadCache('rl_logs', ['[SISTEMA] Motor Recalibrado. Gate de PnL e Pesos Proporcionais Ativos.']));
 
     const [vix, setVix] = useState(0.0);
     const [activeStrategy, setActiveStrategy] = useState<string | null>(null);
@@ -97,16 +97,18 @@ export function useTacticalEngine(initialBankroll = 55.00) {
             setVix(0.0);
         }
 
-        // ====== BARREIRA TITÂNIO DE PROTEÇÃO DE CAPITAL ======
-        // Rigor matemático restaurado igual à versão CLI. 
-        // VIX alto (Caos) exige peso massivo (1.50). VIX baixo (Estável) exige peso prudente (1.25).
         const requiredWeight = vix > 85 ? 1.50 : 1.25;
-        // ======================================================
-
         let bestStrat = null; let highestWeight = 0;
 
         for (const [strat, weight] of Object.entries(shadowWeights)) {
             if (disabledStrategies.includes(strat)) continue;
+            
+            // ========================================================
+            // A TRAVA DE TITÂNIO: SHADOW PNL GATE (Paridade com CLI)
+            // Jamais autoriza uma estratégia que esteja sangrando dinheiro no escuro.
+            // ========================================================
+            if (shadowPnL[strat] < 0) continue;
+
             if (weight >= requiredWeight && weight > highestWeight) {
                 highestWeight = weight; bestStrat = strat;
             }
@@ -124,7 +126,7 @@ export function useTacticalEngine(initialBankroll = 55.00) {
             const kellyFraction = Math.max(0.01, highestWeight / 100);
             let targetStake = bankroll * kellyFraction;
             
-            const safeLimit = bankroll * 0.05; // Teto de segurança irredutível: Max 5% da banca
+            const safeLimit = bankroll * 0.05;
             if (targetStake > safeLimit) targetStake = safeLimit;
             
             let multiplier = Math.floor(targetStake / baseCost);
@@ -147,7 +149,7 @@ export function useTacticalEngine(initialBankroll = 55.00) {
                 setActiveStrategy(bestStrat); setActiveStake(totalStake); setActiveDesc(desc);
             } else { setActiveStrategy(null); setActiveStake(0); setActiveDesc(""); }
         } else { setActiveStrategy(null); setActiveStake(0); setActiveDesc(""); }
-    }, [timeline, bankroll, shadowWeights, peakBankroll, disabledStrategies, minChip, isLocked, logAction, vix, stopLoss, targetProfit]);
+    }, [timeline, bankroll, shadowWeights, peakBankroll, disabledStrategies, minChip, isLocked, logAction, vix, stopLoss, targetProfit, shadowPnL]);
 
     const toggleStrategy = useCallback((stratId: string) => {
         setDisabledStrategies(prev => {
@@ -215,8 +217,27 @@ export function useTacticalEngine(initialBankroll = 55.00) {
                 const nextP = { ...prevPnl };
                 for (const strat of Object.keys(STRATEGY_ZONES)) {
                     const isWin = STRATEGY_ZONES[strat].includes(drawnNumber);
+                    
+                    // ========================================================
+                    // CÁLCULO DE PENALIDADE PROPORCIONAL DE RISCO (Correção CLI)
+                    // Punição letal para quem cobre mais de 60% da mesa.
+                    // ========================================================
+                    let winReward = 0.15;
+                    let lossPenalty = 0.20;
+
+                    if (strat.startsWith('CROSS_')) {
+                        winReward = 0.10;
+                        lossPenalty = 0.35; // Perdeu apostando duplo? O peso despenca violentamente.
+                    } else if (['ZONE_VOISINS', 'SECTOR_POTINHO', 'FUSION_REDUZIDA'].includes(strat)) {
+                        winReward = 0.15;
+                        lossPenalty = 0.20;
+                    } else {
+                        winReward = 0.25; // Órfãos/Tiers. Difícil de bater. Se bate, sobe rápido.
+                        lossPenalty = 0.10;
+                    }
+
                     if (isWin) {
-                        nextW[strat] = Math.min(3.0, nextW[strat] + 0.15);
+                        nextW[strat] = Math.min(3.0, nextW[strat] + winReward);
                         if (strat.startsWith('CROSS_')) nextP[strat] += (minChip * 1);
                         else {
                             let baseUnits = STRATEGY_ZONES[strat].length;
@@ -226,7 +247,7 @@ export function useTacticalEngine(initialBankroll = 55.00) {
                             nextP[strat] += ((36 * minChip) - (baseUnits * minChip));
                         }
                     } else {
-                        nextW[strat] = Math.max(0.1, nextW[strat] - 0.20);
+                        nextW[strat] = Math.max(0.1, nextW[strat] - lossPenalty);
                         let baseUnits = STRATEGY_ZONES[strat].length;
                         if (strat.startsWith('CROSS_')) baseUnits = 2;
                         if (strat === 'ZONE_TIERS') baseUnits = 6;
@@ -249,8 +270,12 @@ export function useTacticalEngine(initialBankroll = 55.00) {
         nums.forEach(num => {
             Object.keys(STRATEGY_ZONES).forEach(strat => {
                 const isWin = STRATEGY_ZONES[strat].includes(num);
+                let winReward = 0.15; let lossPenalty = 0.20;
+                if (strat.startsWith('CROSS_')) { winReward = 0.10; lossPenalty = 0.35; } 
+                else if (!['ZONE_VOISINS', 'SECTOR_POTINHO', 'FUSION_REDUZIDA'].includes(strat)) { winReward = 0.25; lossPenalty = 0.10; }
+
                 if (isWin) { 
-                    newW[strat] = Math.min(3.0, newW[strat] + 0.15); 
+                    newW[strat] = Math.min(3.0, newW[strat] + winReward); 
                     let baseUnits = STRATEGY_ZONES[strat].length;
                     if (strat === 'ZONE_TIERS') baseUnits = 6;
                     if (strat === 'ZONE_VOISINS') baseUnits = 9;
@@ -258,7 +283,7 @@ export function useTacticalEngine(initialBankroll = 55.00) {
                     newP[strat] += strat.startsWith('CROSS_') ? (minChip * 1) : ((36 * minChip) - (baseUnits * minChip));
                 } 
                 else { 
-                    newW[strat] = Math.max(0.1, newW[strat] - 0.20); 
+                    newW[strat] = Math.max(0.1, newW[strat] - lossPenalty); 
                     let baseUnits = STRATEGY_ZONES[strat].length;
                     if (strat.startsWith('CROSS_')) baseUnits = 2;
                     if (strat === 'ZONE_TIERS') baseUnits = 6;
@@ -270,7 +295,7 @@ export function useTacticalEngine(initialBankroll = 55.00) {
         });
         setShadowWeights(newW); setShadowPnL(newP);
         setTimeline(nums.length > 15 ? nums.slice(-15) : nums);
-        logAction(`[SYNC] Fita Sincronizada: ${nums.length} giros processados.`);
+        logAction(`[SYNC] Fita Sincronizada: ${nums.length} giros. Pesos purgados.`);
     }, [minChip, logAction]);
 
     const setManualBankroll = (val: number) => {
