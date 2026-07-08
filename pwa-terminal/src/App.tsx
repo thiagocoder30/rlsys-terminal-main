@@ -1,16 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { ShieldAlert, Activity, Target, Crosshair, History, Server, Undo2, BarChart2, Scale, TerminalSquare, Settings, Lock, X, FastForward } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ShieldAlert, Activity, Target, Crosshair, History, Server, Undo2, BarChart2, Scale, TerminalSquare, Settings, Lock, X, Zap, Cpu } from 'lucide-react';
 import { useTacticalEngine } from './core/useTacticalEngine';
 
 export default function App() {
-  const engine = useTacticalEngine(55.00); // Iniciando estritamente com a sua banca alvo
+  const engine = useTacticalEngine(55.00); 
   const [activeModal, setActiveModal] = useState<'STATS' | 'WEIGHTS' | 'TERMINAL' | 'CONFIG' | null>(null);
   const [termInput, setTermInput] = useState('');
   const [fastInput, setFastInput] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  
+  // Ref para garantir que o celular VIBRE APENAS UMA VEZ por ativação de tática, barrando surtos
+  const lastVibratedStrategy = useRef<string | null>(null);
 
   useEffect(() => {
       if (engine.activeStrategy && !engine.isLocked) {
-          if ('vibrate' in navigator) navigator.vibrate([150, 50, 150]);
+          if (lastVibratedStrategy.current !== engine.activeStrategy) {
+              if ('vibrate' in navigator) navigator.vibrate([150, 50, 150]);
+              lastVibratedStrategy.current = engine.activeStrategy;
+          }
+      } else {
+          lastVibratedStrategy.current = null;
       }
   }, [engine.activeStrategy, engine.isLocked]);
 
@@ -40,19 +49,14 @@ export default function App() {
     }
   };
 
-  const handleFastInput = (e: React.FormEvent) => {
+  const handleFastInput = (e: React.FormEvent | React.MouseEvent, isSkip: boolean = false) => {
       e.preventDefault();
-      const val = fastInput.trim().toLowerCase();
-      let isSkip = false; let numStr = val;
-      
-      if (val.startsWith('p') || val.startsWith('x')) {
-          isSkip = true; numStr = val.substring(1);
-      }
-      
-      const num = parseInt(numStr, 10);
+      const num = parseInt(fastInput.trim(), 10);
       if (!isNaN(num) && num >= 0 && num <= 36) {
-          if (isSkip) engine.skipSpin(num); else engine.processSpin(num);
+          if (isSkip) engine.skipSpin(num); 
+          else engine.processSpin(num);
           setFastInput('');
+          if (inputRef.current) inputRef.current.focus();
       }
   };
 
@@ -114,29 +118,41 @@ export default function App() {
         </div>
       </div>
 
-      {/* ZONA C: Painel de Combate */}
-      <div className="flex-1 overflow-y-auto no-scrollbar p-4 pb-28 z-0">
+      {/* ZONA DO ORÁCULO TÁTICO */}
+      <div className="flex-none bg-blue-900/10 border-b border-blue-500/30 p-2 z-20">
+         <div className="flex items-start gap-2 text-blue-400 text-xs">
+            <Cpu size={14} className="shrink-0 mt-0.5" />
+            <span className="leading-snug font-sans tracking-wide">{engine.oracleMessage}</span>
+         </div>
+      </div>
+
+      {/* ZONA C: Painel de Combate Puro */}
+      <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar p-4 pb-28 z-0">
+        
+        {/* Caixa de Engage com Auditoria XAI */}
         {engine.isLocked ? (
            <div className="bg-blood/10 border border-blood rounded-lg p-4 mb-4 flex flex-col items-center justify-center text-center">
              <Lock size={24} className="text-blood mb-2"/>
              <div className="text-sm font-bold text-blood uppercase">{engine.lockReason}</div>
            </div>
         ) : engine.activeStrategy ? (
-            <div className="bg-steel/10 border border-neon/50 rounded-lg p-3 mb-4 shadow-[0_0_15px_rgba(0,255,65,0.1)] transition-all">
+            <div className="bg-steel/10 border border-neon/50 rounded-lg p-3 mb-4 shadow-[0_0_15px_rgba(0,255,65,0.1)] transition-all flex-none">
                 <div className="text-xs text-neon mb-1 flex items-center gap-1 font-sans uppercase"><Crosshair size={12}/> Engage Autorizado</div>
                 <div className="text-sm">Estratégia: <span className="font-bold text-white">{engine.activeStrategy}</span></div>
                 <div className="text-sm">Stake Global: <span className="font-bold text-yellow-500">R$ {engine.activeStake.toFixed(2)}</span></div>
                 <div className="text-xs text-neon font-bold mt-2 font-sans bg-obsidian border border-neon/30 p-2 rounded tracking-widest uppercase">{engine.activeDesc}</div>
+                <div className="mt-2 text-[9px] text-gray-500 font-sans border-t border-steel/20 pt-2">AUDIT: {engine.auditReason}</div>
             </div>
         ) : (
-            <div className="bg-steel/10 border border-gray-600 rounded-lg p-3 mb-4 opacity-50">
+            <div className="bg-steel/10 border border-gray-600 rounded-lg p-3 mb-4 flex-none">
                 <div className="text-xs text-gray-500 mb-1 flex items-center gap-1 font-sans uppercase"><Activity size={12}/> Standby Mode</div>
-                <div className="text-sm text-gray-400">Aguardando alinhamento térmico...</div>
+                <div className="text-sm text-gray-400">Aguardando convergência tática...</div>
+                <div className="mt-2 text-[9px] text-gray-500 font-sans border-t border-steel/20 pt-2">AUDIT: {engine.auditReason}</div>
             </div>
         )}
 
         {/* CLI LIVE LOG TERMINAL */}
-        <div className="bg-void border border-steel/30 rounded p-2 mb-4 h-24 overflow-y-auto font-mono text-[10px] flex flex-col-reverse shadow-inner">
+        <div className="flex-1 bg-void border border-steel/30 rounded p-2 mb-4 overflow-y-auto font-mono text-[10px] flex flex-col-reverse shadow-inner min-h-[100px]">
             {engine.actionLogs.map((log, i) => (
                 <div key={i} className={`mb-1 leading-tight ${log.startsWith('[WIN]') ? 'text-neon' : log.startsWith('[LOSS]') || log.startsWith('[ALERTA]') ? 'text-blood' : log.startsWith('[SYS]') ? 'text-yellow-500' : 'text-gray-400'}`}>
                     {log}
@@ -144,29 +160,50 @@ export default function App() {
             ))}
         </div>
 
-        {/* FAST INPUT BAR */}
-        <form onSubmit={handleFastInput} className="flex gap-2 mb-4 bg-void p-2 rounded border border-steel/30">
-            <div className="flex-1 flex items-center gap-2">
-                <FastForward size={14} className="text-gray-500" />
-                <input 
-                    type="text" 
-                    value={fastInput} 
-                    onChange={e => setFastInput(e.target.value)} 
-                    placeholder="Digitar: 15 ou p15" 
-                    className="w-full bg-transparent border-none text-white text-sm focus:outline-none font-mono"
-                    disabled={engine.isLocked}
-                />
+        {/* CONSOLE NUMÉRICO GIGANTE */}
+        <div className="flex-none">
+            <div className="flex justify-between items-center mb-2">
+                <span className="text-[10px] text-neon font-bold font-sans uppercase tracking-widest flex items-center gap-1">
+                    <Zap size={10} /> Terminal de Fogo
+                </span>
+                <button onClick={engine.undoSpin} className="text-gray-400 bg-steel/20 px-3 py-1 rounded flex items-center gap-1 text-[9px] uppercase font-bold active:bg-steel/40 active:text-white transition-colors">
+                    <Undo2 size={10} /> Undo
+                </button>
             </div>
-            <button type="submit" disabled={engine.isLocked || !fastInput} className="bg-steel/30 text-white px-3 py-1 rounded text-[10px] uppercase font-bold active:bg-neon active:text-obsidian transition-colors disabled:opacity-50">
-                Lançar
-            </button>
-        </form>
-
-        <div className="grid grid-cols-3 gap-2">
-          <button onClick={() => engine.processSpin(0)} disabled={engine.isLocked} className="col-span-3 py-4 rounded bg-steel/20 border border-neon text-neon font-bold active:scale-95 text-lg disabled:opacity-30 disabled:bg-transparent shadow-[0_0_8px_#00FF4130]">0 - GREEN</button>
-          {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36].map(num => (
-            <button key={num} onClick={() => engine.processSpin(num)} disabled={engine.isLocked} className={`py-4 rounded border font-bold active:scale-90 transition-all ${getNumberColor(num)} bg-steel/10 text-lg shadow-sm disabled:opacity-30 disabled:border-gray-800 disabled:bg-transparent`}>{num}</button>
-          ))}
+            
+            <form onSubmit={(e) => handleFastInput(e, false)} className="flex gap-2 bg-void p-3 rounded-xl border border-neon/30 shadow-[0_0_15px_rgba(0,255,65,0.05)]">
+                <div className="flex-1">
+                    <input 
+                        ref={inputRef}
+                        type="number" 
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={fastInput} 
+                        onChange={e => setFastInput(e.target.value)} 
+                        placeholder="Nº..." 
+                        className="w-full bg-obsidian border border-steel/30 rounded-lg text-center text-white text-3xl font-bold focus:outline-none focus:border-neon focus:shadow-[0_0_10px_#00FF4140] font-mono py-2"
+                        disabled={engine.isLocked}
+                        autoFocus
+                    />
+                </div>
+                <div className="flex flex-col gap-2 w-24">
+                    <button 
+                        type="button"
+                        onClick={(e) => handleFastInput(e, true)}
+                        disabled={engine.isLocked || !fastInput} 
+                        className="flex-1 bg-yellow-500/20 text-yellow-500 border border-yellow-500/50 rounded-lg text-[10px] uppercase font-bold active:bg-yellow-500 active:text-obsidian transition-colors disabled:opacity-30"
+                    >
+                        Pular
+                    </button>
+                    <button 
+                        type="submit" 
+                        disabled={engine.isLocked || !fastInput} 
+                        className="flex-1 bg-neon/20 text-neon border border-neon/50 rounded-lg text-[10px] uppercase font-bold active:bg-neon active:text-obsidian transition-colors disabled:opacity-30"
+                    >
+                        Lançar
+                    </button>
+                </div>
+            </form>
         </div>
       </div>
 
@@ -193,12 +230,11 @@ export default function App() {
                   {engine.actionLogs.map((log, i) => <div key={i} className={`mb-1 ${log.startsWith('[WIN]') ? 'text-neon' : log.startsWith('[LOSS]') || log.startsWith('[ALERTA]') ? 'text-blood' : log.startsWith('[SYS]') ? 'text-yellow-500' : 'text-gray-400'}`}>{log}</div>)}
                 </div>
                 <form onSubmit={handleTerminalSubmit} className="flex gap-2 shrink-0">
-                  <input type="text" value={termInput} onChange={e => setTermInput(e.target.value)} placeholder="Cole a fita / Digite comando..." className="flex-1 bg-steel/20 border border-steel/50 rounded px-3 py-2 text-sm focus:outline-none focus:border-neon text-white font-mono" />
+                  <input type="text" value={termInput} onChange={e => setTermInput(e.target.value)} placeholder="Cole a fita / Comando..." className="flex-1 bg-steel/20 border border-steel/50 rounded px-3 py-2 text-sm focus:outline-none focus:border-neon text-white font-mono" />
                   <button type="submit" className="bg-neon text-obsidian px-4 py-2 rounded font-bold uppercase text-xs">Run</button>
                 </form>
               </div>
             )}
-
             {activeModal === 'WEIGHTS' && (
               <div className="space-y-2 text-xs">
                 <div className="text-[10px] text-gray-500 uppercase pb-2 border-b border-steel/20 flex justify-between">
@@ -219,9 +255,7 @@ export default function App() {
                         </span>
                       </div>
                       <div className="flex items-center gap-4 font-mono">
-                        <span className={pnlValue >= 0 ? 'text-neon' : 'text-blood'}>
-                            {pnlValue >= 0 ? '+' : ''}{pnlValue.toFixed(2)}
-                        </span>
+                        <span className={pnlValue >= 0 ? 'text-neon' : 'text-blood'}>{pnlValue >= 0 ? '+' : ''}{pnlValue.toFixed(2)}</span>
                         <span className="font-bold text-gray-300 w-8 text-right">{w.toFixed(2)}</span>
                       </div>
                     </div>
@@ -229,7 +263,6 @@ export default function App() {
                 })}
               </div>
             )}
-
             {activeModal === 'STATS' && (
               <div className="space-y-4 text-sm">
                 <div className="bg-steel/10 p-4 rounded border border-steel/30">
@@ -242,22 +275,17 @@ export default function App() {
                 </div>
               </div>
             )}
-
             {activeModal === 'CONFIG' && (
               <div className="text-sm text-gray-400 space-y-6">
                 <div>
                     <label className="text-xs uppercase text-gray-500 font-sans tracking-widest block mb-2">Provedor Ativo</label>
                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => engine.setProvider('PRAGMATIC')} className={`py-3 rounded font-bold uppercase text-xs border transition-all ${engine.provider === 'PRAGMATIC' ? 'bg-neon text-obsidian border-neon' : 'bg-steel/10 text-gray-400 border-steel/30'}`}>
-                            Pragmatic (R$ 0,10)
-                        </button>
-                        <button onClick={() => engine.setProvider('EVOLUTION')} className={`py-3 rounded font-bold uppercase text-xs border transition-all ${engine.provider === 'EVOLUTION' ? 'bg-neon text-obsidian border-neon' : 'bg-steel/10 text-gray-400 border-steel/30'}`}>
-                            Evolution (R$ 0,50)
-                        </button>
+                        <button onClick={() => engine.setProvider('PRAGMATIC')} className={`py-3 rounded font-bold uppercase text-xs border transition-all ${engine.provider === 'PRAGMATIC' ? 'bg-neon text-obsidian border-neon' : 'bg-steel/10 text-gray-400 border-steel/30'}`}>Pragmatic (R$ 0,10)</button>
+                        <button onClick={() => engine.setProvider('EVOLUTION')} className={`py-3 rounded font-bold uppercase text-xs border transition-all ${engine.provider === 'EVOLUTION' ? 'bg-neon text-obsidian border-neon' : 'bg-steel/10 text-gray-400 border-steel/30'}`}>Evolution (R$ 0,50)</button>
                     </div>
                 </div>
                 <div className="space-y-2">
-                  <p className="text-xs uppercase text-gray-500 font-sans tracking-widest">Comandos Administrativos via Terminal:</p>
+                  <p className="text-xs uppercase text-gray-500 font-sans tracking-widest">Comandos Administrativos:</p>
                   <div className="bg-steel/10 p-3 rounded font-mono text-xs text-white">setbankroll [valor]</div>
                   <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="w-full bg-blood/10 border border-blood text-blood py-3 rounded uppercase font-bold text-xs mt-4 active:bg-blood active:text-white transition-colors">
                       reset global de sessão

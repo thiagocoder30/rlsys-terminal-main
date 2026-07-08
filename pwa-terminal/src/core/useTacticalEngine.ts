@@ -42,22 +42,24 @@ export function useTacticalEngine(initialBankroll = 55.00) {
 
     const [sessionWins, setSessionWins] = useState<number>(() => loadCache('rl_wins', 0));
     const [sessionLosses, setSessionLosses] = useState<number>(() => loadCache('rl_losses', 0));
-    const [actionLogs, setActionLogs] = useState<string[]>(() => loadCache('rl_logs', ['[SISTEMA] Motor Recalibrado. Gate de PnL e Pesos Proporcionais Ativos.']));
+    const [actionLogs, setActionLogs] = useState<string[]>(() => loadCache('rl_logs', ['[SISTEMA] Motor Enterprise Online. Vazamento de memória contido.']));
 
     const [vix, setVix] = useState(0.0);
     const [activeStrategy, setActiveStrategy] = useState<string | null>(null);
     const [activeStake, setActiveStake] = useState<number>(0);
     const [activeDesc, setActiveDesc] = useState<string>("");
+    const [auditReason, setAuditReason] = useState<string>(""); 
+    const [oracleMessage, setOracleMessage] = useState<string>("Sistema aguardando sincronização de fita térmica."); 
     const [isLocked, setIsLocked] = useState(false);
     const [lockReason, setLockReason] = useState("");
 
     const TAKE_PROFIT_PCT = 1.20;
     const STOP_LOSS_PCT = 0.85;
     const minChip = provider === 'PRAGMATIC' ? 0.10 : 0.50;
-
     const targetProfit = baseBankroll * TAKE_PROFIT_PCT;
     const stopLoss = baseBankroll * STOP_LOSS_PCT;
 
+    // Persistência
     useEffect(() => {
         localStorage.setItem('rl_base_bankroll', JSON.stringify(baseBankroll));
         localStorage.setItem('rl_bankroll', JSON.stringify(bankroll));
@@ -76,38 +78,54 @@ export function useTacticalEngine(initialBankroll = 55.00) {
         setActionLogs(prev => [msg, ...prev].slice(0, 55));
     }, []);
 
+    // 1. ISOLAMENTO DO CÁLCULO DO VIX (FIM DO LOOP INFINITO)
+    // O VIX agora só é recalculado estritamente quando a 'timeline' (fita) ganha um novo número.
     useEffect(() => {
-        if (bankroll <= stopLoss) {
-            if (!isLocked) logAction(`[ALERTA] CIRCUIT BREAKER: STOP LOSS ATINGIDO (R$ ${stopLoss.toFixed(2)}).`);
-            setIsLocked(true); setLockReason("STOP LOSS ATINGIDO"); setActiveStrategy(null); return;
-        }
-        if (bankroll >= targetProfit) {
-            if (!isLocked) logAction(`[ALERTA] METAS CUMPRIDAS: TAKE PROFIT ATINGIDO (R$ ${targetProfit.toFixed(2)}).`);
-            setIsLocked(true); setLockReason("TAKE PROFIT ATINGIDO"); setActiveStrategy(null); return;
-        }
-
-        setIsLocked(false); setLockReason("");
-
         if (timeline.length > 3) {
             const uniqueNumbers = new Set(timeline.slice(-12)).size;
             const repetitions = timeline.slice(-12).length - uniqueNumbers;
             const baseEntropy = 100 - ((repetitions / 12) * 100);
-            setVix(Math.max(10.0, Math.min(99.9, baseEntropy + (Math.random() * 4))));
+            
+            // Oráculo estático para evitar re-renderizações cíclicas
+            const zeroCount = timeline.slice(-10).filter(n => n === 0).length;
+            const uniqueSet = new Set(timeline.slice(-10));
+            
+            let msg = "";
+            if (zeroCount >= 2) msg = "ALERTA: Alta densidade de Zeros. Mesa hostil.";
+            else if (baseEntropy > 85) msg = "MESA EM CAOS. Alta entropia e ausência de padrões. Requisitos de peso elevados (> 1.50).";
+            else if (baseEntropy < 30) msg = "MESA FRIA. Extrema repetição de números. Padrões viciados identificados.";
+            else if (uniqueSet.size < 6) msg = "Anomalia Setorial: Roleta travada em um quadrante específico.";
+            else msg = "Mesa estável. Entropia em níveis nominais. Siga as ordens de Engage.";
+            
+            setOracleMessage(msg);
+            // Flutuação atrelada somente à troca do giro, não ao ciclo de vida do componente
+            setVix(Math.max(10.0, Math.min(99.9, baseEntropy + (Math.random() * 2))));
         } else {
             setVix(0.0);
+            setOracleMessage("Volume de dados insuficiente. Continue observando.");
         }
+    }, [timeline]);
+
+    // 2. REATOR DE ENGAJAMENTO PURO
+    // Toma decisões baseado no estado estabilizado. Não altera mais o próprio VIX.
+    useEffect(() => {
+        if (bankroll <= stopLoss) {
+            if (!isLocked) logAction(`[ALERTA] CIRCUIT BREAKER: STOP LOSS ATINGIDO.`);
+            setIsLocked(true); setLockReason("STOP LOSS ATINGIDO"); setActiveStrategy(null); return;
+        }
+        if (bankroll >= targetProfit) {
+            if (!isLocked) logAction(`[ALERTA] METAS CUMPRIDAS: TAKE PROFIT ATINGIDO.`);
+            setIsLocked(true); setLockReason("TAKE PROFIT ATINGIDO"); setActiveStrategy(null); return;
+        }
+
+        setIsLocked(false); setLockReason("");
 
         const requiredWeight = vix > 85 ? 1.50 : 1.25;
         let bestStrat = null; let highestWeight = 0;
 
         for (const [strat, weight] of Object.entries(shadowWeights)) {
             if (disabledStrategies.includes(strat)) continue;
-            
-            // ========================================================
-            // A TRAVA DE TITÂNIO: SHADOW PNL GATE (Paridade com CLI)
-            // Jamais autoriza uma estratégia que esteja sangrando dinheiro no escuro.
-            // ========================================================
-            if (shadowPnL[strat] < 0) continue;
+            if (shadowPnL[strat] < 0) continue; 
 
             if (weight >= requiredWeight && weight > highestWeight) {
                 highestWeight = weight; bestStrat = strat;
@@ -125,7 +143,6 @@ export function useTacticalEngine(initialBankroll = 55.00) {
             const baseCost = baseUnits * minChip;
             const kellyFraction = Math.max(0.01, highestWeight / 100);
             let targetStake = bankroll * kellyFraction;
-            
             const safeLimit = bankroll * 0.05;
             if (targetStake > safeLimit) targetStake = safeLimit;
             
@@ -147,9 +164,16 @@ export function useTacticalEngine(initialBankroll = 55.00) {
 
             if (totalStake <= safeLimit && baseUnits > 0) {
                 setActiveStrategy(bestStrat); setActiveStake(totalStake); setActiveDesc(desc);
-            } else { setActiveStrategy(null); setActiveStake(0); setActiveDesc(""); }
-        } else { setActiveStrategy(null); setActiveStake(0); setActiveDesc(""); }
-    }, [timeline, bankroll, shadowWeights, peakBankroll, disabledStrategies, minChip, isLocked, logAction, vix, stopLoss, targetProfit, shadowPnL]);
+                setAuditReason(`Engage Superado. Peso (${highestWeight.toFixed(2)}) > Exigência (${requiredWeight.toFixed(2)}). Shadow PnL OK.`);
+            } else { 
+                setActiveStrategy(null); setActiveStake(0); setActiveDesc(""); 
+                setAuditReason(`Alocação negada. Risco ultrapassa teto de 5% da banca.`);
+            }
+        } else { 
+            setActiveStrategy(null); setActiveStake(0); setActiveDesc(""); 
+            setAuditReason(`Nenhuma tática atingiu o peso exigido de ${requiredWeight.toFixed(2)} ou estão em Red Virtual.`);
+        }
+    }, [bankroll, shadowWeights, peakBankroll, disabledStrategies, minChip, isLocked, logAction, vix, stopLoss, targetProfit, shadowPnL]);
 
     const toggleStrategy = useCallback((stratId: string) => {
         setDisabledStrategies(prev => {
@@ -206,7 +230,7 @@ export function useTacticalEngine(initialBankroll = 55.00) {
             const next = [...prev, drawnNumber];
             return next.length > 15 ? next.slice(next.length - 15) : next;
         });
-        logAction(`[SKIP] Giro ${drawnNumber} ignorado. Pesos atualizados.`);
+        logAction(`[SKIP] Giro ${drawnNumber} rastreado. Atualizando Pesos.`);
         updateShadowWeights(drawnNumber);
     }, [logAction]);
 
@@ -218,23 +242,10 @@ export function useTacticalEngine(initialBankroll = 55.00) {
                 for (const strat of Object.keys(STRATEGY_ZONES)) {
                     const isWin = STRATEGY_ZONES[strat].includes(drawnNumber);
                     
-                    // ========================================================
-                    // CÁLCULO DE PENALIDADE PROPORCIONAL DE RISCO (Correção CLI)
-                    // Punição letal para quem cobre mais de 60% da mesa.
-                    // ========================================================
-                    let winReward = 0.15;
-                    let lossPenalty = 0.20;
-
-                    if (strat.startsWith('CROSS_')) {
-                        winReward = 0.10;
-                        lossPenalty = 0.35; // Perdeu apostando duplo? O peso despenca violentamente.
-                    } else if (['ZONE_VOISINS', 'SECTOR_POTINHO', 'FUSION_REDUZIDA'].includes(strat)) {
-                        winReward = 0.15;
-                        lossPenalty = 0.20;
-                    } else {
-                        winReward = 0.25; // Órfãos/Tiers. Difícil de bater. Se bate, sobe rápido.
-                        lossPenalty = 0.10;
-                    }
+                    let winReward = 0.15; let lossPenalty = 0.20;
+                    if (strat.startsWith('CROSS_')) { winReward = 0.10; lossPenalty = 0.35; } 
+                    else if (['ZONE_VOISINS', 'SECTOR_POTINHO', 'FUSION_REDUZIDA'].includes(strat)) { winReward = 0.15; lossPenalty = 0.20; } 
+                    else { winReward = 0.25; lossPenalty = 0.10; }
 
                     if (isWin) {
                         nextW[strat] = Math.min(3.0, nextW[strat] + winReward);
@@ -295,25 +306,21 @@ export function useTacticalEngine(initialBankroll = 55.00) {
         });
         setShadowWeights(newW); setShadowPnL(newP);
         setTimeline(nums.length > 15 ? nums.slice(-15) : nums);
-        logAction(`[SYNC] Fita Sincronizada: ${nums.length} giros. Pesos purgados.`);
+        logAction(`[SYNC] Fita Sincronizada: ${nums.length} giros.`);
     }, [minChip, logAction]);
 
     const setManualBankroll = (val: number) => {
-        setBaseBankroll(val);
-        setBankroll(val);
-        setPeakBankroll(val);
-        setIsLocked(false);
-        setLockReason("");
-        logAction(`[SYS] Nova Base Finanças: R$ ${val.toFixed(2)}. Metas Realinhadas.`);
+        setBaseBankroll(val); setBankroll(val); setPeakBankroll(val); setIsLocked(false); setLockReason("");
+        logAction(`[SYS] Nova Base Finanças: R$ ${val.toFixed(2)}.`);
     };
 
     const undoSpin = useCallback(() => {
         setTimeline(prev => prev.length > 0 ? prev.slice(0, -1) : prev);
-        logAction(`[UNDO] Último giro estornado do radar térmico.`);
+        logAction(`[UNDO] Último giro estornado.`);
     }, [logAction]);
 
     return {
-        bankroll, peakBankroll, vix, timeline, activeStrategy, activeStake, activeDesc,
+        bankroll, peakBankroll, vix, timeline, activeStrategy, activeStake, activeDesc, auditReason, oracleMessage,
         isLocked, lockReason, stopLoss, targetProfit,
         shadowWeights, shadowPnL, sessionWins, sessionLosses, provider, setProvider, disabledStrategies, toggleStrategy,
         actionLogs, processSpin, skipSpin, undoSpin, syncTape, setManualBankroll
