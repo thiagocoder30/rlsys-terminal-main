@@ -13,9 +13,6 @@ const STRATEGY_ZONES: Record<string, number[]> = {
     'CROSS_DOZEN_2_3': [13,14,15,16,17,18,19,20,21,22,23,24, 25,26,27,28,29,30,31,32,33,34,35,36]
 };
 
-// ==========================================
-// HELPERS DE MATEMÁTICA FRANCESA EXATA
-// ==========================================
 const getBaseUnits = (strat: string) => {
     if (strat.startsWith('CROSS_')) return 2;
     if (strat === 'ZONE_TIERS') return 6;
@@ -26,30 +23,17 @@ const getBaseUnits = (strat: string) => {
 
 const calculatePayout = (strat: string, drawnNumber: number, unitCost: number, totalCost: number) => {
     if (!STRATEGY_ZONES[strat].includes(drawnNumber)) return 0;
-    
-    // Tiers: 6 Splits (Dividida paga 17:1 = 18x multiplicador da ficha)
     if (strat === 'ZONE_TIERS') return unitCost * 18;
-    
     if (strat === 'ZONE_ORPHELINS') {
-        // Orphelins: O 1 é Pleno (35:1). O 17 cruza em 2 splits (recebe 18x de cada).
         if (drawnNumber === 1 || drawnNumber === 17) return unitCost * 36;
-        // Restante dos números (6, 9, 14, 20, 31, 34) são um Split único (17:1)
         return unitCost * 18;
     }
-    
     if (strat === 'ZONE_VOISINS') {
-        // Trio 0/2/3: 2 fichas apostadas. Paga 11:1 por ficha = 12x * 2 = 24x
         if ([0, 2, 3].includes(drawnNumber)) return unitCost * 24; 
-        // Canto (Corner) 25/26/28/29: 2 fichas apostadas. Paga 8:1 por ficha = 9x * 2 = 18x
         if ([25, 26, 28, 29].includes(drawnNumber)) return unitCost * 18; 
-        // Demais splits (4/7, 12/15, 18/21, 19/22, 32/35): 1 ficha apostada. Paga 17:1 = 18x
         return unitCost * 18; 
     }
-    
-    // Colunas e Dúzias
     if (strat.startsWith('CROSS_')) return totalCost * 1.5;
-    
-    // Cobertura Plena (Potinho, Fusão, Vizinhos Custom): Cada número é um pleno (35:1)
     return unitCost * 36;
 };
 
@@ -82,11 +66,15 @@ export function useTacticalEngine(initialBankroll = 55.00) {
 
     const [sessionWins, setSessionWins] = useState<number>(() => loadCache('rl_wins', 0));
     const [sessionLosses, setSessionLosses] = useState<number>(() => loadCache('rl_losses', 0));
-    const [actionLogs, setActionLogs] = useState<string[]>(() => loadCache('rl_logs', ['[SISTEMA] Motor Atualizado. Matemática Francesa Exata Acoplada.']));
+    const [actionLogs, setActionLogs] = useState<string[]>(() => loadCache('rl_logs', ['[SISTEMA] Motor Sigma Ativo. Pre-Flight Check Carregado.']));
 
     const [burnIn, setBurnIn] = useState<number>(() => loadCache('rl_burnin', 15));
     const [cooldown, setCooldown] = useState<number>(() => loadCache('rl_cooldown', 0));
     
+    // VARIÁVEIS DO NOVO PROTOCOLO PRE-FLIGHT
+    const [preFlightStatus, setPreFlightStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED'>(() => loadCache('rl_preflight_status', 'PENDING'));
+    const [preFlightReason, setPreFlightReason] = useState<string>(() => loadCache('rl_preflight_reason', ''));
+
     const cachedMarkov = loadCache<number[]>('rl_markov', []);
     const markovMatrix = useRef<Float64Array>(new Float64Array(cachedMarkov.length === 1369 ? cachedMarkov : 1369)); 
     
@@ -101,7 +89,7 @@ export function useTacticalEngine(initialBankroll = 55.00) {
     const [activeStake, setActiveStake] = useState<number>(0);
     const [activeDesc, setActiveDesc] = useState<string>("");
     const [auditReason, setAuditReason] = useState<string>(""); 
-    const [oracleMessage, setOracleMessage] = useState<string>("Iniciando aquecimento do reator..."); 
+    const [oracleMessage, setOracleMessage] = useState<string>("Aguardando varredura tática..."); 
     const [isLocked, setIsLocked] = useState(false);
     const [lockReason, setLockReason] = useState("");
 
@@ -126,7 +114,9 @@ export function useTacticalEngine(initialBankroll = 55.00) {
         localStorage.setItem('rl_logs', JSON.stringify(actionLogs));
         localStorage.setItem('rl_burnin', JSON.stringify(burnIn));
         localStorage.setItem('rl_cooldown', JSON.stringify(cooldown));
-    }, [baseBankroll, bankroll, peakBankroll, timeline, provider, disabledStrategies, shadowWeights, shadowPnL, sessionWins, sessionLosses, actionLogs, burnIn, cooldown]);
+        localStorage.setItem('rl_preflight_status', JSON.stringify(preFlightStatus));
+        localStorage.setItem('rl_preflight_reason', JSON.stringify(preFlightReason));
+    }, [baseBankroll, bankroll, peakBankroll, timeline, provider, disabledStrategies, shadowWeights, shadowPnL, sessionWins, sessionLosses, actionLogs, burnIn, cooldown, preFlightStatus, preFlightReason]);
 
     useEffect(() => {
         localStorage.setItem('rl_pnl_history', JSON.stringify(pnlHistory.current));
@@ -178,12 +168,12 @@ export function useTacticalEngine(initialBankroll = 55.00) {
             const prediction = getMarkovPrediction(lastNum);
             
             let msg = "";
-            if (cooldown > 0) msg = `ALERTA DE DRAWDOWN: Mesa em resfriamento. Aguarde ${cooldown} giros.`;
+            if (preFlightStatus === 'REJECTED') msg = `CRÍTICO: Mesa condenada pelo Pre-Flight Check. Aborte imediatamente.`;
+            else if (cooldown > 0) msg = `ALERTA DE DRAWDOWN: Mesa em resfriamento. Aguarde ${cooldown} giros.`;
             else if (burnIn > 0) msg = `FASE BURN-IN (AQUECIMENTO): Alimente a máquina com mais ${burnIn} giros.`;
             else if (prediction.predictedNumber !== -1 && prediction.confidence >= 2) {
                 msg = `ANÁLISE MARKOV: O giro ${lastNum} atrai estatisticamente o número ${prediction.predictedNumber}.`;
             } else if (baseEntropy > 85) msg = "MESA EM CAOS. Alta entropia. Requisitos de peso Z-Score elevados (> 1.5).";
-            else if (baseEntropy < 30) msg = "MESA FRIA. Extrema repetição de números. Cuidado com falsos positivos.";
             else msg = "Mesa estável. Entropia em níveis nominais. Protocolo de Engage ativo.";
             
             setOracleMessage(msg);
@@ -192,16 +182,17 @@ export function useTacticalEngine(initialBankroll = 55.00) {
             setVix(0.0);
             setOracleMessage(`BURN-IN: Faltam ${burnIn} giros para calibrar a Cadeia de Markov.`);
         }
-    }, [timeline, burnIn, cooldown, getMarkovPrediction]);
+    }, [timeline, burnIn, cooldown, getMarkovPrediction, preFlightStatus]);
 
     useEffect(() => {
         if (bankroll <= stopLoss) {
-            if (!isLocked) logAction(`[ALERTA] CIRCUIT BREAKER: STOP LOSS ATINGIDO.`);
             setIsLocked(true); setLockReason("STOP LOSS ATINGIDO"); setActiveStrategy(null); return;
         }
         if (bankroll >= targetProfit) {
-            if (!isLocked) logAction(`[ALERTA] METAS CUMPRIDAS: TAKE PROFIT ATINGIDO.`);
             setIsLocked(true); setLockReason("TAKE PROFIT ATINGIDO"); setActiveStrategy(null); return;
+        }
+        if (preFlightStatus === 'REJECTED') {
+            setIsLocked(true); setLockReason("MESA REPROVADA NO PRE-FLIGHT"); setActiveStrategy(null); return;
         }
 
         if (burnIn > 0) {
@@ -265,7 +256,7 @@ export function useTacticalEngine(initialBankroll = 55.00) {
             setActiveStrategy(null); setActiveStake(0); setActiveDesc(""); 
             setAuditReason(`Nenhum Z-Score > 1.0 ou peso > ${requiredWeight.toFixed(2)} identificado. Modo Conservador.`);
         }
-    }, [bankroll, shadowWeights, peakBankroll, disabledStrategies, minChip, isLocked, logAction, vix, stopLoss, targetProfit, shadowPnL, burnIn, cooldown, getZScore]);
+    }, [bankroll, shadowWeights, peakBankroll, disabledStrategies, minChip, isLocked, logAction, vix, stopLoss, targetProfit, shadowPnL, burnIn, cooldown, getZScore, preFlightStatus]);
 
     const toggleStrategy = useCallback((stratId: string) => {
         setDisabledStrategies(prev => {
@@ -292,7 +283,6 @@ export function useTacticalEngine(initialBankroll = 55.00) {
             return next.length > 15 ? next.slice(next.length - 15) : next;
         });
 
-        // 1. Dano Financeiro da Banca (Se houve tiro)
         if (isFinantial && activeStrategy && !isLocked && burnIn === 0 && cooldown === 0) {
             const baseUnits = getBaseUnits(activeStrategy);
             const unitCost = activeStake / baseUnits;
@@ -327,7 +317,6 @@ export function useTacticalEngine(initialBankroll = 55.00) {
             logAction(`[TRACK] Giro ${drawnNumber} processado.`);
         }
 
-        // 2. Atualização das Matrizes Fantasmas (O Motor de Análise)
         setShadowWeights(prev => {
             const nextW = { ...prev };
             setShadowPnL(prevPnl => {
@@ -335,7 +324,6 @@ export function useTacticalEngine(initialBankroll = 55.00) {
                 for (const strat of Object.keys(STRATEGY_ZONES)) {
                     const isWin = STRATEGY_ZONES[strat].includes(drawnNumber);
                     
-                    // Cálculo da Recompensa do Peso
                     let winReward = 0.15; let lossPenalty = 0.20;
                     if (strat.startsWith('CROSS_')) { winReward = 0.10; lossPenalty = 0.35; } 
                     else if (['ZONE_VOISINS', 'SECTOR_POTINHO', 'FUSION_REDUZIDA'].includes(strat)) { winReward = 0.15; lossPenalty = 0.20; } 
@@ -344,7 +332,6 @@ export function useTacticalEngine(initialBankroll = 55.00) {
                     if (isWin) nextW[strat] = Math.min(3.0, nextW[strat] + winReward);
                     else nextW[strat] = Math.max(0.1, nextW[strat] - lossPenalty);
 
-                    // Cálculo Exato do Lucro Virtual (Shadow PnL)
                     const baseUnits = getBaseUnits(strat);
                     const totalCost = baseUnits * minChip;
                     const payout = calculatePayout(strat, drawnNumber, minChip, totalCost);
@@ -364,7 +351,9 @@ export function useTacticalEngine(initialBankroll = 55.00) {
     const processSpin = useCallback((drawnNumber: number) => handleSpin(drawnNumber, true), [handleSpin]);
     const skipSpin = useCallback((drawnNumber: number) => handleSpin(drawnNumber, false), [handleSpin]);
 
+    // INTERCEPTOR DE INJEÇÃO (PRE-FLIGHT AUDIT ENGINE)
     const syncTape = useCallback((nums: number[]) => {
+        // 1. Reset estrutural para auditoria limpa
         setBurnIn(0); 
         setCooldown(0);
         drawdownTracker.current = [];
@@ -376,13 +365,13 @@ export function useTacticalEngine(initialBankroll = 55.00) {
 
         let prevNum = -1;
 
+        // 2. Simulação e Hidratação em tempo real das Matrizes
         nums.forEach(num => {
             if (prevNum !== -1) markovMatrix.current[prevNum * 37 + num] += 1;
             prevNum = num;
 
             Object.keys(STRATEGY_ZONES).forEach(strat => {
                 const isWin = STRATEGY_ZONES[strat].includes(num);
-                
                 let winReward = 0.15; let lossPenalty = 0.20;
                 if (strat.startsWith('CROSS_')) { winReward = 0.10; lossPenalty = 0.35; } 
                 else if (!['ZONE_VOISINS', 'SECTOR_POTINHO', 'FUSION_REDUZIDA'].includes(strat)) { winReward = 0.25; lossPenalty = 0.10; }
@@ -393,7 +382,6 @@ export function useTacticalEngine(initialBankroll = 55.00) {
                 const baseUnits = getBaseUnits(strat);
                 const totalCost = baseUnits * minChip;
                 const payout = calculatePayout(strat, num, minChip, totalCost);
-                
                 const pnl = payout > 0 ? (payout - totalCost) : -totalCost;
                 newP[strat] += pnl;
 
@@ -401,25 +389,70 @@ export function useTacticalEngine(initialBankroll = 55.00) {
                 if (pnlHistory.current[strat].length > 20) pnlHistory.current[strat].shift();
             });
         });
-        setShadowWeights(newW); setShadowPnL(newP);
+
+        // 3. CÁLCULO DE ADMISSIBILIDADE QUANTITATIVA (PRE-FLIGHT)
+        const sample = nums.slice(-12);
+        const uniqueNumbers = new Set(sample).size;
+        const repetitions = sample.length - uniqueNumbers;
+        const computedVix = 100 - ((repetitions / 12) * 100);
+
+        // Média de PnL das 3 melhores táticas
+        const sortedPnLs = Object.values(newP).sort((a, b) => b - a);
+        const top3AvgPnL = (sortedPnLs[0] + sortedPnLs[1] + sortedPnLs[2]) / 3;
+
+        // Validação de Z-Score de segurança
+        let maxZ = -999;
+        Object.keys(STRATEGY_ZONES).forEach(strat => {
+            const z = getZScore(strat, newP[strat]);
+            if (z > maxZ) maxZ = z;
+        });
+
+        let isRejected = false;
+        let rejectReason = "";
+
+        if (computedVix > 85.0) {
+            isRejected = true;
+            rejectReason = `VIX CRÍTICO EM REPROVAÇÃO (${computedVix.toFixed(1)}%). Mesa em estado de Caos Absoluto. Padrões instáveis.`;
+        } else if (top3AvgPnL <= 0) {
+            isRejected = true;
+            rejectReason = `ESTRESSE DE MATRIZ NEGATIVO (Média Top 3 PnL: ${top3AvgPnL.toFixed(2)}). A mesa está devorando o arsenal.`;
+        }
+
+        if (isRejected) {
+            setPreFlightStatus('REJECTED');
+            setPreFlightReason(rejectReason);
+            setIsLocked(true);
+            setLockReason("MESA REPROVADA NO PRE-FLIGHT");
+            logAction(`[ALERTA] PRE-FLIGHT REPROVADO. ${rejectReason}`);
+        } else {
+            setPreFlightStatus('APPROVED');
+            setPreFlightReason("Mesa homologada com sucesso. Parâmetros dentro da normalidade.");
+            setIsLocked(false);
+            setLockReason("");
+            logAction(`[SYS] PRE-FLIGHT APROVADO. Mesa operável (VIX: ${computedVix.toFixed(1)}%).`);
+        }
+
+        setShadowWeights(newW); 
+        setShadowPnL(newP);
         setTimeline(nums.length > 15 ? nums.slice(-15) : nums);
-        logAction(`[SYNC] Cadeia de Markov e Cache injetados: ${nums.length} dados lidos.`);
-    }, [minChip, logAction]);
+    }, [minChip, logAction, getZScore]);
 
     const setManualBankroll = (val: number) => {
-        setBaseBankroll(val); setBankroll(val); setPeakBankroll(val); setIsLocked(false); setLockReason("");
+        setBaseBankroll(val); setBankroll(val); setPeakBankroll(val); 
+        setIsLocked(false); setLockReason("");
         setBurnIn(15); setCooldown(0); 
-        logAction(`[SYS] Nova Base Finanças: R$ ${val.toFixed(2)}. Burn-in reiniciado.`);
+        setPreFlightStatus('PENDING'); setPreFlightReason('');
+        logAction(`[SYS] Nova Base Finanças: R$ ${val.toFixed(2)}. Reator reiniciado.`);
     };
 
     const undoSpin = useCallback(() => {
         setTimeline(prev => prev.length > 0 ? prev.slice(0, -1) : prev);
-        logAction(`[UNDO] Último giro estornado visualmente.`);
+        logAction(`[UNDO] Último giro estornado.`);
     }, [logAction]);
 
     return {
         bankroll, peakBankroll, vix, timeline, activeStrategy, activeStake, activeDesc, auditReason, oracleMessage,
-        isLocked, lockReason, stopLoss, targetProfit, burnIn, cooldown,
+        isLocked, lockReason, stopLoss, targetProfit, burnIn, cooldown, preFlightStatus, preFlightReason,
         shadowWeights, shadowPnL, sessionWins, sessionLosses, provider, setProvider, disabledStrategies, toggleStrategy,
         actionLogs, processSpin, skipSpin, undoSpin, syncTape, setManualBankroll
     };

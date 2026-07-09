@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ShieldAlert, Activity, Target, Crosshair, History, Server, Undo2, BarChart2, Scale, TerminalSquare, Settings, Lock, X, Zap, Cpu } from 'lucide-react';
+import { ShieldAlert, Activity, Target, Crosshair, History, Server, Undo2, BarChart2, Scale, TerminalSquare, Settings, Lock, X, Zap, Cpu, AlertTriangle } from 'lucide-react';
 import { useTacticalEngine } from './core/useTacticalEngine';
 
 export default function App() {
@@ -8,12 +8,10 @@ export default function App() {
   const [termInput, setTermInput] = useState('');
   const [fastInput, setFastInput] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-  
-  // Ref para garantir que o celular VIBRE APENAS UMA VEZ por ativação de tática, barrando surtos
   const lastVibratedStrategy = useRef<string | null>(null);
 
   useEffect(() => {
-      if (engine.activeStrategy && !engine.isLocked) {
+      if (engine.activeStrategy && !engine.isLocked && engine.burnIn === 0 && engine.cooldown === 0) {
           if (lastVibratedStrategy.current !== engine.activeStrategy) {
               if ('vibrate' in navigator) navigator.vibrate([150, 50, 150]);
               lastVibratedStrategy.current = engine.activeStrategy;
@@ -21,7 +19,7 @@ export default function App() {
       } else {
           lastVibratedStrategy.current = null;
       }
-  }, [engine.activeStrategy, engine.isLocked]);
+  }, [engine.activeStrategy, engine.isLocked, engine.burnIn, engine.cooldown]);
 
   const getNumberColor = (num: number) => {
     if (num === 0) return 'text-neon border-neon';
@@ -43,6 +41,8 @@ export default function App() {
     } else if (cmd.startsWith('setbankroll ')) {
       const val = parseFloat(cmd.substring(12));
       if (!isNaN(val) && val >= 0) engine.setManualBankroll(val);
+    } else if (cmd === 'export') {
+      prompt("Copie seu Backup Hash de Emergência (Cold Storage):", btoa(JSON.stringify(localStorage)));
     } else if (cmd === 'reset') {
       localStorage.clear();
       window.location.reload();
@@ -61,17 +61,18 @@ export default function App() {
   };
 
   const displayTimeline = [...engine.timeline].reverse();
+  const isActionLocked = engine.isLocked || engine.burnIn > 0 || engine.cooldown > 0 || engine.preFlightStatus === 'REJECTED';
 
   return (
     <div className="h-[100dvh] w-full bg-obsidian flex flex-col overflow-hidden relative font-mono text-gray-300 select-none">
       
-      {/* ZONA A: Global HUD */}
+      {/* HUD PRINCIPAL */}
       <div className="flex-none bg-void border-b border-steel/30 p-4 z-20">
         <div className="flex justify-between items-start mb-4">
           <div>
             <div className="text-[10px] text-gray-500 font-sans tracking-widest uppercase flex items-center gap-1">
               <Server size={12} className={engine.isLocked ? "text-blood" : "text-neon"} /> 
-              {engine.isLocked ? "RL.SYS TRAVADO" : `RL.SYS ONLINE | ${engine.provider}`}
+              {engine.isLocked ? "RL.SYS TRAVADO" : `SIGMA ENTERPRISE | ${engine.provider}`}
             </div>
             <div className="text-3xl font-bold text-yellow-500 mt-1">R$ {engine.bankroll.toFixed(2)}</div>
           </div>
@@ -93,7 +94,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* ZONA B: Radar Térmico */}
+      {/* RADAR TÉRMICO */}
       <div className="flex-none py-2 px-2 border-b border-steel/30 bg-void/50 z-20 shadow-sm relative">
         <div className="text-[10px] text-gray-500 mb-2 flex justify-between items-center px-2 font-sans uppercase">
           <span className="flex items-center gap-1 text-neon"><History size={10}/> ⭠ MAIS RECENTE</span>
@@ -118,7 +119,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* ZONA DO ORÁCULO TÁTICO */}
+      {/* TEXTO DO ORÁCULO */}
       <div className="flex-none bg-blue-900/10 border-b border-blue-500/30 p-2 z-20">
          <div className="flex items-start gap-2 text-blue-400 text-xs">
             <Cpu size={14} className="shrink-0 mt-0.5" />
@@ -126,11 +127,30 @@ export default function App() {
          </div>
       </div>
 
-      {/* ZONA C: Painel de Combate Puro */}
+      {/* PAINEL DE COMBATE */}
       <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar p-4 pb-28 z-0">
         
-        {/* Caixa de Engage com Auditoria XAI */}
-        {engine.isLocked ? (
+        {/* BLOQUEIO EXCLUSIVO: PROTOCOLO PRE-FLIGHT REJEITADO */}
+        {engine.preFlightStatus === 'REJECTED' ? (
+            <div className="bg-blood/20 border-2 border-blood rounded-lg p-4 mb-4 flex flex-col items-center justify-center text-center shadow-[0_0_20px_rgba(255,0,60,0.2)]">
+                <AlertTriangle size={32} className="text-blood animate-bounce mb-2"/>
+                <div className="text-base font-bold text-blood uppercase tracking-wider">MESA REPROVADA - ABORTE A MISSÃO</div>
+                <div className="text-xs text-gray-300 mt-2 font-mono bg-void p-3 rounded border border-blood/30 w-full leading-relaxed">{engine.preFlightReason}</div>
+                <div className="text-[10px] text-yellow-500 font-sans uppercase mt-3 tracking-widest font-bold animate-pulse">Ação: Rotacione para uma nova mesa imediatamente</div>
+            </div>
+        ) : engine.burnIn > 0 ? (
+            <div className="bg-yellow-500/10 border border-yellow-500 rounded-lg p-4 mb-4 flex flex-col items-center justify-center text-center">
+                <AlertTriangle size={24} className="text-yellow-500 mb-2"/>
+                <div className="text-sm font-bold text-yellow-500 uppercase">PROTOCOL BURN-IN ATIVO</div>
+                <div className="text-xs text-yellow-500/70 mt-1">Sincronize a Fita ou Pule mais {engine.burnIn} giros.</div>
+            </div>
+        ) : engine.cooldown > 0 ? (
+            <div className="bg-blood/10 border border-blood rounded-lg p-4 mb-4 flex flex-col items-center justify-center text-center">
+                <Activity size={24} className="text-blood mb-2 animate-pulse"/>
+                <div className="text-sm font-bold text-blood uppercase">RESFRIAMENTO: DRAWDOWN</div>
+                <div className="text-xs text-blood/70 mt-1">Pule {engine.cooldown} giros para a matriz se recuperar.</div>
+            </div>
+        ) : engine.isLocked ? (
            <div className="bg-blood/10 border border-blood rounded-lg p-4 mb-4 flex flex-col items-center justify-center text-center">
              <Lock size={24} className="text-blood mb-2"/>
              <div className="text-sm font-bold text-blood uppercase">{engine.lockReason}</div>
@@ -140,7 +160,7 @@ export default function App() {
                 <div className="text-xs text-neon mb-1 flex items-center gap-1 font-sans uppercase"><Crosshair size={12}/> Engage Autorizado</div>
                 <div className="text-sm">Estratégia: <span className="font-bold text-white">{engine.activeStrategy}</span></div>
                 <div className="text-sm">Stake Global: <span className="font-bold text-yellow-500">R$ {engine.activeStake.toFixed(2)}</span></div>
-                <div className="text-xs text-neon font-bold mt-2 font-sans bg-obsidian border border-neon/30 p-2 rounded tracking-widest uppercase">{engine.activeDesc}</div>
+                <div className="text-[11px] text-neon font-bold mt-2 font-sans bg-obsidian border border-neon/30 p-2 rounded tracking-wide leading-tight">{engine.activeDesc}</div>
                 <div className="mt-2 text-[9px] text-gray-500 font-sans border-t border-steel/20 pt-2">AUDIT: {engine.auditReason}</div>
             </div>
         ) : (
@@ -160,7 +180,7 @@ export default function App() {
             ))}
         </div>
 
-        {/* CONSOLE NUMÉRICO GIGANTE */}
+        {/* CONSOLE NUMÉRICO */}
         <div className="flex-none">
             <div className="flex justify-between items-center mb-2">
                 <span className="text-[10px] text-neon font-bold font-sans uppercase tracking-widest flex items-center gap-1">
@@ -182,24 +202,15 @@ export default function App() {
                         onChange={e => setFastInput(e.target.value)} 
                         placeholder="Nº..." 
                         className="w-full bg-obsidian border border-steel/30 rounded-lg text-center text-white text-3xl font-bold focus:outline-none focus:border-neon focus:shadow-[0_0_10px_#00FF4140] font-mono py-2"
-                        disabled={engine.isLocked}
+                        disabled={engine.isLocked && engine.preFlightStatus !== 'REJECTED'}
                         autoFocus
                     />
                 </div>
                 <div className="flex flex-col gap-2 w-24">
-                    <button 
-                        type="button"
-                        onClick={(e) => handleFastInput(e, true)}
-                        disabled={engine.isLocked || !fastInput} 
-                        className="flex-1 bg-yellow-500/20 text-yellow-500 border border-yellow-500/50 rounded-lg text-[10px] uppercase font-bold active:bg-yellow-500 active:text-obsidian transition-colors disabled:opacity-30"
-                    >
+                    <button type="button" onClick={(e) => handleFastInput(e, true)} disabled={!fastInput} className="flex-1 bg-yellow-500/20 text-yellow-500 border border-yellow-500/50 rounded-lg text-[10px] uppercase font-bold active:bg-yellow-500 active:text-obsidian transition-colors disabled:opacity-30">
                         Pular
                     </button>
-                    <button 
-                        type="submit" 
-                        disabled={engine.isLocked || !fastInput} 
-                        className="flex-1 bg-neon/20 text-neon border border-neon/50 rounded-lg text-[10px] uppercase font-bold active:bg-neon active:text-obsidian transition-colors disabled:opacity-30"
-                    >
+                    <button type="submit" disabled={isActionLocked || !fastInput} className="flex-1 bg-neon/20 text-neon border border-neon/50 rounded-lg text-[10px] uppercase font-bold active:bg-neon active:text-obsidian transition-colors disabled:opacity-30">
                         Lançar
                     </button>
                 </div>
@@ -207,7 +218,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* ZONA D: Command Center */}
+      {/* COMMAND CENTER MENUS */}
       <div className="fixed bottom-0 left-0 right-0 h-16 bg-void border-t border-steel/30 flex justify-around items-center z-50 px-2 shadow-[0_-5px_15px_rgba(0,0,0,0.5)]">
         <button onClick={() => setActiveModal('STATS')} className={`flex flex-col items-center gap-1 p-2 ${activeModal === 'STATS' ? 'text-neon' : 'text-gray-400'}`}><BarChart2 size={22} /><span className="text-[9px] font-sans uppercase">Stats</span></button>
         <button onClick={() => setActiveModal('WEIGHTS')} className={`flex flex-col items-center gap-1 p-2 ${activeModal === 'WEIGHTS' ? 'text-neon' : 'text-gray-400'}`}><Scale size={22} /><span className="text-[9px] font-sans uppercase">Weights</span></button>
@@ -215,7 +226,7 @@ export default function App() {
         <button onClick={() => setActiveModal('CONFIG')} className={`flex flex-col items-center gap-1 p-2 ${activeModal === 'CONFIG' ? 'text-neon' : 'text-gray-400'}`}><Settings size={22} /><span className="text-[9px] font-sans uppercase">Config</span></button>
       </div>
 
-      {/* MODALS OVERLAYS */}
+      {/* OVERLAY MODALS */}
       {activeModal && (
         <div className="absolute inset-0 bg-obsidian/95 z-40 flex flex-col pb-16">
           <div className="p-4 border-b border-steel/30 flex justify-between items-center bg-void">
@@ -287,6 +298,7 @@ export default function App() {
                 <div className="space-y-2">
                   <p className="text-xs uppercase text-gray-500 font-sans tracking-widest">Comandos Administrativos:</p>
                   <div className="bg-steel/10 p-3 rounded font-mono text-xs text-white">setbankroll [valor]</div>
+                  <div className="bg-steel/10 p-3 rounded font-mono text-xs text-yellow-500">export (gera Hash Backup da Sessão)</div>
                   <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="w-full bg-blood/10 border border-blood text-blood py-3 rounded uppercase font-bold text-xs mt-4 active:bg-blood active:text-white transition-colors">
                       reset global de sessão
                   </button>
