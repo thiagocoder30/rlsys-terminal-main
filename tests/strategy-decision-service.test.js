@@ -12,7 +12,7 @@ test('StrategyDecisionService returns blocked governance decision for clean sess
   const report = service.evaluate({ source: 'manual', values, bankroll: 1000, sessionId: 'manual-session' });
 
   assert.equal(report.service, 'StrategyDecisionService');
-  assert.equal(report.schemaVersion, '2.8.0');
+  assert.equal(report.schemaVersion, '2.9.0');
   assert.equal(report.sessionId, 'manual-session');
   assert.equal(report.decision.operationalGate, 'NO_GO');
   assert.equal(report.decision.allowed, false);
