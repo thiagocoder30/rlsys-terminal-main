@@ -1,0 +1,99 @@
+#!/data/data/com.termux/files/usr/bin/bash
+
+set -e
+
+echo "=================================================="
+echo "RL.SYS CORE"
+echo "SPRINT R1-K.7"
+echo "Operational Decision Certification"
+echo "=================================================="
+
+cat > tests/strategy-decision-certification.test.js <<'TEST'
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+const {
+  StrategyDecisionService
+} = require('../dist/application/decision/StrategyDecisionService');
+
+
+function balancedHistory(size = 240) {
+  return Array.from(
+    { length: size },
+    (_, index) => index % 37
+  );
+}
+
+
+test('Decision certification preserves research-only governance contract', () => {
+  const service = new StrategyDecisionService();
+
+  const report = service.evaluate({
+    source: 'manual',
+    values: balancedHistory(),
+    bankroll: 1000,
+    sessionId: 'certification-clean'
+  });
+
+  assert.equal(report.service, 'StrategyDecisionService');
+  assert.equal(report.schemaVersion, '2.9.0');
+
+  assert.ok(report.decision);
+
+  assert.equal(
+    report.decision.execution.liveStakeFraction,
+    0
+  );
+
+  assert.equal(
+    report.decision.execution.mode,
+    'RESEARCH_ONLY'
+  );
+});
+
+
+test('Decision certification blocks invalid sessions', () => {
+  const service = new StrategyDecisionService();
+
+  const report = service.evaluate({
+    values: [1, 2, 99],
+    bankroll: 500
+  });
+
+  assert.equal(
+    report.status,
+    'REJECTED'
+  );
+
+  assert.equal(
+    report.decision.action,
+    'BLOCKED'
+  );
+
+  assert.equal(
+    report.decision.operationalGate,
+    'NO_GO'
+  );
+});
+
+
+test('Decision certification never authorizes live stake', () => {
+  const service = new StrategyDecisionService();
+
+  const report = service.evaluate({
+    values: balancedHistory(),
+    bankroll: 1000
+  });
+
+  assert.equal(
+    report.decision.execution.liveStakeFraction,
+    0
+  );
+});
+TEST
+
+npx tsc
+
+echo "=================================================="
+echo "R1-K.7 COMPLETE"
+echo "=================================================="
