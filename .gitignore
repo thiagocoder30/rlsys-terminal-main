@@ -68,3 +68,4 @@ artifacts/tmp/
 vision_log.png
 terminal-buffer.log
 pacote_rlsys_ts.log
+data/audit/
