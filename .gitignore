@@ -70,3 +70,4 @@ terminal-buffer.log
 pacote_rlsys_ts.log
 data/audit/
 .dev/ai/*/.venv/
+.aider*
