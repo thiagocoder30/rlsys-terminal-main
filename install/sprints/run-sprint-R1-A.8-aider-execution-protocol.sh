@@ -1,3 +1,29 @@
+#!/data/data/com.termux/files/usr/bin/bash
+
+set -e
+
+echo "=================================================="
+echo "RL.SYS CORE"
+echo "SPRINT R1-A.8"
+echo "AIDER EXECUTION PROTOCOL"
+echo "=================================================="
+
+ROOT="$(pwd)"
+
+WORKFLOW_DIR="$ROOT/.dev/workflow"
+BOOTSTRAP_DIR="$ROOT/.dev/scripts/bootstrap"
+
+
+echo "[1/5] Validating directories..."
+
+mkdir -p "$WORKFLOW_DIR"
+mkdir -p "$BOOTSTRAP_DIR"
+
+
+echo "[2/5] Creating Aider execution protocol..."
+
+
+cat > "$WORKFLOW_DIR/AIDER_EXECUTION_PROTOCOL.md" <<'EOF'
 # RL.Sys Aider Execution Protocol
 
 Version: 1.0.0
@@ -168,3 +194,73 @@ Aider is an implementation accelerator.
 
 Architecture authority remains with RL.Sys engineering governance.
 
+EOF
+
+
+echo "[3/5] Creating Aider session bootstrap..."
+
+
+cat > "$BOOTSTRAP_DIR/start-aider-session.sh" <<'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+
+set -e
+
+echo "=================================================="
+echo "RL.SYS AIDER SESSION BOOTSTRAP"
+echo "=================================================="
+
+
+echo "[1/4] Updating context..."
+
+bash .dev/scripts/bootstrap/prepare-aider-context.sh
+
+
+echo "[2/4] Validating context..."
+
+bash .dev/scripts/bootstrap/validate-aider-context.sh
+
+
+echo "[3/4] Repository status"
+
+git status
+
+
+echo "[4/4] Aider ready"
+
+echo ""
+echo "Load context:"
+echo ".dev/context/AIDER_CONTEXT.md"
+echo ""
+echo "Follow:"
+echo ".dev/workflow/AIDER_EXECUTION_PROTOCOL.md"
+
+EOF
+
+
+chmod +x "$BOOTSTRAP_DIR/start-aider-session.sh"
+
+
+echo "[4/5] Validation"
+
+
+if [ -f "$WORKFLOW_DIR/AIDER_EXECUTION_PROTOCOL.md" ]; then
+    echo "[OK] AIDER_EXECUTION_PROTOCOL.md"
+else
+    echo "[ERROR] Missing protocol"
+    exit 1
+fi
+
+
+if [ -x "$BOOTSTRAP_DIR/start-aider-session.sh" ]; then
+    echo "[OK] start-aider-session.sh"
+else
+    echo "[ERROR] Missing bootstrap"
+    exit 1
+fi
+
+
+echo "[5/5] Complete"
+
+echo "=================================================="
+echo "R1-A.8 COMPLETE"
+echo "=================================================="
