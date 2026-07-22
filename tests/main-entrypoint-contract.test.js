@@ -20,4 +20,5 @@ test('main entrypoint keeps text-only institutional REPL contract', () => {
   assert.match(source, /rlsys>/);
   assert.doesNotMatch(source, /websocket/i);
   assert.doesNotMatch(source, /react/i);
+  assert.match(source, /terminal\.once\('close'/);
 });

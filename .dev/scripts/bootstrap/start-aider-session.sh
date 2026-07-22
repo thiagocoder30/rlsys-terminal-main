@@ -1,33 +1,35 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
-set -e
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "$ROOT"
 
 echo "=================================================="
 echo "RL.SYS AIDER SESSION BOOTSTRAP"
 echo "=================================================="
+echo
 
-
-echo "[1/4] Updating context..."
-
+echo "[1/5] Preparing institutional context..."
 bash .dev/scripts/bootstrap/prepare-aider-context.sh
 
-
-echo "[2/4] Validating context..."
-
+echo
+echo "[2/5] Validating context..."
 bash .dev/scripts/bootstrap/validate-aider-context.sh
 
+echo
+echo "[3/5] Repository status..."
+git status --short || true
 
-echo "[3/4] Repository status"
+echo
+echo "[4/5] Starting Aider..."
+echo
 
-git status
+exec aider \
+  --config .aider.conf.yml \
+  --read .dev/context/AIDER_CONTEXT.md \
+  --read .dev/AGENTS.md \
+  --read .dev/workflow/AIDER_EXECUTION_PROTOCOL.md
 
-
-echo "[4/4] Aider ready"
-
-echo ""
-echo "Load context:"
-echo ".dev/context/AIDER_CONTEXT.md"
-echo ""
-echo "Follow:"
-echo ".dev/workflow/AIDER_EXECUTION_PROTOCOL.md"
-
+echo
+echo "[5/5] Session finished."

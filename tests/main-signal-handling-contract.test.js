@@ -10,7 +10,7 @@ test('main entrypoint wires shutdown coordinator and process signals', () => {
   assert.match(source, /SIGTERM/);
   assert.match(source, /uncaughtException/);
   assert.match(source, /unhandledRejection/);
-  assert.match(source, /terminal\.once\('close'/);
+  assert.match(source, /terminal\.once\('close', \(\) => shutdownCoordinator\.shutdown\('REPL_CLOSED'\)\)/);
 });
 
 test('main entrypoint remains terminal-only and replay-backed', () => {

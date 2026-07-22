@@ -26,7 +26,11 @@ function collectTopLevelLegacyTests(rootDir) {
 
   return fs
     .readdirSync(legacyRoot, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.test.js'))
+    .filter(
+      (entry) =>
+        entry.isFile() &&
+        (entry.name.endsWith('.test.js') || entry.name.endsWith('.test.ts')),
+    )
     .map((entry) => path.join('tests', entry.name))
     .sort((left, right) => left.localeCompare(right));
 }
@@ -52,7 +56,10 @@ function collectRecursiveTests(rootDir, relativeDirectory) {
 
       if (entry.isDirectory()) {
         stack.push(absolutePath);
-      } else if (entry.isFile() && entry.name.endsWith('.test.js')) {
+      } else if (
+        entry.isFile() &&
+        (entry.name.endsWith('.test.js') || entry.name.endsWith('.test.ts')),
+      ) {
         files.push(path.relative(baseDir, absolutePath));
       }
     }
@@ -90,7 +97,10 @@ function createDiscoverySnapshot(rootDir) {
   const topLevelLegacyTests = collectTopLevelLegacyTests(baseDir);
   const institutionalTests = collectInstitutionalTests(baseDir);
   const nestedLegacyTests = collectNestedLegacyTests(baseDir);
-  const officialTestFiles = uniqueSorted([...topLevelLegacyTests, ...institutionalTests]);
+  const officialTestFiles = uniqueSorted([
+    ...topLevelLegacyTests,
+    ...institutionalTests,
+  ]);
 
   return Object.freeze({
     rootDir: baseDir,

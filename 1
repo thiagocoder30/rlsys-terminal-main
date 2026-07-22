@@ -1,0 +1,574 @@
+# D000.12 — Frequency Analyzer Specification
+
+**Programa:** DEV000.4 — Decision Intelligence Core
+
+**Status:** Architecture Approved
+
+**Versão:** 1.0
+
+---
+
+# Objetivo
+
+O Frequency Analyzer é o terceiro componente da Feature Layer.
+
+Sua responsabilidade é analisar a distribuição de ocorrência dos números dentro da amostra histórica da mesa.
+
+Ele identifica concentração, dispersão e comportamento de frequência sem transformar esses dados diretamente em uma decisão operacional.
+
+---
+
+# Princípio Arquitetural
+
+O Frequency Analyzer responde exclusivamente:
+
+> "Como os eventos observados estão distribuídos dentro da amostra atual?"
+
+Ele não responde:
+
+- qual número será sorteado;
+- qual número possui vantagem futura;
+- qual estratégia executar;
+- quando realizar entrada.
+
+---
+
+# Localização Arquitetural
+
+```
+DecisionContext
+
+↓
+
+Feature Layer
+
+↓
+
+Frequency Analyzer
+
+↓
+
+Frequency Feature Result
+
+↓
+
+Strategy Score Engine
+
+↓
+
+Decision Engine
+```
+
+---
+
+# Responsabilidade
+
+O módulo possui quatro responsabilidades:
+
+```
+1. Contabilizar ocorrências
+
+2. Identificar concentração
+
+3. Classificar distribuição
+
+4. Fornecer evidência estatística
+```
+
+---
+
+# Entrada
+
+O analisador recebe:
+
+```
+timeline: number[]
+```
+
+Exemplo:
+
+```
+[
+17,
+34,
+17,
+6,
+22,
+17
+]
+```
+
+---
+
+# Saída
+
+Contrato:
+
+```
+FrequencyResult
+{
+    distribution: NumberFrequency[],
+
+    hotNumbers: number[],
+
+    coldNumbers: number[],
+
+    concentration: number,
+
+    confidence: number
+}
+```
+
+---
+
+# Distribution
+
+Representa a frequência individual de cada número.
+
+Exemplo:
+
+```
+[
+ {
+  number:17,
+
+  occurrences:3,
+
+  percentage:50%
+ },
+
+ {
+  number:34,
+
+  occurrences:1,
+
+  percentage:16%
+ }
+]
+```
+
+---
+
+# Hot Numbers
+
+Representa números com maior ocorrência dentro da janela analisada.
+
+Exemplo:
+
+```
+hotNumbers:
+
+[
+17,
+34,
+6
+]
+```
+
+---
+
+# Cold Numbers
+
+Representa números com menor ocorrência relativa.
+
+Exemplo:
+
+```
+coldNumbers:
+
+[
+0,
+22,
+31
+]
+```
+
+---
+
+# Importante
+
+Hot e Cold não representam:
+
+- números melhores;
+- números piores;
+- vantagem matemática.
+
+Eles representam apenas:
+
+```
+comportamento observado na amostra
+```
+
+---
+
+# Concentration Index
+
+Mede quanto a distribuição está concentrada.
+
+Escala:
+
+```
+0 - 100
+```
+
+Interpretação:
+
+```
+0
+
+distribuição uniforme
+
+
+100
+
+alta concentração
+```
+
+---
+
+# Exemplos
+
+Alta concentração:
+
+```
+17 aparece repetidamente
+
+↓
+
+concentration elevada
+```
+
+Baixa concentração:
+
+```
+muitos números diferentes
+
+↓
+
+concentration baixa
+```
+
+---
+
+# Confidence
+
+A confiança depende de:
+
+- tamanho da amostra;
+- estabilidade da distribuição;
+- quantidade de ocorrências.
+
+Exemplo:
+
+10 giros:
+
+```
+confidence baixa
+```
+
+500 giros:
+
+```
+confidence alta
+```
+
+---
+
+# Classificação Operacional
+
+O módulo poderá classificar o cenário.
+
+Estados:
+
+```
+UNIFORM
+
+MODERATE
+
+CONCENTRATED
+
+EXTREME
+```
+
+---
+
+# UNIFORM
+
+Características:
+
+- números distribuídos;
+- pouca concentração.
+
+Interpretação:
+
+```
+Sem concentração estatística relevante.
+```
+
+---
+
+# MODERATE
+
+Características:
+
+- pequenas concentrações;
+- comportamento normal.
+
+Interpretação:
+
+```
+Sinais estatísticos moderados.
+```
+
+---
+
+# CONCENTRATED
+
+Características:
+
+- poucos números dominantes.
+
+Interpretação:
+
+```
+Existe concentração observável.
+```
+
+---
+
+# EXTREME
+
+Características:
+
+- repetição elevada;
+- concentração fora do padrão.
+
+Interpretação:
+
+```
+Necessário aumento de validação.
+```
+
+---
+
+# Regras de Implementação
+
+## Regra 1
+
+O Frequency Analyzer deve ser determinístico.
+
+Mesmo:
+
+```
+timeline
+```
+
+deve produzir:
+
+```
+mesmo resultado
+```
+
+---
+
+## Regra 2
+
+Não pode possuir memória própria.
+
+Proibido:
+
+- LocalStorage;
+- cache global;
+- estado interno.
+
+---
+
+## Regra 3
+
+Não pode acessar estratégias.
+
+Proibido:
+
+```
+if hotNumbers contains strategyZone
+```
+
+---
+
+## Regra 4
+
+Não pode produzir decisão.
+
+Exemplo proibido:
+
+```
+return ENTER
+```
+
+---
+
+# Tratamento de Dados Insuficientes
+
+Caso:
+
+```
+timeline.length < mínimo operacional
+```
+
+Retornar:
+
+```
+confidence reduzida
+```
+
+e:
+
+```
+classification = INSUFFICIENT_DATA
+```
+
+---
+
+# Integração com Decision Engine
+
+O Decision Engine utilizará:
+
+```
+FrequencyResult
+```
+
+para:
+
+- comparar estratégias;
+- aumentar ou reduzir confiança;
+- validar consistência estatística.
+
+Exemplo:
+
+```
+Frequency:
+
+alta concentração
+
+
+Entropy:
+
+baixa dispersão
+
+
+Markov:
+
+transições fortes
+```
+
+Essas informações juntas podem aumentar a confiança final.
+
+---
+
+# Testes Obrigatórios
+
+## Teste 1
+
+Sequência uniforme.
+
+Esperado:
+
+```
+baixa concentração
+```
+
+---
+
+## Teste 2
+
+Número repetido.
+
+Entrada:
+
+```
+17,
+17,
+17,
+6,
+22
+```
+
+Esperado:
+
+```
+17 como hotNumber
+```
+
+---
+
+## Teste 3
+
+Amostra pequena.
+
+Esperado:
+
+```
+confidence reduzida
+```
+
+---
+
+## Teste 4
+
+Determinismo.
+
+Mesma entrada:
+
+Mesmo resultado.
+
+---
+
+# Evolução Futura
+
+Possíveis extensões:
+
+```
+├── Bayesian Frequency Model
+
+├── Weighted Historical Frequency
+
+├── Time Decay Frequency
+
+├── Adaptive Window Analyzer
+
+└── Cluster Frequency Analysis
+```
+
+---
+
+# Benefícios
+
+O Frequency Analyzer fornece:
+
+- visão quantitativa da distribuição;
+- identificação de concentração;
+- suporte ao ranking de estratégias;
+- explicabilidade;
+- independência arquitetural.
+
+---
+
+# Regra Institucional
+
+O Frequency Analyzer observa o passado.
+
+Ele não prevê o futuro.
+
+Ele não recomenda entradas.
+
+Ele apenas fornece evidências para o:
+
+```
+Decision Engine
+```
+
+---
+
+# Próximo documento
+
+D000.13 — Sector Analyzer Specification

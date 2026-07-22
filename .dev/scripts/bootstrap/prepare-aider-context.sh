@@ -1,9 +1,8 @@
-#!/data/data/com.termux/files/usr/bin/bash
-
-set -e
+#!/usr/bin/env bash
+.dev/scripts/bootstrap/start-aider-session.sh set -e
 
 ROOT="$(pwd)"
-
+.dev/scripts/bootstrap/validate-aider-context.sh
 OUTPUT="$ROOT/.dev/context/AIDER_CONTEXT.md"
 
 
