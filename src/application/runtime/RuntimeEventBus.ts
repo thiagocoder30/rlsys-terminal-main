@@ -1,80 +1,108 @@
-/**
- * @file RuntimeEventBus.ts
- * @description Barramento de eventos central do RL.SYS. 
- * Implementa o padrão Observer em O(1) e utiliza o SignalObjectPool para garantir 
- * Zero-Allocation, prevenindo paragens do Garbage Collector no Helio P22.
- */
+interface RuntimeEvent {
+  id: string;
+  type: string;
+  occurredAtEpochMs: number;
+  payload?: unknown;
+}
 
-import { SignalObjectPool, PooledSignal } from '../../domain/memory/SignalObjectPool';
+interface Listener {
+  name: string;
+  handle: (event: RuntimeEvent) => Promise<void>;
+}
 
-/**
- * Assinatura estrita para subscritores. 
- * REGRA INSTITUCIONAL: Handlers DEVEM ser síncronos para permitir a reciclagem imediata do sinal.
- */
-export type SignalHandler = (signal: PooledSignal) => void;
+interface PublishResult {
+  delivered: number;
+  failed: number;
+  failures?: Array<{
+    listenerName: string;
+    message: string;
+  }>;
+}
 
 export class RuntimeEventBus {
-    private readonly pool: SignalObjectPool;
-    private readonly subscribers: Set<SignalHandler> = new Set();
+  private readonly listeners: Map<string, Listener> = new Map();
+  private readonly processedEventIds: Set<string> = new Set();
+  private readonly maxProcessedEventIds: number;
 
-    /**
-     * @param poolCapacity Capacidade pré-alocada na RAM para suportar picos de volatilidade.
-     */
-    constructor(poolCapacity: number = 250) {
-        this.pool = new SignalObjectPool(poolCapacity);
+  constructor(options: { maxProcessedEventIds?: number } = {}) {
+    this.maxProcessedEventIds = options.maxProcessedEventIds ?? 1000;
+  }
+
+  subscribe(listener: Listener): void {
+    if (!listener.name?.trim()) {
+      throw new Error('listener name must be provided');
+    }
+    this.listeners.set(listener.name, listener);
+  }
+
+  unsubscribe(listenerName: string): boolean {
+    return this.listeners.delete(listenerName);
+  }
+
+  async dispatchSignal(
+    id: string,
+    targetSector: number,
+    confidence: number,
+    strategyId: string
+  ): Promise<PublishResult> {
+    return this.publish({
+      id,
+      type: "SIGNAL",
+      occurredAtEpochMs: Date.now(),
+      payload: {
+        targetSector,
+        confidence,
+        strategyId
+      }
+    });
+  }
+
+  async publish(event: RuntimeEvent): Promise<PublishResult> {
+    if (!event?.id?.trim()) {
+      throw new Error('event id is required');
+    }
+    if (typeof event.occurredAtEpochMs !== 'number' || 
+        Number.isNaN(event.occurredAtEpochMs) || 
+        event.occurredAtEpochMs <= 0) {
+      throw new Error('invalid occurredAtEpochMs');
     }
 
-    /**
-     * Regista um novo módulo para escutar os sinais da mesa.
-     */
-    public subscribe(handler: SignalHandler): void {
-        this.subscribers.add(handler);
+    if (this.processedEventIds.has(event.id)) {
+      return { delivered: 0, failed: 0 };
     }
 
-    /**
-     * Remove um módulo da lista de escuta (evita Memory Leaks de referências perdidas).
-     */
-    public unsubscribe(handler: SignalHandler): void {
-        this.subscribers.delete(handler);
+    // Manage memory of processed events
+    if (this.processedEventIds.size >= this.maxProcessedEventIds) {
+      const oldest = this.processedEventIds.values().next().value;
+      if (oldest) {
+        this.processedEventIds.delete(oldest);
+      }
+    }
+    this.processedEventIds.add(event.id);
+
+    const result: PublishResult = {
+      delivered: 0,
+      failed: 0,
+      failures: []
+    };
+
+    for (const [listenerName, listener] of this.listeners) {
+      try {
+        await listener.handle(event);
+        result.delivered++;
+      } catch (error) {
+        result.failed++;
+        result.failures?.push({
+          listenerName,
+          message: error instanceof Error ? error.message : String(error)
+        });
+      }
     }
 
-    /**
-     * Emite um sinal quantitativo para todos os módulos conectados sem utilizar a palavra-chave 'new'.
-     * @param id Identificador único do evento.
-     * @param targetSector Setor ou alvo calculado.
-     * @param confidence Grau de confiança (0-100) gerado pelo motor de convergência.
-     * @param strategyId ID exato da estratégia (ex: CROSS_GRID_HEDGE).
-     */
-    public dispatchSignal(id: string, targetSector: number, confidence: number, strategyId: string): void {
-        const signal = this.pool.acquire();
-        
-        if (!signal) {
-            // Em HFT, se a pool esgotar, descartamos o sinal para não corromper o Event Loop.
-            console.error('[CRITICAL] SignalObjectPool esgotada. Sinal descartado para proteger a CPU.');
-            return;
-        }
+    return result;
+  }
 
-        // Preenchimento do objeto reciclado (Zero-Allocation)
-        signal.id = id;
-        signal.targetSector = targetSector;
-        signal.confidence = confidence;
-        signal.strategyId = strategyId;
-
-        try {
-            // Notificação síncrona aos subscritores
-            for (const handler of this.subscribers) {
-                handler(signal);
-            }
-        } finally {
-            // Libertação imediata: O objeto regressa à piscina no mesmo ciclo de relógio.
-            this.pool.release(signal);
-        }
-    }
-    
-    /**
-     * Retorna a quantidade de handlers ativos (Telemetria).
-     */
-    public getActiveSubscribersCount(): number {
-        return this.subscribers.size;
-    }
+  listenerCount(): number {
+    return this.listeners.size;
+  }
 }

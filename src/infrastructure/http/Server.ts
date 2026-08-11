@@ -32,6 +32,19 @@ import { BenchmarkComparisonService } from '../../application/backtesting/Benchm
 import { WarmupSessionService } from '../../application/session/WarmupSessionService';
 import { StrategyDecisionService } from '../../application/decision/StrategyDecisionService';
 import { LiveSessionRuntimeService } from '../../application/session/LiveSessionRuntimeService';
+import { RuntimeController } from './controllers/RuntimeController';
+import { OperatorController } from './controllers/OperatorController';
+import { HealthController } from './controllers/HealthController';
+import { TelemetryController } from './controllers/TelemetryController';
+
+import { ObservabilityController } from './controllers/observability/ObservabilityController';
+import { MetricsController } from './controllers/observability/MetricsController';
+import { DiagnosticsController } from './controllers/observability/DiagnosticsController';
+import { AlertsController } from './controllers/observability/AlertsController';
+import { RuntimeMetricsCollector } from '../../application/runtime/observability/RuntimeMetricsCollector';
+import { RuntimeDiagnostics } from '../../application/runtime/observability/RuntimeDiagnostics';
+import { RuntimePerformanceMonitor } from '../../application/runtime/observability/RuntimePerformanceMonitor';
+import { RuntimeAlertManager } from '../../application/runtime/observability/RuntimeAlertManager';
 import { config } from '../../config';
 
 interface AnalyzePayload {
@@ -72,6 +85,19 @@ export class Server {
   private readonly warmupSessionService = new WarmupSessionService();
   private readonly strategyDecisionService = new StrategyDecisionService();
   private readonly liveSessionRuntimeService = new LiveSessionRuntimeService();
+  private readonly runtimeController = new RuntimeController();
+  private readonly operatorController = new OperatorController(this.runtimeController);
+  private readonly healthController = new HealthController(this.runtimeController.sessionManager, this.runtimeController.telemetry);
+  private readonly telemetryController = new TelemetryController(this.runtimeController.telemetry);
+
+  private readonly metricsCollector = new RuntimeMetricsCollector(this.runtimeController.eventBus);
+  private readonly diagnostics = new RuntimeDiagnostics(this.metricsCollector, this.runtimeController.eventBus);
+  private readonly perfMonitor = new RuntimePerformanceMonitor(this.runtimeController.eventBus);
+  private readonly alertManager = new RuntimeAlertManager(this.runtimeController.eventBus, this.metricsCollector, this.perfMonitor);
+  private readonly metricsCtrl = new MetricsController(this.metricsCollector, this.runtimeController.eventBus);
+  private readonly diagnosticsCtrl = new DiagnosticsController(this.diagnostics, this.perfMonitor);
+  private readonly alertsCtrl = new AlertsController(this.alertManager);
+
   private httpServer?: ReturnType<Express['listen']>;
 
   constructor(
@@ -86,9 +112,20 @@ export class Server {
     this.routes();
   }
 
+  public getApp(): Express {
+    return this.app;
+  }
+
   public start(): void {
     this.httpServer = this.app.listen(this.port, this.host, () => {
       this.logger.info('http_server_started', { host: this.host, port: this.port });
+    });
+    this.httpServer.on('error', (err: any) => {
+      if (err.code === 'EADDRINUSE') {
+        this.logger.info('http_server_port_in_use', { port: this.port });
+      } else {
+        this.logger.error('http_server_error', { error: err });
+      }
     });
   }
 
@@ -232,6 +269,121 @@ export class Server {
       });
       res.status(readiness.status === 'blocked' ? 503 : 200).json(readiness);
     });
+
+    this.app.post('/api/tactical/execute', this.runtimeController.processRound);
+    this.app.post('/api/tactical/sync', this.runtimeController.syncTape);
+
+    this.app.get('/runtime/ensemble', this.runtimeController.getEnsemble);
+    this.app.get('/runtime/ensemble/history', this.runtimeController.getEnsembleHistory);
+    this.app.get('/runtime/consensus', this.runtimeController.getConsensus);
+    this.app.get('/runtime/votes', this.runtimeController.getVotes);
+    this.app.get('/runtime/conflicts', this.runtimeController.getConflicts);
+
+    this.app.post('/api/operator/command', this.operatorController.executeCommand);
+    this.app.get('/api/operator/console', this.operatorController.getOperatorConsole);
+    this.app.get('/api/operator/session', this.operatorController.getSession);
+
+    
+    this.app.get('/api/operator/hud/current', this.operatorController.getHUDCurrent);
+    this.app.post('/api/operator/suggestion/confirm', this.operatorController.confirmSuggestionAction);
+    this.app.post('/api/operator/suggestion/skip', this.operatorController.skipSuggestionAction);
+
+    this.app.get('/api/operator/session/current', this.operatorController.getSessionCurrent);
+    this.app.get('/api/operator/session/history', this.operatorController.getSessionHistoryAPI);
+    this.app.post('/api/operator/session/spin', this.operatorController.processLiveSpin);
+    this.app.post('/api/operator/session/start', this.operatorController.startSession);
+    this.app.post('/api/operator/session/confirm', this.operatorController.confirmSuggestion);
+    this.app.post('/api/operator/session/skip', this.operatorController.skipSuggestion);
+    this.app.post('/api/operator/session/finish', this.operatorController.finishSession);
+
+    this.app.get('/api/runtime/preflight', this.operatorController.getPreflight);
+    this.app.get('/api/operator/preflight', this.operatorController.getPreflight);
+    this.app.get('/api/operator/bankroll', this.operatorController.getBankroll);
+    this.app.get('/api/operator/strategies', this.operatorController.getStrategies);
+    this.app.get('/api/operator/ensemble', this.operatorController.getEnsemble);
+    this.app.get('/api/operator/explainability', this.operatorController.getExplainability);
+    this.app.get('/api/operator/timeline', this.operatorController.getTimeline);
+    this.app.get('/api/operator/statistics', this.operatorController.getStatistics);
+    this.app.get('/api/operator/history', this.operatorController.getHistory);
+    this.app.get('/api/operator/performance', this.operatorController.getPerformance);
+    this.app.get('/api/operator/performance/history', this.operatorController.getPerformanceHistory);
+    this.app.get('/api/operator/session-health', this.operatorController.getSessionHealth);
+    this.app.get('/api/operator/regime', this.operatorController.getRegime);
+    this.app.get('/api/operator/regime/history', this.operatorController.getRegimeHistory);
+    this.app.get('/api/operator/institutional-decision', this.operatorController.getInstitutionalDecision);
+    this.app.get('/api/operator/institutional-decision/history', this.operatorController.getInstitutionalDecisionHistory);
+    this.app.get('/api/operator/regime/current', this.operatorController.getRegimeCurrent);
+    this.app.get('/api/operator/calibration', this.operatorController.getCalibration);
+    this.app.get('/api/operator/calibration/history', this.operatorController.getCalibrationHistory);
+    this.app.get('/api/operator/strategy-weights', this.operatorController.getStrategyWeights);
+    this.app.get('/api/operator/shadow', this.operatorController.getShadowPerformance);
+    this.app.get('/api/operator/shadow/history', this.operatorController.getShadowHistory);
+    this.app.get('/api/operator/feedback', this.operatorController.getFeedback);
+    this.app.get('/api/operator/feedback/history', this.operatorController.getFeedbackHistory);
+    this.app.get('/api/operator/replay', this.operatorController.getReplay);
+    this.app.get('/api/operator/replay/history', this.operatorController.getReplayHistory);
+    this.app.get('/api/operator/replay/:decisionId', this.operatorController.getReplayByDecision);
+    this.app.get('/api/operator/knowledge', this.operatorController.getKnowledge);
+    this.app.get('/api/operator/knowledge/patterns', this.operatorController.getKnowledgePatterns);
+    this.app.get('/api/operator/knowledge/statistics', this.operatorController.getKnowledgeStatistics);
+    this.app.get('/api/operator/learning', this.operatorController.getLearning);
+    this.app.get('/api/operator/learning/history', this.operatorController.getLearningHistory);
+    this.app.get('/api/operator/portfolio', this.operatorController.getPortfolio);
+    this.app.get('/api/operator/strategy-evolution', this.operatorController.getStrategyEvolution);
+    this.app.get('/api/operator/strategy-evolution/history', this.operatorController.getStrategyEvolutionHistory);
+    this.app.get('/api/operator/portfolio/history', this.operatorController.getPortfolioHistory);
+    this.app.get('/api/operator/multi-session', this.operatorController.getMultiSession);
+    this.app.get('/api/operator/multi-session/history', this.operatorController.getMultiSessionHistory);
+    this.app.get('/api/operator/evolution', this.operatorController.getEvolution);
+    this.app.get('/api/operator/predictive', this.operatorController.getPredictiveScenario);
+    this.app.get('/api/operator/predictive/history', this.operatorController.getPredictiveHistory);
+    this.app.get('/api/operator/evolution/history', this.operatorController.getEvolutionHistory);
+    this.app.get('/api/operator/session-audit/history', this.operatorController.getSessionAuditHistory);
+    this.app.get('/api/operator/session-audit/performance', this.operatorController.getSessionAuditPerformance);
+    this.app.post('/api/operator/session-audit/audit', this.operatorController.createSessionAudit);
+    this.app.get('/api/operator/session-intelligence/profile', this.operatorController.getSessionIntelligenceProfile);
+    this.app.get('/api/operator/session-intelligence/insights', this.operatorController.getSessionIntelligenceInsights);
+    this.app.get('/api/operator/session-intelligence/trend', this.operatorController.getSessionIntelligenceTrend);
+    this.app.post('/api/operator/terminal/execute', this.operatorController.executeTerminalCommand);
+    this.app.get('/api/operator/terminal/history', this.operatorController.getTerminalHistory);
+    this.app.get('/api/operator/terminal/commands', this.operatorController.getTerminalCommands);
+
+    this.app.get('/api/operator/startup/status', this.operatorController.getStartupStatus);
+    this.app.get('/api/operator/startup/history', this.operatorController.getStartupHistory);
+    this.app.post('/api/operator/startup/start', this.operatorController.startStartupFlow);
+    this.app.post('/api/operator/startup/select-table', this.operatorController.selectStartupTable);
+    this.app.post('/api/operator/startup/configure-bankroll', this.operatorController.configureStartupBankroll);
+    this.app.post('/api/operator/startup/sync', this.operatorController.executeStartupSync);
+    this.app.post('/api/operator/startup/warmup', this.operatorController.executeStartupWarmup);
+    this.app.post('/api/operator/startup/finish', this.operatorController.finishStartup);
+    this.app.post('/api/operator/startup/reset', this.operatorController.resetStartup);
+    this.app.post('/api/operator/session/resume', this.operatorController.resumeSession);
+
+    this.app.get('/api/operator/configuration', this.operatorController.getConfiguration);
+    this.app.get('/api/operator/configuration/history', this.operatorController.getConfigurationHistory);
+    this.app.put('/api/operator/configuration', this.operatorController.updateConfiguration);
+    this.app.post('/api/operator/configuration/apply', this.operatorController.applyConfiguration);
+    this.app.post('/api/operator/configuration/provider', this.operatorController.updateProvider);
+    this.app.post('/api/operator/configuration/bankroll', this.operatorController.updateBankroll);
+
+    this.app.get('/api/operator/bootstrap/status', this.operatorController.getBootstrapStatus);
+    this.app.get('/api/operator/runtime-configuration', this.operatorController.getRuntimeConfiguration);
+    this.app.post('/api/operator/runtime-configuration/sync', this.operatorController.syncRuntimeConfiguration);
+
+    
+    this.app.get('/health', this.healthController.health);
+    this.app.get('/api/runtime/health', this.healthController.runtime);
+    this.app.get('/api/runtime/version', this.healthController.version);
+    this.app.get('/api/runtime/status', this.healthController.status);
+    this.app.get('/api/runtime/session', this.healthController.session);
+    this.app.get('/api/runtime/telemetry', this.telemetryController.getTelemetry);
+
+    this.app.get('/runtime/metrics', this.metricsCtrl.getMetrics);
+    this.app.get('/runtime/events', this.metricsCtrl.getEvents);
+    this.app.get('/runtime/diagnostics', this.diagnosticsCtrl.getDiagnostics);
+    this.app.get('/runtime/performance', this.diagnosticsCtrl.getPerformance);
+    this.app.get('/runtime/alerts', this.alertsCtrl.getAlerts);
+
 
     this.app.post('/api/research/dataset/evaluate', (req, res) => {
       const dataset = req.body?.dataset ?? req.body?.records ?? req.body?.history ?? req.body;

@@ -1,50 +1,13 @@
+import type { LiveSessionStatus, LiveRoundIngestionStatus, LiveRoundCommand, LiveSessionSnapshot, LiveSessionPhase, LiveSessionNextAction, LiveSessionControlFrame } from "./LiveSessionTypes";
 import crypto from 'crypto';
 import { DomainError, err, ok, Result } from '../shared/Result';
-import { LiveSessionControlFrame, LiveSessionStateMachine } from './LiveSessionStateMachine';
-
-export type LiveSessionStatus = 'INITIALIZING' | 'WARMED_UP' | 'LIVE_READY' | 'BLOCKED';
-export type LiveRoundIngestionStatus = 'ACCEPTED' | 'DUPLICATE_IGNORED' | 'REJECTED';
+import { LiveSessionStateMachine } from './LiveSessionStateMachine';
 
 export interface LiveSessionRuntimeOptions {
   readonly warmupSize?: number;
   readonly maxHistorySize?: number;
   readonly maxEventIdCacheSize?: number;
   readonly decisionWindowSize?: number;
-}
-
-export interface LiveRoundCommand {
-  readonly sessionId: string;
-  readonly value: number;
-  readonly eventId?: string;
-  readonly sequence?: number;
-  readonly occurredAt?: string;
-}
-
-export interface LiveSessionSnapshot {
-  readonly engineVersion: 'live-session-runtime-v1';
-  readonly sessionId: string;
-  readonly status: LiveSessionStatus;
-  readonly roundCount: number;
-  readonly acceptedEvents: number;
-  readonly duplicateEvents: number;
-  readonly rejectedEvents: number;
-  readonly lastValue?: number;
-  readonly lastSequence?: number;
-  readonly warmupProgress: number;
-  readonly readyForDecision: boolean;
-  readonly historyWindow: readonly number[];
-  readonly warmupWindow: readonly number[];
-  readonly rolling: {
-    readonly windowSize: number;
-    readonly uniqueNumbers: number;
-    readonly normalizedEntropy: number;
-    readonly repeatRate: number;
-    readonly maxNumberConcentration: number;
-    readonly alternationRate: number;
-  };
-  readonly control: LiveSessionControlFrame;
-  readonly checksum: string;
-  readonly updatedAt: string;
 }
 
 export interface LiveRoundIngestionReport {
@@ -70,11 +33,10 @@ interface MutableSessionState {
 const ROULETTE_VALUES = 37;
 
 /**
- * Live session runtime responsible for deterministic round-by-round state updates.
- *
- * The runtime is domain-only and framework agnostic. It keeps bounded in-memory
- * windows and an idempotency cache to make repeated event delivery safe. Each
- * accepted round is O(1) amortized for ingestion and O(k) for snapshot metrics,
+ * High-performance core runtime for a live roulette session.
+ * 
+ * Enforces safety constraints: Event deduplication, idempotency, bounded memory.
+ * Provides O(1) amortized for ingestion and O(k) for snapshot metrics,
  * where k is the fixed rolling window size, preserving mobile-device safety.
  */
 export class LiveSessionRuntime {
@@ -267,3 +229,4 @@ export class LiveSessionRuntime {
     return Number.isFinite(value) ? Number(value.toFixed(6)) : 0;
   }
 }
+export type { LiveSessionStatus, LiveRoundIngestionStatus, LiveRoundCommand, LiveSessionSnapshot, LiveSessionPhase, LiveSessionNextAction, LiveSessionControlFrame } from "./LiveSessionTypes";

@@ -1,65 +1,55 @@
-import readline from 'readline/promises';
-
 import { RuntimeKernel } from './application/runtime/RuntimeKernel';
 import { RuntimeShutdownCoordinator } from './application/runtime/RuntimeShutdownCoordinator';
 import { JsonLinesReplayRepository } from './infrastructure/replay/JsonLinesReplayRepository';
-
-import { RuntimeStressSampler } from './application/stress/RuntimeStressSampler';
-import { RuntimeHudTelemetryComposer } from './application/operator/RuntimeHudTelemetryComposer';
-import { TrueEventLoopLagMonitor } from './infrastructure/runtime/TrueEventLoopLagMonitor';
-
-import { RuntimeStateTransitionGate } from './application/runtime/RuntimeStateTransitionGate';
-import { RuntimeMemoryPressureMonitor } from './domain/runtime/RuntimeMemoryPressureMonitor';
-import { RuntimeStressHarness } from './domain/stress/RuntimeStressHarness';
-import { OperatorHudFormatter } from './domain/operator';
+import { createInterface } from 'node:readline/promises';
+import { stdin, stdout } from 'node:process';
+import { Server } from './infrastructure/http/Server';
+import { GeminiAdapter } from './infrastructure/adapters/GeminiAdapter';
+import { config } from './config';
 
 async function bootstrap() {
+    console.clear();
+    console.log('======================================');
+    console.log('🚀 BOOTING RL.SYS INSTITUTIONAL CORE...');
+    console.log('======================================');
 
-  const repo = new JsonLinesReplayRepository('./data/replay.jsonl');
+    // Composition Root
+    const replayRepository = new JsonLinesReplayRepository('data/replay');
+    const kernel = new RuntimeKernel(replayRepository);
+    const shutdownCoordinator = new RuntimeShutdownCoordinator(kernel);
+    
+    // HTTP API Server
+    const gemini = new GeminiAdapter(config.geminiApiKey || process.env.GEMINI_API_KEY || '');
+    const port = parseInt('3001', 10);
+    const server = new Server(port, '0.0.0.0', gemini);
+    server.start();
 
-  const kernel = new RuntimeKernel(
-    repo,
-    new RuntimeStateTransitionGate(),
-    new RuntimeMemoryPressureMonitor(),
-    new RuntimeStressSampler(),
-    new RuntimeStressHarness(),
-    new RuntimeHudTelemetryComposer(),
-    new OperatorHudFormatter(),
-    new TrueEventLoopLagMonitor()
-  );
+    // Signal handling
+    process.on('SIGINT', async () => {
+        await server.stop();
+        shutdownCoordinator.shutdown('SIGINT');
+        console.log('RL.SYS CORE shutdown completed.');
+        process.exit(0);
+    });
+    process.on('SIGTERM', async () => {
+        await server.stop();
+        shutdownCoordinator.shutdown('SIGTERM');
+        console.log('RL.SYS CORE shutdown completed.');
+        process.exit(0);
+    });
+    process.on('uncaughtException', (err) => { 
+        console.error('FATAL UNCAUGHT:', err); 
+        process.exit(1); 
+    });
+    process.on('unhandledRejection', (err) => { 
+        console.error('FATAL UNHANDLED:', err); 
+        process.exit(1); 
+    });
 
-  const shutdown = new RuntimeShutdownCoordinator(kernel);
-
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-
-  console.log('rlsys> CORE INITIALIZED');
-
-  while (true) {
-    const input = await rl.question('rlsys> ');
-    const cmd = input.trim().toUpperCase();
-
-    if (cmd === 'STATUS' || cmd === 'S') {
-      console.log({ session: kernel.getSessionId?.() ?? 'unknown' });
-      continue;
-    }
-
-    if (cmd === 'QUIT' || cmd === 'EXIT') {
-      console.log('Shutting down...');
-
-      shutdown.shutdown('OPERATOR_QUIT');
-
-      rl.close();
-      process.exit(0);
-    }
-
-    console.log(`Unknown command: ${cmd}`);
-  }
+    console.log('🚀 RL.SYS CORE active and listening on port 3001.');
 }
 
 bootstrap().catch(err => {
-  console.error('[FATAL]', err);
-  process.exit(1);
+    console.error('[FATAL BOOT ERROR]', err);
+    process.exit(1);
 });

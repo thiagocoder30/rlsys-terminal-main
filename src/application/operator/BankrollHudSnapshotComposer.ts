@@ -1,5 +1,5 @@
 import { OperatorRiskProfile } from '../../domain/risk';
-import { RuntimeRiskDecisionResult } from '../runtime';
+import { RuntimeRiskDecisionResult } from '../runtime/RuntimeRiskDecisionGateway';
 
 export interface BankrollHudSnapshotInput {
   readonly profile: OperatorRiskProfile;

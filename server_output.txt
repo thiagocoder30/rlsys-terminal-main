@@ -1,0 +1,4 @@
+
+> rl-sys-core@2.9.0 start:server
+> ts-node src/main.ts
+

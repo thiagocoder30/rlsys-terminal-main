@@ -1,0 +1,11 @@
+    public getStrategyEvolution = (req: Request, res: Response) => {
+        const sessionId = (req.query.sessionId as string) || "SESSION-000";
+        const snapshot = this.runtime.evolutionGovernanceService.getStrategyEvolution(sessionId);
+        res.status(200).json(snapshot);
+    }
+
+    public getStrategyEvolutionHistory = (req: Request, res: Response) => {
+        const sessionId = (req.query.sessionId as string) || "SESSION-000";
+        const history = this.runtime.evolutionGovernanceService.getStrategyEvolutionHistory(sessionId);
+        res.status(200).json(history);
+    }

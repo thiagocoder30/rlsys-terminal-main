@@ -1,0 +1,8 @@
+--- pwa-terminal/src/core/dto.ts
++++ pwa-terminal/src/core/dto.ts
+@@ -62,4 +62,5 @@
+     approvedStake: number;
+     consensus: ConsensusDTO;
+     confidence: number;
++    recommendation?: OperationalDecisionDTO;
+ }

@@ -1,0 +1,6 @@
+{
+  "name": "RL.SYS CORE Terminal",
+  "description": "Institutional Quantitative Engine and Operator Terminal v5.x",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,8 +1,0 @@
-{
-  "convergenceThreshold": 69,
-  "coherenceWeight": 26,
-  "riskPenalty": 30,
-  "lastDelta": 1,
-  "stabilityMode": "NORMAL",
-  "lastDriftScore": 0
-}

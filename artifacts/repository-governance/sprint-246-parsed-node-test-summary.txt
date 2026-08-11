@@ -1,3 +1,0 @@
-GlobalTestTotal=1334
-GlobalTestPass=1334
-GlobalTestFail=0

@@ -3,104 +3,83 @@ import * as fs from 'node:fs';
 import * as path from 'path';
 import { IBankrollRepository } from '../../domain/interfaces/IBankrollRepository';
 import { IAnalyticsEngine } from '../../domain/interfaces/IAnalyticsEngine';
-import { PositionSizingEngine } from '../../domain/risk/PositionSizingEngine';
-import { StrategyPerformanceEvaluator } from '../../domain/risk/StrategyPerformanceEvaluator';
-
-const { DynamicEmotionalCooldownGuard } = require('../../domain/risk/DynamicEmotionalCooldownGuard.js');
-const { AutoSettlementEngine } = require('../../domain/financial/AutoSettlementEngine.js');
-
-import { RuntimeEventBus } from '../../application/runtime/RuntimeEventBus';
-import { HFTPipelineCoordinator } from '../../application/coordinators/HFTPipelineCoordinator';
-import { InstitutionalStrategyAllocationEngine } from '../../domain/decision/InstitutionalStrategyAllocationEngine';
 
 export class LivePaperOrchestrator {
     private rl: readline.Interface;
     private bankrollRepo: IBankrollRepository;
     private mesaTracker: IAnalyticsEngine;
-    private sizingEngine: PositionSizingEngine;
-    private performanceEvaluator: StrategyPerformanceEvaluator;
-    private eventBus: RuntimeEventBus;
-    private hftPipeline: HFTPipelineCoordinator;
-    private allocationEngine: InstitutionalStrategyAllocationEngine;
     
     private initialBankroll: number = 100.00;
-    private savedState: any;
+    private currentBankroll: number = 100.00;
+    private peakBankroll: number = 100.00;
+    private lowestDip: number = 100.00;
+    private macroBaseline: number = 50.00;
+    
+    private sessionWins: number = 0;
+    private sessionLosses: number = 0;
+    
     private activeStrategyId: string | null = null;
     private inputMode: string = 'NUMBER';
+    private systemLocked: boolean = false;
     
-    private liveConvergence: number = 0;
-    private liveConfidence: number = 0;
-    private liveExecutionPressure: string = 'N/A';
+    private provider: 'PRAGMATIC' | 'EVOLUTION' = 'PRAGMATIC';
     
     private xaiQualification: string = 'NÃO';
     private xaiMoment: string = 'AGORA NÃO';
     private xaiReason: string = 'Aguardando dados estruturais da mesa.';
+    private xaiApplicationText: string = 'Nenhuma ficha na mesa.';
+    private preSpinImpactText: string = '';
     
     private currentVixPercent: number = 0;
-    private vixHistory: number[] = [];
     private dynamicVixTolerance: number = 95.0;
     
     private disabledStrategies: Set<string> = new Set();
-    private cooldownGuard: any;
     
     private dynamicStakeCalculated: number = 0.00;
-    private localHistoryCache: number[] = [];
-    
     private shadowWeights: Record<string, number> = {};
     private shadowPnL: Record<string, number> = {};
-    private takeProfitM3: number = 0;
-    private hardStopLoss: number = 0;
-    
-    private lastRecommendedStrategy: string | null = null;
-    private lastRecommendedStake: number = 0;
-    private lastQualification: string = 'NÃO';
+
     private lastActionTakenText: string = 'Aguardando início de operações.';
     
-    private sessionLogs: string[] = ["Timestamp,Spin,Estrategia_Indicada,Stake,Momento,Resultado_R$,Banca_Atual,VIX_Atual"];
-    private readonly OPERATIONAL_WINDOW_SIZE = 90; 
+    private activeBet: { strategyId: string, stake: number, chipMin: number, multiplier: number } | null = null;
+
+    private readonly STRATEGY_ZONES: Record<string, number[]> = {
+        'ZONE_TIERS': [5, 8, 10, 11, 13, 16, 23, 24, 27, 30, 33, 36],
+        'ZONE_VOISINS': [22, 18, 29, 7, 28, 12, 35, 3, 26, 0, 32, 15, 19, 4, 21, 2, 25],
+        'ZONE_ORPHELINS': [1, 20, 14, 31, 9, 22, 17, 34],
+        'DYNAMIC_NEIGHBORS': [],
+        'FUSION_REDUZIDA': [17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31],
+        'PATTERN_FRANCESA': [31,9,22,18,29,7,28,12,35,3,26,25,17,34,6,27,13,36,11,30,8,23],
+        'ZONE_P2': [0,1,2,5,6,8,9,10,12,13,14,16,17,19,20,23,24,26,27,28,30,31,32,34,35],
+        'SECTOR_POTINHO': [26,3,35,12,28,0,32,15,19,4,21,11,30,8,23,10,5,24,16,33,1,20],
+        'SECTOR_VIZINHOS_1_21': [10,5,24,16,33,1,20,14,31,9,22,32,15,19,4,21,2,25,17,34,6],
+        'CROSS_GRID_1_2': [1,4,7,10,13,16,19,22,25,28,31,34, 2,5,8,11,14,17,20,23,26,29,32,35],
+        'CROSS_GRID_1_3': [1,4,7,10,13,16,19,22,25,28,31,34, 3,6,9,12,15,18,21,24,27,30,33,36],
+        'CROSS_GRID_2_3': [2,5,8,11,14,17,20,23,26,29,32,35, 3,6,9,12,15,18,21,24,27,30,33,36],
+        'CROSS_DOZEN_1_2': [1,2,3,4,5,6,7,8,9,10,11,12, 13,14,15,16,17,18,19,20,21,22,23,24],
+        'CROSS_DOZEN_1_3': [1,2,3,4,5,6,7,8,9,10,11,12, 25,26,27,28,29,30,31,32,33,34,35,36],
+        'CROSS_DOZEN_2_3': [13,14,15,16,17,18,19,20,21,22,23,24, 25,26,27,28,29,30,31,32,33,34,35,36]
+    };
+
+    private readonly WHEEL_ORDER = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
 
     constructor(bankrollRepo: IBankrollRepository, mesaTracker: IAnalyticsEngine) {
         this.bankrollRepo = bankrollRepo;
         this.mesaTracker = mesaTracker;
-        this.sizingEngine = new PositionSizingEngine();
-        const availableStrategies = Object.keys(AutoSettlementEngine.getStrategies());
-        this.performanceEvaluator = new StrategyPerformanceEvaluator(availableStrategies);
         this.rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-        this.eventBus = new RuntimeEventBus(250);
-        this.hftPipeline = new HFTPipelineCoordinator(this.eventBus, 85);
-        this.allocationEngine = new InstitutionalStrategyAllocationEngine(15);
     }
 
     public async initialize(): Promise<void> {
-        const lockPath = path.join(process.cwd(), 'data', '.rlsys-lock');
-        if (fs.existsSync(lockPath)) {
-            try {
-                const lockData = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
-                if (Date.now() < lockData.unlockTime) {
-                    const unlockDate = new Date(lockData.unlockTime).toLocaleString('pt-BR');
-                    console.clear();
-                    console.log('\x1b[31m======================================================');
-                    console.log(' [ACESSO NEGADO] COOLDOWN INSTITUCIONAL ATIVO');
-                    console.log('======================================================\x1b[0m');
-                    console.log(` Motivo: ${lockData.reason === 'STOP_LOSS' ? 'Limite de Perda Diário Atingido.' : 'Meta de Lucro Atingida.'}`);
-                    console.log(` Volte em: \x1b[33m${unlockDate}\x1b[0m`);
-                    console.log('======================================================');
-                    process.exit(0);
-                } else { fs.unlinkSync(lockPath); }
-            } catch (e) {}
+        const savedState = this.bankrollRepo.load() || {};
+        if (savedState.initialBankroll) {
+            this.initialBankroll = savedState.initialBankroll;
+            this.currentBankroll = savedState.initialBankroll;
+            this.peakBankroll = savedState.initialBankroll;
+            this.lowestDip = savedState.initialBankroll;
         }
-
-        this.savedState = this.bankrollRepo.load();
-        if (this.savedState && this.savedState.initialBankroll) {
-            this.initialBankroll = this.savedState.initialBankroll;
-        }
-        this.cooldownGuard = new DynamicEmotionalCooldownGuard(this.initialBankroll, this.savedState);
+        if (savedState.macroBaseline) this.macroBaseline = savedState.macroBaseline;
         
-        const totalTargetGain = this.cooldownGuard.nextMilestone - this.initialBankroll;
-        this.takeProfitM3 = this.initialBankroll + (totalTargetGain * 0.75);
-        this.hardStopLoss = this.initialBankroll * 0.85; 
-        
-        Object.keys(AutoSettlementEngine.getStrategies()).forEach(id => {
+        Object.keys(this.STRATEGY_ZONES).forEach(id => {
             this.shadowWeights[id] = 1.0;
             this.shadowPnL[id] = 0.0;
         });
@@ -109,26 +88,228 @@ export class LivePaperOrchestrator {
         this.attachEventListeners();
     }
 
-    private exportTelemetry(reason: string): void {
-        const filepath = path.join(process.cwd(), 'data', `session-telemetry-${Date.now()}.csv`);
-        this.sessionLogs.push(`---,---,---,SESSÃO ENCERRADA,---,MOTIVO:,${reason},---`);
-        try {
-            fs.writeFileSync(filepath, this.sessionLogs.join('\n'));
-            console.log(`\n\x1b[36m[TELEMETRIA] Log exportado: ${filepath}\x1b[0m`);
-        } catch (e) {}
+    private getDynamicNeighbors(lastNum: number): number[] {
+        if (lastNum === -1) return [];
+        const idx = this.WHEEL_ORDER.indexOf(lastNum);
+        if (idx === -1) return [];
+        const len = this.WHEEL_ORDER.length;
+        return [
+            this.WHEEL_ORDER[(idx - 2 + len) % len],
+            this.WHEEL_ORDER[(idx - 1 + len) % len],
+            this.WHEEL_ORDER[idx],
+            this.WHEEL_ORDER[(idx + 1) % len],
+            this.WHEEL_ORDER[(idx + 2) % len]
+        ];
+    }
+
+    private getZone(stratId: string, lastNum: number): number[] {
+        if (stratId === 'DYNAMIC_NEIGHBORS') return this.getDynamicNeighbors(lastNum);
+        return this.STRATEGY_ZONES[stratId] || [];
     }
 
     private formatNumberColor(num: number): string {
         if (num === 0) return `\x1b[32m0\x1b[0m`;
-        const REDS = new Set(AutoSettlementEngine.RED_NUMS);
+        const REDS = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
         if (REDS.has(num)) return `\x1b[31m${num}\x1b[0m`;
         return `\x1b[90m${num}\x1b[0m`;
     }
 
-    private renderTimeline(count: number): string {
-        const history = this.mesaTracker.getHistory().slice(-count);
-        if (history.length === 0) return '\x1b[90mVazia\x1b[0m';
-        return history.map(n => this.formatNumberColor(n)).join(' - ');
+    private getFinancials(strat: string, num: number, isWin: boolean, minChip: number, mult: number): { cost: number, pnl: number } {
+        let cost = 0;
+        let payout = 0;
+
+        if (strat === 'ZONE_TIERS') {
+            cost = 6 * minChip * mult;
+            payout = isWin ? (18 * minChip * mult) : 0;
+        } else if (strat === 'ZONE_VOISINS') {
+            cost = 9 * minChip * mult;
+            if (isWin) {
+                if ([0, 2, 3].includes(num)) payout = 24 * minChip * mult;
+                else payout = 18 * minChip * mult;
+            }
+        } else if (strat === 'ZONE_ORPHELINS') {
+            cost = 5 * minChip * mult;
+            if (isWin) {
+                if ([1, 17].includes(num)) payout = 36 * minChip * mult;
+                else payout = 18 * minChip * mult;
+            }
+        } else if (strat.startsWith('CROSS_GRID') || strat.startsWith('CROSS_DOZEN')) {
+            cost = 2 * minChip * mult;
+            payout = isWin ? (3 * minChip * mult) : 0;
+        } else if (strat === 'DYNAMIC_NEIGHBORS') {
+            cost = 5 * minChip * mult;
+            payout = isWin ? (36 * minChip * mult) : 0;
+        } else {
+            const zoneList = this.STRATEGY_ZONES[strat] || [];
+            cost = zoneList.length * minChip * mult;
+            payout = isWin ? (36 * minChip * mult) : 0;
+        }
+
+        return { cost, pnl: payout - cost };
+    }
+
+    private renderTerminalHud(): void {
+        console.clear();
+        
+        const m1 = this.macroBaseline * 2;
+        const currentTarget = m1;
+        const prevTarget = this.macroBaseline;
+        
+        const macroProg = Math.max(0, this.currentBankroll - prevTarget);
+        const range = currentTarget - prevTarget;
+        let macroPct = range > 0 ? (macroProg / range) * 100 : 100;
+        if (macroPct > 100) macroPct = 100;
+        
+        const pBar = Math.floor(macroPct / 10);
+        const barStr = '█'.repeat(pBar) + '░'.repeat(10 - pBar);
+
+        const trailingStopLoss = this.peakBankroll * 0.85;
+        const sessionTakeProfit = this.initialBankroll * 1.20;
+
+        console.log('\x1b[36m======================================================\x1b[0m');
+        console.log(' RL.SYS CORE - TACTICAL ORCHESTRATOR [V5.21b]');
+        console.log('\x1b[36m======================================================\x1b[0m');
+        const minChip = this.provider === 'PRAGMATIC' ? 0.10 : 0.50;
+        console.log(` MESA / PROVEDOR . ${this.provider} (Ficha Mín: R$ ${minChip.toFixed(2)})`);
+        console.log(` BANCA ATUAL ..... \x1b[33mR$ ${this.currentBankroll.toFixed(2)}\x1b[0m`);
+        console.log(` STOP LOSS (15%).. \x1b[31mR$ ${trailingStopLoss.toFixed(2)}\x1b[0m (Trailing Peak: \x1b[32mR$ ${this.peakBankroll.toFixed(2)}\x1b[0m)`);
+        console.log(` TAKE PROFIT (20%) \x1b[32mR$ ${sessionTakeProfit.toFixed(2)}\x1b[0m`);
+        console.log(` ENTROPIA (VIX) .. ${this.currentVixPercent.toFixed(1)}% (Tol. Dinâmica: ${this.dynamicVixTolerance.toFixed(1)}%)`);
+        console.log('\x1b[90m------------------------------------------------------\x1b[0m');
+        const hist = this.mesaTracker.getHistory().slice(-15);
+        console.log(` TIMELINE ........ ${hist.length === 0 ? '\x1b[90mVazia\x1b[0m' : hist.map(n => this.formatNumberColor(n)).join(' - ')}`);
+        console.log('\x1b[90m------------------------------------------------------\x1b[0m');
+        
+        let qColor = '\x1b[31m';
+        if (this.xaiQualification === 'SIM') qColor = '\x1b[32m';
+        if (this.xaiQualification.includes('BLOQUEADO') || this.xaiQualification.includes('VETADO')) qColor = '\x1b[41m\x1b[37m'; 
+        
+        const sColor = this.dynamicStakeCalculated > 0 ? '\x1b[33m' : '\x1b[90m';
+
+        console.log(` Estratégia ... ${this.activeStrategyId || 'Nenhuma'}`);
+        console.log(` Qualificação . ${qColor}${this.xaiQualification}\x1b[0m`);
+        console.log(` STAKE GLOBAL . ${sColor}R$ ${this.dynamicStakeCalculated.toFixed(2)}\x1b[0m`);
+        console.log(` APLICAÇÃO .... ${this.xaiApplicationText}`);
+        if (this.preSpinImpactText !== '') console.log(` CENÁRIO (SIM)  ${this.preSpinImpactText}`);
+        console.log(` Motivo ....... ${this.xaiReason}`);
+        console.log('\x1b[90m------------------------------------------------------\x1b[0m');
+        console.log(` Registro ..... ${this.lastActionTakenText}`);
+        console.log('\x1b[36m======================================================\x1b[0m');
+        
+        if (this.systemLocked) this.rl.setPrompt('\x1b[31m[CIRCUIT BREAKER] Digite "stats" ou "exit" > \x1b[0m');
+        else this.rl.setPrompt('\x1b[36mInsira o Giro (Ex: 15 ou p15 p/ Pular) > \x1b[0m');
+        
+        this.rl.prompt(true);
+    }
+
+    private resolveFinancials(drawnNumber: number) {
+        if (!this.activeBet) return; 
+        
+        const strat = this.activeBet.strategyId;
+        const history = this.mesaTracker.getHistory();
+        const lastNum = history.length > 0 ? history[history.length - 1] : -1;
+        const zoneList = this.getZone(strat, lastNum);
+        const zone = new Set(zoneList);
+        const isWin = zone.has(drawnNumber);
+        
+        const { pnl } = this.getFinancials(strat, drawnNumber, isWin, this.activeBet.chipMin, this.activeBet.multiplier);
+        
+        this.currentBankroll += pnl;
+        if (pnl > 0) this.sessionWins++; else this.sessionLosses++;
+        if (this.currentBankroll > this.peakBankroll) this.peakBankroll = this.currentBankroll;
+        if (this.currentBankroll < this.lowestDip) this.lowestDip = this.currentBankroll;
+
+        const color = pnl > 0 ? '\x1b[32m' : '\x1b[31m';
+        const resultText = pnl > 0 ? `WIN (+R$ ${pnl.toFixed(2)})` : `LOSS (-R$ ${Math.abs(pnl).toFixed(2)})`;
+        this.lastActionTakenText = `${color}[LIQUIDAÇÃO] ${resultText} na ${strat}\x1b[0m`;
+        this.activeBet = null; 
+    }
+
+    private evaluateShadowTrading(drawnNumber: number) {
+        const minChip = this.provider === 'PRAGMATIC' ? 0.10 : 0.50;
+        const history = this.mesaTracker.getHistory();
+        const lastNum = history.length > 0 ? history[history.length - 1] : -1;
+        
+        for (const strat of Object.keys(this.STRATEGY_ZONES)) {
+            if (this.disabledStrategies.has(strat)) continue;
+            
+            if (strat === 'PATTERN_FRANCESA' && lastNum !== 28 && lastNum !== 29) continue;
+            
+            const zoneList = this.getZone(strat, lastNum);
+            if (zoneList.length === 0) continue;
+            
+            const isWin = new Set(zoneList).has(drawnNumber);
+            const { pnl } = this.getFinancials(strat, drawnNumber, isWin, minChip, 1);
+            
+            this.shadowPnL[strat] = (this.shadowPnL[strat] || 0) + pnl;
+            
+            if (pnl > 0) this.shadowWeights[strat] = Math.min(3.0, (this.shadowWeights[strat] || 1.0) + 0.15);
+            else this.shadowWeights[strat] = Math.max(0.1, (this.shadowWeights[strat] || 1.0) - 0.20);
+        }
+    }
+
+    private calculateSizing(strategyId: string, minChip: number, weight: number, lastNum: number): { total: number, desc: string, multiplier: number, isSafe: boolean, cost: number, safeLimit: number } {
+        const MAX_RISK_PCT = 0.05; 
+        const safeLimit = this.currentBankroll * MAX_RISK_PCT;
+        
+        let baseUnits = 0;
+        if (strategyId.startsWith('CROSS_')) baseUnits = 2;
+        else if (strategyId === 'ZONE_TIERS') baseUnits = 6;
+        else if (strategyId === 'ZONE_VOISINS') baseUnits = 9;
+        else if (strategyId === 'ZONE_ORPHELINS') baseUnits = 5;
+        else if (strategyId === 'DYNAMIC_NEIGHBORS') baseUnits = 5;
+        else baseUnits = this.getZone(strategyId, lastNum).length;
+
+        const baseCost = baseUnits * minChip;
+        if (baseCost > safeLimit || baseUnits === 0) {
+            return { total: 0, desc: `Risco extremo ou alvo inválido.`, multiplier: 0, isSafe: false, cost: baseCost, safeLimit };
+        }
+
+        const kellyFraction = Math.max(0.01, weight / 100);
+        let targetStake = this.currentBankroll * kellyFraction;
+        if (targetStake > safeLimit) targetStake = safeLimit;
+
+        let multiplier = Math.floor(targetStake / baseCost);
+        if (multiplier < 1) multiplier = 1; 
+
+        const totalCost = baseCost * multiplier;
+        const uCost = (minChip * multiplier).toFixed(2);
+
+        let desc = '';
+        if (strategyId === 'ZONE_TIERS') desc = `\x1b[32m6 Splits no Tiers (R$ ${uCost}/cada)\x1b[0m`;
+        else if (strategyId === 'ZONE_VOISINS') desc = `\x1b[32mVizinhos do Zero (R$ ${uCost}/ficha. Total 9 fichas)\x1b[0m`;
+        else if (strategyId === 'ZONE_ORPHELINS') desc = `\x1b[32mNúmeros Órfãos (R$ ${uCost}/ficha. Total 5 fichas)\x1b[0m`;
+        else if (strategyId.startsWith('CROSS_')) desc = `\x1b[32mDuas Zonas Externas (R$ ${uCost}/cada)\x1b[0m`;
+        else desc = `\x1b[32mCobertura Plena: ${baseUnits} fichas (R$ ${uCost}/cada)\x1b[0m`;
+
+        return { total: totalCost, desc, multiplier, isSafe: true, cost: baseCost, safeLimit };
+    }
+
+    private showDashboard(): void {
+        console.clear();
+        const totalPlays = this.sessionWins + this.sessionLosses;
+        const netPnL = this.currentBankroll - this.initialBankroll;
+        const targetProfit = this.initialBankroll * 0.20;
+        const progressToGoal = targetProfit > 0 ? (netPnL / targetProfit) * 100 : 0;
+        
+        const spinsPerMin = 3;
+        const avgPnLPerSpin = totalPlays > 0 ? (netPnL / totalPlays) : 0;
+        const pnlPerMin = avgPnLPerSpin * spinsPerMin;
+
+        console.log('======================================================');
+        console.log(' 📈 RL.SYS CORE - PAINEL DE PERFORMANCE ESTATÍSTICA');
+        console.log('======================================================');
+        const colorProg = progressToGoal >= 0 ? '\x1b[32m' : '\x1b[31m';
+        console.log(` Progresso Meta (20%): ${colorProg}${progressToGoal.toFixed(1)}%\x1b[0m`);
+        const colorSpeed = pnlPerMin >= 0 ? '\x1b[32m' : '\x1b[31m';
+        console.log(` Velocidade Real ....: ${colorSpeed}R$ ${pnlPerMin.toFixed(2)} / minuto\x1b[0m`);
+        console.log('\n --- MÉTRICAS DE EFICIÊNCIA ---');
+        console.log(` Retorno Médio/Aposta: R$ ${avgPnLPerSpin.toFixed(2)}`);
+        const eff = totalPlays > 0 ? (this.sessionWins / totalPlays) * 100 : 0;
+        console.log(` Eficiência de Sessão: ${eff.toFixed(1)}%`);
+        console.log('======================================================');
+        console.log('Pressione ENTER para retornar ao HUD...');
+        this.inputMode = 'VIEW_ONLY';
     }
 
     private attachEventListeners(): void {
@@ -140,537 +321,354 @@ export class LivePaperOrchestrator {
                 this.renderTerminalHud();
                 return;
             }
+            if (cmd === '') { this.renderTerminalHud(); return; }
 
-            if (cmd.startsWith('sync ')) {
-                const sequence = cmd.replace('sync ', '').trim();
-                const nums = sequence.split(',').map(n => parseInt(n.trim(), 10));
-                nums.forEach(n => {
-                    if (!isNaN(n) && n >= 0 && n <= 36) {
-                        this.mesaTracker.addNumber(n);
-                        this.localHistoryCache.push(n);
-                        this.processShadowTrading(n);
-                    }
-                });
-                this.lastActionTakenText = '\x1b[36mSincronização de Warmup concluída.\x1b[0m';
-                this.generateNextTrade();
-                return;
+            if (this.systemLocked && !['stats', 'journey', 'weights', 'audit', 'why', 'exit', 'quit', 'dashboard'].includes(cmd) && !cmd.startsWith('backtest')) {
+                this.lastActionTakenText = "\x1b[31m[ERRO] Sistema travado pelo Circuit Breaker.\x1b[0m";
+                this.renderTerminalHud(); return;
+            }
+
+            if (cmd === 'exit' || cmd === 'quit') { 
+                console.log('\n\x1b[33m[SISTEMA] Encerrando terminal...\x1b[0m');
+                this.rl.close(); process.exit(0); 
             }
             
-            if (cmd === 'stats') {
-                console.clear();
-                const history = this.mesaTracker.getHistory();
-                const total = history.length;
-                console.log('======================================================');
-                console.log(' 📊 ESTATÍSTICAS DA MESA & HEATMAP');
-                console.log('======================================================');
-                
-                if (total === 0) {
-                    console.log(' \x1b[31mNenhum histórico registrado ainda.\x1b[0m');
-                } else {
-                    const REDS = new Set(AutoSettlementEngine.RED_NUMS);
-                    let redC = 0, blackC = 0, zeroC = 0, evenC = 0, oddC = 0;
-                    const freqs = new Array(37).fill(0);
-                    
-                    history.forEach(n => {
-                        freqs[n]++;
-                        if (n === 0) zeroC++;
-                        else {
-                            if (REDS.has(n)) redC++; else blackC++;
-                            if (n % 2 === 0) evenC++; else oddC++;
-                        }
-                    });
-
-                    const pct = (val: number) => ((val / total) * 100).toFixed(1) + '%';
-                    
-                    console.log(` Giros Analisados : ${total}`);
-                    console.log(` Timeline (20)    : ${this.renderTimeline(20)}`);
-                    console.log('------------------------------------------------------');
-                    console.log(` \x1b[31mVERMELHO\x1b[0m : ${pct(redC)}  |  \x1b[90mPRETO\x1b[0m : ${pct(blackC)}  |  \x1b[32mVERDE\x1b[0m : ${pct(zeroC)}`);
-                    console.log(` PARES    : ${pct(evenC)}  |  ÍMPARES : ${pct(oddC)}`);
-                    console.log('------------------------------------------------------');
-                    console.log(' 🔥 HEATMAP DO PANO (Quente/Frio)');
-                    
-                    const maxFreq = Math.max(...freqs) || 1;
-                    const formatCell = (n: number) => {
-                        const f = freqs[n];
-                        const str = n.toString().padStart(2, ' ');
-                        if (f === 0) return `\x1b[90m[${str}]\x1b[0m`; 
-                        if (f < maxFreq * 0.4) return `\x1b[36m[${str}]\x1b[0m`; 
-                        if (f < maxFreq * 0.8) return `\x1b[33m[${str}]\x1b[0m`; 
-                        return `\x1b[31m[${str}]\x1b[0m`; 
-                    };
-
-                    let row3 = "", row2 = "", row1 = "";
-                    for (let i = 1; i <= 36; i++) {
-                        if (i % 3 === 0) row3 += formatCell(i) + " ";
-                        else if (i % 3 === 2) row2 += formatCell(i) + " ";
-                        else row1 += formatCell(i) + " ";
-                    }
-                    console.log(`       ${row3}`);
-                    console.log(` ${formatCell(0)}   ${row2}`);
-                    console.log(`       ${row1}`);
-                    console.log('\n \x1b[90m[Cinza: 0 hits | Ciano: Frio | Amarelo: Morno | Vermelho: Quente]\x1b[0m');
-                }
-                
-                console.log('======================================================');
-                console.log('Pressione ENTER para retornar ao HUD...');
-                this.inputMode = 'VIEW_ONLY';
-                return;
-            }
-
-            if (cmd.startsWith('calibrate ')) {
-                const targetFile = line.replace(/calibrate\s+/i, '').trim();
-                console.clear();
-                console.log('======================================================');
-                console.log(' 📡 MOTOR DE CALIBRAÇÃO DE PESOS (PRIOR KNOWLEDGE)');
-                console.log('======================================================');
-                try {
-                    const rawContent = fs.readFileSync(path.resolve(process.cwd(), targetFile), 'utf8');
-                    const redMatch = /"type"\s*:\s*"Red"\s*,\s*"count"\s*:\s*\d+\s*,\s*"percentage"\s*:\s*([\d.]+)/i.exec(rawContent);
-                    const blackMatch = /"type"\s*:\s*"Black"\s*,\s*"count"\s*:\s*\d+\s*,\s*"percentage"\s*:\s*([\d.]+)/i.exec(rawContent);
-                    
-                    if (redMatch && blackMatch) {
-                        const redPct = parseFloat(redMatch[1]);
-                        const blackPct = parseFloat(blackMatch[1]);
-                        console.log(` Leitura Macro: VERMELHO ${redPct.toFixed(1)}% | PRETO ${blackPct.toFixed(1)}%`);
-                        
-                        if (redPct > 49.5) this.shadowWeights['TRIPLICACAO_RED'] = 1.30;
-                        else if (redPct < 47.5) this.shadowWeights['TRIPLICACAO_RED'] = 0.70;
-                        
-                        if (blackPct > 49.5) this.shadowWeights['TRIPLICACAO_BLACK'] = 1.30;
-                        else if (blackPct < 47.5) this.shadowWeights['TRIPLICACAO_BLACK'] = 0.70;
-
-                        console.log(`\x1b[32m [!] Pesos calibrados com sucesso.\x1b[0m`);
-                        this.lastActionTakenText = '\x1b[36mPesos calibrados via Macro-JSON.\x1b[0m';
-                    } else {
-                        console.log('\x1b[31m[ERRO] Arquivo sem estrutura "colorStats".\x1b[0m');
-                    }
-                } catch (e) {
-                    console.log(`\x1b[31m[ERRO] Falha ao ler arquivo: ${targetFile}\x1b[0m`);
-                }
-                console.log('======================================================');
-                console.log('Pressione ENTER para retornar...');
-                this.inputMode = 'VIEW_ONLY';
-                return;
-            }
-
-            if (cmd.startsWith('clean ')) {
-                const targetFile = line.replace(/clean\s+/i, '').trim();
-                console.clear();
-                console.log('======================================================');
-                console.log(' 🧹 MOTOR DE EXTRAÇÃO JSON MASTER');
-                console.log('======================================================');
-                try {
-                    const rawContent = fs.readFileSync(path.resolve(process.cwd(), targetFile), 'utf8');
-                    let validSpins: number[] = [];
-                    const jsonRegex = /"(?:result|number|value|spin)"\s*:\s*(\d+)/gi;
-                    let match;
-                    let foundJson = false;
-                    
-                    while ((match = jsonRegex.exec(rawContent)) !== null) {
-                        foundJson = true;
-                        const num = parseInt(match[1], 10);
-                        if (num >= 0 && num <= 36) validSpins.push(num);
-                    }
-                    
-                    if (!foundJson) {
-                        const lines = rawContent.split(/\r?\n/);
-                        lines.forEach(line => {
-                            const cleanLine = line.trim();
-                            if (/^\d{1,2}$/.test(cleanLine)) {
-                                const num = parseInt(cleanLine, 10);
-                                if (num >= 0 && num <= 36) validSpins.push(num);
-                            }
-                        });
-                    }
-                    
-                    if (validSpins.length > 0) {
-                        validSpins.reverse();
-                        const outPath = path.join(process.cwd(), 'data', 'fita_limpa.txt');
-                        fs.writeFileSync(outPath, validSpins.join(','));
-                        console.log(`\x1b[32m[SUCESSO] ${validSpins.length} giros extraídos e invertidos!\x1b[0m`);
-                        console.log(` Salvo em: \x1b[36m${outPath}\x1b[0m`);
-                    } else {
-                        console.log('\x1b[31m[ERRO] Nenhum giro válido encontrado.\x1b[0m');
-                    }
-                } catch (e) {
-                    console.log(`\x1b[31m[ERRO] Falha ao ler arquivo.\x1b[0m`);
-                }
-                console.log('======================================================');
-                console.log('Pressione ENTER para retornar...');
-                this.inputMode = 'VIEW_ONLY';
-                return;
-            }
-
-            if (cmd.startsWith('backtest ')) {
-                const input = line.replace(/backtest\s+/i, '').trim();
-                let backtestSequence: number[] = [];
-                
-                try {
-                    let content = '';
-                    if (input.includes('.txt') || input.includes('.csv')) {
-                        content = fs.readFileSync(path.resolve(process.cwd(), input), 'utf8');
-                    } else {
-                        content = input;
-                    }
-                    backtestSequence = content.split(/[\n,]/).map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
-                } catch (e) {
-                    console.clear();
-                    console.log(`\x1b[31m[ERRO] Falha no arquivo de backtest.\x1b[0m`);
-                    this.inputMode = 'VIEW_ONLY';
-                    return;
-                }
-
-                console.clear();
-                console.log('======================================================');
-                console.log(' 🔬 MOTOR DE BACKTEST & SIMULAÇÃO INSTITUCIONAL');
-                console.log('======================================================');
-                console.log(` Processando ${backtestSequence.length} giros...`);
-                
-                let simBankroll = this.cooldownGuard.currentBankroll;
-                let peak = simBankroll;
-                let trough = simBankroll;
-                let wins = 0; let losses = 0;
-                
-                const REDS = new Set(AutoSettlementEngine.RED_NUMS);
-                backtestSequence.forEach(n => {
-                    const isWin = REDS.has(n) || n > 12; 
-                    if (isWin) {
-                        simBankroll += 0.50; wins++;
-                        if (simBankroll > peak) peak = simBankroll;
-                    } else {
-                        simBankroll -= 0.50; losses++;
-                        if (simBankroll < trough) trough = simBankroll;
-                    }
-                });
-                
-                const winRate = wins + losses > 0 ? (wins / (wins + losses)) * 100 : 0;
-                const maxDrawdown = peak - trough;
-                const pnl = simBankroll - this.cooldownGuard.currentBankroll;
-                const pnlColor = pnl >= 0 ? '\x1b[32m' : '\x1b[31m';
-                
-                console.log(` \n --- RELATÓRIO DE SIMULAÇÃO ---`);
-                console.log(` Win Rate Bruto  : ${winRate.toFixed(1)}% (${wins}W / ${losses}L)`);
-                console.log(` Max Drawdown    : -R$ ${maxDrawdown.toFixed(2)}`);
-                console.log(` PnL Projetado   : ${pnlColor}R$ ${pnl.toFixed(2)}\x1b[0m`);
-                console.log(` Banca Projetada : R$ ${simBankroll.toFixed(2)}`);
-                console.log('======================================================');
-                console.log('Pressione ENTER para retornar ao HUD...');
-                this.inputMode = 'VIEW_ONLY';
-                return;
-            }
-
-            if (cmd === 'weights') {
-                console.clear();
-                console.log('======================================================');
-                console.log(' ⚖️  RL.SYS CORE - SHADOW TRADING & RL WEIGHTS');
-                console.log('======================================================');
-                Object.entries(this.shadowWeights).forEach(([id, w]) => {
-                    const pnl = this.shadowPnL[id];
-                    const pnlColor = pnl >= 0 ? '\x1b[32m' : '\x1b[31m';
-                    const st = this.disabledStrategies.has(id) ? '\x1b[31m[OFF]\x1b[0m' : '\x1b[32m[ON]\x1b[0m';
-                    console.log(` Estratégia: ${id.padEnd(20)} | PnL Sombra: ${pnlColor}${pnl > 0 ? '+' : ''}${pnl.toFixed(1)}\x1b[0m | Peso RL: ${Number(w).toFixed(2)} | ${st}`);
-                });
-                console.log('======================================================');
-                console.log('Pressione ENTER para retornar ao HUD...');
-                this.inputMode = 'VIEW_ONLY';
-                return;
-            }
-
-            if (cmd === 'undo') {
-                if (this.localHistoryCache.length > 0) {
-                    this.localHistoryCache.pop();
-                    const internalHistory = (this.mesaTracker as any).history;
-                    if (internalHistory && Array.isArray(internalHistory)) internalHistory.pop();
-                    this.lastActionTakenText = '\x1b[33mÚltimo número removido da fita.\x1b[0m';
-                    this.generateNextTrade();
-                }
-                return;
-            }
-
             if (cmd === 'help') {
                 console.clear();
                 console.log('======================================================');
                 console.log(' 🧠 COMANDOS DE GOVERNANÇA TÁTICA');
                 console.log('======================================================');
-                console.log(' sync <n1,n2>         : Injeta fita histórica curta');
-                console.log(' stats                : Exibe Heatmap e Estatísticas da Mesa');
-                console.log(' clean <arquivo>      : Extrai giros válidos de JSON Web/API');
-                console.log(' calibrate <arquivo>  : Ajusta Pesos RL usando Estatística Macro');
-                console.log(' backtest <arquivo>   : Roda simulação de Monte Carlo estéril');
-                console.log(' undo                 : Remove último número');
+                console.log(' audit / why          : Painel XAI - Radiografia de Risco');
+                console.log(' dashboard            : Painel de Performance e ETA');
+                console.log(' provider <nome>      : Define mesa (pragmatic | evolution)');
+                console.log(' setbankroll <valor>  : Ajusta banca de combate e Trailing Peak');
+                console.log(' setmacro <valor>     : Define o Marco Zero da sua Jornada');
+                console.log(' journey              : Painel contábil de Milestones');
+                console.log(' sync <n1,n2>         : Injeta fita histórica no motor principal');
                 console.log(' weights              : Motor Shadow PnL e Pesos');
-                console.log(' exit / quit          : Encerra com salvamento e Telemetria');
+                console.log(' backtest <n1,n2>     : Simulação offline (não afeta o HUD)');
+                console.log(' stats                : Relatório de Win Rate e Sessão');
+                console.log(' enable <id>          : Liga um reator estratégico');
+                console.log(' disable <id>         : Desliga um reator estratégico');
+                console.log(' undo                 : Remove último número digitado');
+                console.log(' exit / quit          : Encerra e salva');
                 console.log('======================================================');
-                console.log('Pressione ENTER para retornar...');
-                this.inputMode = 'VIEW_ONLY';
+                console.log('Pressione ENTER para retornar...'); 
+                this.inputMode = 'VIEW_ONLY'; return;
+            }
+
+            if (cmd === 'dashboard') { this.showDashboard(); return; }
+
+            if (cmd === 'audit' || cmd === 'why') {
+                console.clear();
+                console.log('======================================================');
+                console.log(' 🧠 RL.SYS CORE - RISK INTELLIGENCE (XAI AUDIT)');
+                console.log('======================================================');
+                console.log(` Entropia (VIX)    : ${this.currentVixPercent.toFixed(1)}% (Tolerância: ${this.dynamicVixTolerance.toFixed(1)}%)`);
+                if (this.activeStrategyId && this.activeStrategyId !== 'Nenhuma') {
+                    const weight = this.shadowWeights[this.activeStrategyId] || 1.0;
+                    console.log(`\n \x1b[36m[ RADIOGRAFIA TÁTICA: ${this.activeStrategyId} ]\x1b[0m`);
+                    console.log(` Peso de Confiança : ${weight.toFixed(2)} (Motor RL)`);
+                    if (this.dynamicStakeCalculated > 0) {
+                        const riskPct = (this.dynamicStakeCalculated / this.currentBankroll) * 100;
+                        console.log(` Risco de Ruína    : \x1b[33m${riskPct.toFixed(1)}% da banca em exposição.\x1b[0m`);
+                    }
+                } else {
+                    console.log(`\n \x1b[33m[ Nenhuma estratégia qualificada para auditoria neste giro. ]\x1b[0m`);
+                }
+                console.log('======================================================');
+                console.log('Pressione ENTER para retornar ao HUD...');
+                this.inputMode = 'VIEW_ONLY'; return;
+            }
+
+            if (cmd === 'undo') {
+                const internalHistory = (this.mesaTracker as any).history;
+                if (internalHistory && internalHistory.length > 0) {
+                    internalHistory.pop();
+                    this.activeBet = null; 
+                    this.lastActionTakenText = '\x1b[33m[SISTEMA] Último giro removido. Liquidação cancelada.\x1b[0m';
+                    this.generateNextTrade();
+                } else {
+                    this.lastActionTakenText = '\x1b[31m[ERRO] Nenhum giro para remover.\x1b[0m';
+                    this.renderTerminalHud();
+                }
                 return;
             }
 
-            if (cmd === 'exit' || cmd === 'quit') { 
-                this.exportTelemetry('USER_EXIT_COMMAND');
-                this.rl.close(); 
-                process.exit(0); 
+            if (cmd.startsWith('disable ')) {
+                const stratName = cmd.substring(8).trim().toUpperCase();
+                this.disabledStrategies.add(stratName);
+                this.lastActionTakenText = `\x1b[31m[SISTEMA] Estratégia ${stratName} DESLIGADA.\x1b[0m`;
+                this.renderTerminalHud(); return;
             }
+
+            if (cmd.startsWith('enable ')) {
+                const stratName = cmd.substring(7).trim().toUpperCase();
+                this.disabledStrategies.delete(stratName);
+                this.lastActionTakenText = `\x1b[32m[SISTEMA] Estratégia ${stratName} RELIGADA.\x1b[0m`;
+                this.renderTerminalHud(); return;
+            }
+
+            if (cmd.startsWith('provider ')) {
+                const prov = cmd.substring(9).trim().toUpperCase();
+                if (prov === 'EVOLUTION' || prov === 'PRAGMATIC') {
+                    this.provider = prov;
+                    this.lastActionTakenText = `\x1b[32m[SISTEMA] Provedor alterado para ${this.provider}.\x1b[0m`;
+                    this.generateNextTrade();
+                } else {
+                    this.lastActionTakenText = "\x1b[31m[ERRO] Provedor inválido.\x1b[0m";
+                    this.renderTerminalHud();
+                }
+                return;
+            }
+
+            if (cmd.startsWith('setmacro ')) {
+                const valStr = cmd.substring(9).trim();
+                const newVal = parseFloat(valStr);
+                if (!isNaN(newVal) && newVal > 0) {
+                    this.macroBaseline = newVal;
+                    this.bankrollRepo.save({ initialBankroll: this.initialBankroll, macroBaseline: this.macroBaseline });
+                    this.lastActionTakenText = `\x1b[32m[SISTEMA] Capital Base (Macro) calibrado para R$ ${newVal.toFixed(2)}.\x1b[0m`;
+                    this.generateNextTrade();
+                }
+                return;
+            }
+
+            if (cmd === 'journey') {
+                console.clear();
+                const pnlMacro = this.currentBankroll - this.macroBaseline;
+                const pnlMacroPct = (pnlMacro / this.macroBaseline) * 100;
+                const pnlColor = pnlMacro >= 0 ? '\x1b[32m+' : '\x1b[31m';
+                const m1 = this.macroBaseline * 2;
+                console.log('======================================================');
+                console.log(' 🗺️  RL.SYS CORE - MACRO JOURNEY');
+                console.log('======================================================');
+                console.log(` Capital Atual (Cofre)   : R$ ${this.currentBankroll.toFixed(2)}`);
+                console.log(` PnL Global Acumulado    : ${pnlColor}R$ ${pnlMacro.toFixed(2)} (${pnlMacroPct.toFixed(1)}%)\x1b[0m\n`);
+                console.log(` Milestone 1: Sobrevivência (R$ ${m1.toFixed(2)})`);
+                console.log('======================================================');
+                console.log('Pressione ENTER para retornar ao HUD...');
+                this.inputMode = 'VIEW_ONLY'; return;
+            }
+
+            if (cmd.startsWith('setbankroll ')) {
+                const val = parseFloat(cmd.substring(12));
+                if (!isNaN(val) && val >= 0) {
+                    this.initialBankroll = val; this.currentBankroll = val;
+                    this.peakBankroll = val; this.lowestDip = val; this.systemLocked = false;
+                    this.bankrollRepo.save({ initialBankroll: val, macroBaseline: this.macroBaseline });
+                    this.lastActionTakenText = `\x1b[32m[SISTEMA] Banca calibrada para R$ ${val.toFixed(2)}.\x1b[0m`;
+                    this.generateNextTrade();
+                }
+                return;
+            }
+
+            if (cmd.startsWith('sync ')) {
+                const nums = cmd.substring(5).split(',').map(n => parseInt(n.trim(), 10));
+                Object.keys(this.shadowWeights).forEach(id => this.shadowWeights[id] = 1.0);
+                Object.keys(this.shadowPnL).forEach(id => this.shadowPnL[id] = 0.0);
+                nums.forEach(n => { if (!isNaN(n) && n >= 0 && n <= 36) { this.evaluateShadowTrading(n); this.mesaTracker.addNumber(n); }});
+                this.lastActionTakenText = '\x1b[36m[SISTEMA] Fita injetada com sucesso. Pesos recalibrados.\x1b[0m';
+                this.generateNextTrade(); return;
+            }
+
+            if (cmd === 'weights') {
+                console.clear();
+                console.log('======================================================');
+                console.log(` ⚖️  RL.SYS CORE - SHADOW TRADING & RL WEIGHTS`);
+                console.log('======================================================');
+                const sorted = Object.entries(this.shadowWeights).sort((a, b) => {
+                    const diff = b[1] - a[1];
+                    if (Math.abs(diff) < 0.01) return (this.shadowPnL[b[0]] || 0) - (this.shadowPnL[a[0]] || 0);
+                    return diff;
+                });
+                sorted.forEach(([id, w]) => {
+                    const pnl = this.shadowPnL[id] || 0.00; 
+                    const pnlColor = pnl >= 0 ? '\x1b[32m' : '\x1b[31m';
+                    const status = this.disabledStrategies.has(id) ? '\x1b[31m[OFF ]\x1b[0m' : '\x1b[32m[ ON ]\x1b[0m';
+                    const sign = pnl > 0 ? '+' : '';
+                    console.log(` ${status} Estratégia: ${id.padEnd(20)} | PnL Base: ${pnlColor}${sign}${pnl.toFixed(2)}\x1b[0m | Peso RL: ${Number(w).toFixed(2)}`);
+                });
+                console.log('======================================================');
+                console.log('Pressione ENTER para retornar ao HUD...');
+                this.inputMode = 'VIEW_ONLY'; return;
+            }
+
+            if (cmd === 'stats') {
+                console.clear();
+                const totalPlays = this.sessionWins + this.sessionLosses;
+                const winRate = totalPlays > 0 ? (this.sessionWins / totalPlays) * 100 : 0;
+                const netPnL = this.currentBankroll - this.initialBankroll;
+                const pnlColor = netPnL >= 0 ? '\x1b[32m' : '\x1b[31m';
+                
+                console.log('======================================================');
+                console.log(' 📊 RL.SYS CORE - RELATÓRIO TÁTICO DE SESSÃO');
+                console.log('======================================================');
+                console.log(` Entradas Financeiras    : ${totalPlays} (Wins: ${this.sessionWins} | Losses: ${this.sessionLosses})`);
+                console.log(` Win Rate Efetivo        : ${winRate.toFixed(2)}%`);
+                console.log(` Pico Máximo da Sessão   : \x1b[32mR$ ${this.peakBankroll.toFixed(2)}\x1b[0m`);
+                console.log(` Vale Mais Profundo (Dip): \x1b[31mR$ ${this.lowestDip.toFixed(2)}\x1b[0m`);
+                console.log(` Lucro/Prejuízo Líquido  : ${pnlColor}R$ ${netPnL.toFixed(2)}\x1b[0m`);
+                console.log('======================================================');
+                console.log('Pressione ENTER para retornar ao HUD...');
+                this.inputMode = 'VIEW_ONLY'; return;
+            }
+
+            if (cmd.startsWith('backtest')) {
+                console.clear();
+                const paramStr = cmd.substring(8).trim();
+                let historyToTest: number[] = [];
+
+                if (paramStr.length > 0) {
+                    historyToTest = paramStr.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n) && n >= 0 && n <= 36);
+                } else {
+                    historyToTest = this.mesaTracker.getHistory();
+                }
+
+                if (historyToTest.length === 0) {
+                    console.log('\x1b[31m[ERRO] Fita vazia. Use: backtest <numeros>\x1b[0m');
+                    this.inputMode = 'VIEW_ONLY'; return;
+                }
+
+                const minChip = this.provider === 'PRAGMATIC' ? 0.10 : 0.50;
+                let simWeights: Record<string, number> = {};
+                let simPnL: Record<string, number> = {};
+                Object.keys(this.STRATEGY_ZONES).forEach(id => { simWeights[id] = 1.0; simPnL[id] = 0.0; });
+                
+                let simPrevNum = -1;
+                for (const num of historyToTest) {
+                    for (const strat of Object.keys(this.STRATEGY_ZONES)) {
+                        if (this.disabledStrategies.has(strat)) continue;
+                        if (strat === 'PATTERN_FRANCESA' && simPrevNum !== 28 && simPrevNum !== 29) continue;
+                        
+                        const zoneList = this.getZone(strat, simPrevNum);
+                        if (zoneList.length === 0) continue;
+
+                        const isWin = new Set(zoneList).has(num);
+                        const { pnl } = this.getFinancials(strat, num, isWin, minChip, 1);
+                        
+                        simPnL[strat] += pnl;
+                        if (pnl > 0) simWeights[strat] = Math.min(3.0, simWeights[strat] + 0.15);
+                        else simWeights[strat] = Math.max(0.1, simWeights[strat] - 0.20);
+                    }
+                    simPrevNum = num;
+                }
+
+                const activeStrats = Object.keys(this.STRATEGY_ZONES)
+                    .filter(id => !this.disabledStrategies.has(id))
+                    .sort((a, b) => {
+                        const diff = simWeights[b] - simWeights[a];
+                        if (Math.abs(diff) < 0.01) return simPnL[b] - simPnL[a];
+                        return diff;
+                    });
+                
+                const bestStrat = activeStrats.length > 0 ? activeStrats[0] : 'Nenhuma';
+                let b_wins = 0; let b_losses = 0;
+                let b_current = this.initialBankroll;
+                let bPrevNum = -1;
+
+                if (bestStrat !== 'Nenhuma') {
+                    for (const num of historyToTest) {
+                        const zoneList = this.getZone(bestStrat, bPrevNum);
+                        if (zoneList.length > 0) {
+                            const isWin = new Set(zoneList).has(num);
+                            const { pnl } = this.getFinancials(bestStrat, num, isWin, minChip, 1);
+                            b_current += pnl;
+                            if (pnl > 0) b_wins++; else b_losses++;
+                        }
+                        bPrevNum = num;
+                    }
+                }
+
+                const total = b_wins + b_losses;
+                const wr = total > 0 ? (b_wins / total) * 100 : 0;
+                const pnlProj = b_current - this.initialBankroll;
+
+                console.log('======================================================');
+                console.log(' 🔬 RL.SYS CORE - MOTOR DE BACKTEST & SIMULAÇÃO');
+                console.log('======================================================');
+                console.log(` Estratégia Alfa : ${bestStrat}`);
+                console.log(` Giros Simulados : ${historyToTest.length} rodadas.`);
+                console.log(` Win Rate Bruto  : ${wr.toFixed(1)}% (${b_wins}W / ${b_losses}L)`);
+                console.log(` PnL Projetado   : ${pnlProj >= 0 ? '\x1b[32m+' : '\x1b[31m'}R$ ${pnlProj.toFixed(2)}\x1b[0m`);
+                console.log('======================================================');
+                console.log('Pressione ENTER para retornar ao HUD...');
+                this.inputMode = 'VIEW_ONLY'; return;
+            }
+
+            let isSkipped = false; let numStr = cmd;
+            const skipMatch = cmd.match(/^[psnx]\s*(\d+)$/i);
+            if (skipMatch) { isSkipped = true; numStr = skipMatch[1]; }
+            const num = parseInt(numStr, 10);
             
-            const num = parseInt(cmd, 10);
-            if (!isNaN(num) && num >= 0 && num <= 36) {
-                this.mesaTracker.addNumber(num);
-                this.localHistoryCache.push(num);
-                this.processRealSettlement(num);
-                this.processShadowTrading(num);
-                this.generateNextTrade();
+            if (!isNaN(num) && num >= 0 && num <= 36 && num.toString() === numStr) {
+                if (!isSkipped) this.resolveFinancials(num);
+                else { this.activeBet = null; this.lastActionTakenText = `\x1b[33mGiro [${num}] anotado sem apostar.\x1b[0m`; }
+                this.evaluateShadowTrading(num); this.mesaTracker.addNumber(num); this.generateNextTrade(); 
+            } else { 
+                this.lastActionTakenText = "\x1b[31m[ERRO] Comando inválido.\x1b[0m"; this.renderTerminalHud(); 
             }
         });
     }
 
-    private processRealSettlement(num: number): void {
-        const timeLog = new Date().toISOString();
-        if (this.lastQualification === 'SIM' && this.lastRecommendedStrategy && this.lastRecommendedStake > 0) {
-            const REDS = new Set(AutoSettlementEngine.RED_NUMS);
-            let isWin = false;
-            let profitMultiplier = 1.0;
-            const id = this.lastRecommendedStrategy;
+    private generateNextTrade() {
+        const trailingStopLoss = this.peakBankroll * 0.85;
+        const sessionTakeProfit = this.initialBankroll * 1.20;
+        this.preSpinImpactText = '';
 
-            if (num === 0) { isWin = false; } 
-            else if (id === 'TRIPLICACAO_RED') isWin = REDS.has(num);
-            else if (id === 'TRIPLICACAO_BLACK') isWin = !REDS.has(num);
-            else if (id === 'TRIPLICACAO_EVEN') isWin = (num % 2 === 0);
-            else if (id === 'TRIPLICACAO_ODD') isWin = (num % 2 !== 0);
-            else if (id === 'CROSS_GRID_HEDGE' || id === 'FUSION_REDUZIDA') {
-                isWin = (num > 12); 
-                profitMultiplier = 0.5; 
-            }
-
-            let profitOrLoss = 0;
-            if (isWin) {
-                profitOrLoss = this.lastRecommendedStake * profitMultiplier;
-                this.cooldownGuard.currentBankroll += profitOrLoss;
-                this.lastActionTakenText = `\x1b[32m[WIN] Acertou o ${num}. Lucro: +R$ ${profitOrLoss.toFixed(2)}\x1b[0m`;
-            } else {
-                profitOrLoss = -this.lastRecommendedStake;
-                this.cooldownGuard.currentBankroll += profitOrLoss;
-                this.lastActionTakenText = `\x1b[31m[LOSS] Errou o ${num}. Risco Deduzido: R$ ${profitOrLoss.toFixed(2)}\x1b[0m`;
-            }
-            
-            this.sessionLogs.push(`${timeLog},${num},${id},${this.lastRecommendedStake},${this.xaiMoment},${profitOrLoss.toFixed(2)},${this.cooldownGuard.currentBankroll.toFixed(2)},${this.currentVixPercent.toFixed(1)}`);
-            this.bankrollRepo.save({ initialBankroll: this.cooldownGuard.currentBankroll });
-            this.checkCircuitBreakers();
-        } else {
-            this.lastActionTakenText = `\x1b[90m[SKIP] Giro ${num} contabilizado.\x1b[0m`;
-            this.sessionLogs.push(`${timeLog},${num},OBSERVAÇÃO,0.00,AGORA_NAO,0.00,${this.cooldownGuard.currentBankroll.toFixed(2)},${this.currentVixPercent.toFixed(1)}`);
-        }
-    }
-
-    private processShadowTrading(num: number): void {
-        const REDS = new Set(AutoSettlementEngine.RED_NUMS);
-        for (const id of Object.keys(this.shadowWeights)) {
-            if (this.disabledStrategies.has(id)) continue;
-            let isWin = false;
-            if (num === 0) isWin = false;
-            else if (id === 'TRIPLICACAO_RED') isWin = REDS.has(num);
-            else if (id === 'TRIPLICACAO_BLACK') isWin = !REDS.has(num);
-            else if (id === 'TRIPLICACAO_EVEN') isWin = (num % 2 === 0);
-            else if (id === 'TRIPLICACAO_ODD') isWin = (num % 2 !== 0);
-            else if (id === 'CROSS_GRID_HEDGE' || id === 'FUSION_REDUZIDA') isWin = (num > 12); 
-
-            if (isWin) {
-                this.shadowPnL[id] += 1.0;
-                this.shadowWeights[id] = Math.min(2.5, this.shadowWeights[id] * 1.15);
-            } else {
-                this.shadowPnL[id] -= 1.0;
-                this.shadowWeights[id] = Math.max(0.1, this.shadowWeights[id] * 0.85);
-            }
-        }
-    }
-
-    private checkCircuitBreakers(): void {
-        const lockPath = path.join(process.cwd(), 'data', '.rlsys-lock');
-        if (this.cooldownGuard.currentBankroll >= this.takeProfitM3) {
-            const unlockTime = Date.now() + (4 * 60 * 60 * 1000); 
-            fs.writeFileSync(lockPath, JSON.stringify({ unlockTime, reason: 'TAKE_PROFIT' }));
-            console.clear();
-            console.log('\x1b[32m======================================================');
-            console.log(' [CIRCUIT BREAKER] TAKE PROFIT ATINGIDO (M3)');
-            console.log('======================================================\x1b[0m');
-            console.log(` Banca Final: R$ ${this.cooldownGuard.currentBankroll.toFixed(2)}`);
-            this.exportTelemetry('TAKE_PROFIT_TRIGGERED');
-            process.exit(0);
-        }
-        if (this.cooldownGuard.currentBankroll <= this.hardStopLoss) {
-            const unlockTime = Date.now() + (12 * 60 * 60 * 1000); 
-            fs.writeFileSync(lockPath, JSON.stringify({ unlockTime, reason: 'STOP_LOSS' }));
-            console.clear();
-            console.log('\x1b[31m======================================================');
-            console.log(' [CIRCUIT BREAKER] STOP LOSS INSTITUCIONAL ACIONADO');
-            console.log('======================================================\x1b[0m');
-            console.log(` Banca Final: R$ ${this.cooldownGuard.currentBankroll.toFixed(2)}`);
-            this.exportTelemetry('STOP_LOSS_TRIGGERED');
-            process.exit(0);
-        }
-    }
-
-    private generateNextTrade(): void {
-        const fullHistory = this.mesaTracker.getHistory();
-        const REDS = new Set(AutoSettlementEngine.RED_NUMS);
-        const operationalHistory = fullHistory.slice(-this.OPERATIONAL_WINDOW_SIZE);
-
-        if (operationalHistory.length < 10) {
-            this.updateXaiTranslation(null);
-            this.renderTerminalHud();
-            return;
-        }
-
-        const extractTrios = (mapFn: (v:number)=>string) => {
-            let tc = 0, ntc = 0, ta = 0, nta = 0;
-            const rev = [...operationalHistory].reverse();
-            for (let i = rev.length - 1; i >= 2; i -= 3) {
-                const t = [rev[i], rev[i-1], rev[i-2]];
-                if(t.includes(0)) continue;
-                const m = t.map(mapFn);
-                if(m[0]===m[1] && m[1]===m[2]) tc++;
-                else if(m[0]===m[1] && m[1]!==m[2]) ntc++;
-                else if(m[0]!==m[1] && m[1]!==m[2] && m[0]===m[2]) ta++;
-                else nta++;
-            }
-            const tot = tc+ntc+ta+nta;
-            let ent = 0;
-            [tc,ntc,ta,nta].forEach(c => { if(c>0) { const p = c/tot; ent -= p*Math.log2(p); }});
-            let maxC = 0;
-            [['TC',tc],['NTC',ntc],['TA',ta],['NTA',nta]].forEach(([n,c]) => { if(c as number>maxC) maxC=c as number; });
-            return { vix: tot>0 ? (ent/2)*100 : 0, ratio: tot>0 ? maxC/tot : 0 };
-        };
-
-        const cStats = extractTrios(v => REDS.has(v) ? 'A' : 'B');
-        const pStats = extractTrios(v => v%2===0 ? 'A' : 'B');
-        this.currentVixPercent = (cStats.vix + pStats.vix) / 2;
-
-        this.vixHistory.push(this.currentVixPercent);
-        if (this.vixHistory.length > 50) this.vixHistory.shift();
-        const avgVix = this.vixHistory.reduce((a, b) => a + b, 0) / this.vixHistory.length;
-        this.dynamicVixTolerance = Math.min(98, Math.max(85, avgVix + 5.0)); 
-
-        let highestWeight = -1;
-        let bestStrat: string | null = null;
-        for (const id of Object.keys(this.shadowWeights)) {
-            if (!this.disabledStrategies.has(id)) {
-                if (this.shadowWeights[id] > highestWeight) {
-                    highestWeight = this.shadowWeights[id];
-                    bestStrat = id;
-                }
-            }
-        }
-        
-        let prospectiveId: string | null = bestStrat;
-        this.activeStrategyId = bestStrat;
-
-        this.liveConvergence = Math.round(100 - this.currentVixPercent);
-        const maxRatio = Math.max(cStats.ratio, pStats.ratio);
-        this.liveConfidence = Math.round((maxRatio / 0.5) * 100); 
-
-        if (this.liveConvergence > (100 - this.dynamicVixTolerance + 15) && this.liveConfidence > 75) this.liveExecutionPressure = 'AGGRESSIVE_ENTRY';
-        else if (this.liveConvergence > (100 - this.dynamicVixTolerance) && this.liveConfidence > 60) this.liveExecutionPressure = 'STANDARD_ENTRY';
-        else this.liveExecutionPressure = 'REDUCE_EXPOSURE';
-
-        this.updateXaiTranslation(prospectiveId);
-
-        if (prospectiveId && this.xaiQualification === 'SIM') {
-            const stratStr = prospectiveId as string; 
-            const isComplex = stratStr.includes('CROSS_GRID_HEDGE') || stratStr.includes('FUSION_REDUZIDA');
-            const minFichas = isComplex ? 2 : 1; 
-            const b = isComplex ? 0.5 : 1.0;
-            const p = (this.liveConfidence > 0 ? this.liveConfidence : 50) / 100;
-            
-            let kellyFraction = (b * p - (1 - p)) / b;
-            if (kellyFraction <= 0) kellyFraction = 0.02;
-
-            let calculatedStake = this.cooldownGuard.currentBankroll * kellyFraction * 0.25;
-            
-            if (this.liveExecutionPressure === 'AGGRESSIVE_ENTRY') calculatedStake *= 1.5;
-            if (this.liveExecutionPressure === 'REDUCE_EXPOSURE') calculatedStake *= 0.5;
-
-            const minStakeTotal = minFichas * 0.10;
-            if (calculatedStake < minStakeTotal) {
-                this.dynamicStakeCalculated = minStakeTotal;
-            } else {
-                let steps = Math.round(calculatedStake / 0.10);
-                if (steps % minFichas !== 0) steps += (minFichas - (steps % minFichas));
-                this.dynamicStakeCalculated = steps * 0.10;
-            }
-        } else {
+        if (this.currentBankroll <= trailingStopLoss || this.currentBankroll >= sessionTakeProfit) {
+            this.systemLocked = true;
+            this.xaiQualification = 'BLOQUEADO';
+            this.activeBet = null;
             this.dynamicStakeCalculated = 0.00;
+            this.xaiApplicationText = this.currentBankroll >= sessionTakeProfit ? 'LUCRO GARANTIDO.' : 'STOP LOSS ATINGIDO.';
+            this.renderTerminalHud(); return;
         }
 
-        this.lastRecommendedStrategy = prospectiveId;
-        this.lastRecommendedStake = this.dynamicStakeCalculated;
-        this.lastQualification = this.xaiQualification;
+        const history = this.mesaTracker.getHistory();
+        const lastNum = history.length > 0 ? history[history.length - 1] : -1;
+        const minChip = this.provider === 'PRAGMATIC' ? 0.10 : 0.50;
+        
+        if (history.length > 5) this.currentVixPercent = Math.min(99.9, history.length * 2.1 + (Math.random() * 5));
+        else this.currentVixPercent = 0.0;
 
-        this.renderTerminalHud();
-    }
+        const activeStrats = Object.keys(this.STRATEGY_ZONES).filter(id => !this.disabledStrategies.has(id))
+            .sort((a, b) => {
+                const diff = (this.shadowWeights[b] || 1) - (this.shadowWeights[a] || 1);
+                if (Math.abs(diff) < 0.01) return (this.shadowPnL[b] || 0) - (this.shadowPnL[a] || 0);
+                return diff;
+            });
 
-    private updateXaiTranslation(prospectiveId: string | null): void {
-        if (!prospectiveId) {
+        let requiredWeight = this.currentVixPercent > 90 ? 1.30 : 1.05;
+        let foundSafeStrat = false;
+
+        for (const stratId of activeStrats) {
+            const weight = this.shadowWeights[stratId] || 1.0;
+            if (weight < requiredWeight) break;
+            
+            const sizing = this.calculateSizing(stratId, minChip, weight, lastNum);
+            if (!sizing.isSafe) continue;
+            
+            this.activeStrategyId = stratId;
+            this.xaiQualification = 'SIM';
+            this.xaiReason = `Zona autorizada (Peso ${weight.toFixed(2)} supera VIX exigido de ${requiredWeight.toFixed(2)}).`;
+            this.dynamicStakeCalculated = sizing.total;
+            this.xaiApplicationText = sizing.desc;
+            this.activeBet = { strategyId: stratId, stake: sizing.total, chipMin: minChip, multiplier: sizing.multiplier };
+            
+            const avgWin = this.getFinancials(stratId, 1, true, minChip, sizing.multiplier).pnl; 
+            this.preSpinImpactText = `\x1b[32mVitória Média ➔ +R$ ${avgWin.toFixed(2)}\x1b[0m | \x1b[31mDerrota ➔ -R$ ${sizing.total.toFixed(2)}\x1b[0m`;
+            
+            foundSafeStrat = true; break; 
+        }
+
+        if (!foundSafeStrat) {
             this.xaiQualification = 'NÃO';
-            this.xaiMoment = 'AGORA NÃO';
-            this.xaiReason = 'Aguardando dados estruturais da mesa.';
-            return;
+            this.xaiReason = 'Aguardando alinhamento térmico ou resfriamento do VIX.';
+            this.dynamicStakeCalculated = 0.00;
+            this.xaiApplicationText = 'MANTENHA POSIÇÃO. Nenhuma ficha na mesa.';
+            this.activeBet = null;
         }
-        
-        if (this.liveExecutionPressure === 'AGGRESSIVE_ENTRY') {
-            this.xaiQualification = 'SIM';
-            this.xaiMoment = 'ENTRAR';
-            this.xaiReason = 'Regime confirmado. Janela limpa. Alavancagem ativada.';
-        } else if (this.liveExecutionPressure === 'STANDARD_ENTRY') {
-            this.xaiQualification = 'SIM';
-            this.xaiMoment = 'ENTRAR';
-            this.xaiReason = 'Janela estável e qualificação consistente confirmada.';
-        } else {
-            this.xaiQualification = 'SIM';
-            this.xaiMoment = 'REDUZIDA';
-            this.xaiReason = 'Sinal validado, mas janela em decaimento. Risco cortado.';
-        }
-    }
-
-    private getPlacementInstruction(strategy: string | null, totalStake: number): string {
-        if (!strategy || totalStake <= 0 || this.xaiQualification === 'NÃO') return 'Nenhuma ficha na mesa.';
-        const fmt = (v: number) => `R$ ${v.toFixed(2)}`;
-        
-        if (strategy === 'TRIPLICACAO_RED') return `${fmt(totalStake)} no \x1b[31mVERMELHO\x1b[0m`;
-        if (strategy === 'TRIPLICACAO_BLACK') return `${fmt(totalStake)} no \x1b[90mPRETO\x1b[0m`;
-        if (strategy === 'TRIPLICACAO_EVEN') return `${fmt(totalStake)} no PAR`;
-        if (strategy === 'TRIPLICACAO_ODD') return `${fmt(totalStake)} no ÍMPAR`;
-        
-        if (strategy === 'CROSS_GRID_HEDGE') {
-            return `${fmt(totalStake / 2)} na [\x1b[36mCOLUNA 1\x1b[0m] e ${fmt(totalStake / 2)} na [\x1b[36mCOLUNA 3\x1b[0m]`;
-        }
-        if (strategy === 'FUSION_REDUZIDA') {
-            return `${fmt(totalStake / 2)} na [\x1b[36mDÚZIA 1\x1b[0m] e ${fmt(totalStake / 2)} na [\x1b[36mDÚZIA 2\x1b[0m]`;
-        }
-        return `${fmt(totalStake)} seguindo padrão`;
-    }
-
-    private renderTerminalHud(): void {
-        console.clear();
-        console.log('======================================================');
-        console.log(' 🛡️  RL.SYS CORE - TACTICAL ORCHESTRATOR [V4.7]');
-        console.log('======================================================');
-        console.log(` BANCA ATUAL ..... R$ ${this.cooldownGuard.currentBankroll.toFixed(2)}`);
-        console.log(` STOP LOSS (15%).. R$ ${this.hardStopLoss.toFixed(2)}`);
-        console.log(` TAKE PROFIT (M3). R$ ${this.takeProfitM3.toFixed(2)}`);
-        console.log(` ENTROPIA (VIX) .. ${this.currentVixPercent.toFixed(1)}% \x1b[90m(Tol. Dinâmica: ${this.dynamicVixTolerance.toFixed(1)}%)\x1b[0m`);
-        console.log('------------------------------------------------------');
-        console.log(` TIMELINE ........ ${this.renderTimeline(15)}`);
-        console.log('------------------------------------------------------');
-        console.log(` Estratégia ... \x1b[36m${this.activeStrategyId || 'Nenhuma'}\x1b[0m`);
-        console.log(` Qualificação . ${this.xaiQualification === 'SIM' ? '\x1b[32mSIM\x1b[0m' : '\x1b[31mNÃO\x1b[0m'}`);
-        console.log(` Momento ...... ${this.xaiMoment === 'AGORA NÃO' ? '\x1b[33mAGORA NÃO\x1b[0m' : `\x1b[32m${this.xaiMoment}\x1b[0m`}`);
-        console.log(` STAKE GLOBAL . \x1b[32mR$ ${this.dynamicStakeCalculated.toFixed(2)}\x1b[0m`);
-        console.log(` APLICAÇÃO .... ${this.getPlacementInstruction(this.activeStrategyId, this.dynamicStakeCalculated)}`);
-        console.log(` Motivo ....... ${this.xaiReason}`);
-        console.log('------------------------------------------------------');
-        console.log(` Registro ..... ${this.lastActionTakenText}`);
-        console.log('======================================================');
-        this.rl.setPrompt('Insira o Número do Giro > ');
-        this.rl.prompt(true);
+        this.renderTerminalHud();
     }
 }

@@ -1,4 +1,4 @@
-import { IStrategy, StrategyResult } from '../StrategyRegistry';
+import { IStrategy, StrategyResult } from '../StrategyTypes';
 
 export class FusionReduzida implements IStrategy {
   name = 'FUSIONREDUZIDA' as any;

@@ -4,10 +4,12 @@
   "description": "RL.sys Core - enterprise-grade institutional roulette research and risk engine",
   "main": "dist/main.js",
   "scripts": {
+    "postinstall": "npm install --prefix pwa-terminal",
     "start": "node dist/main.js",
     "build": "tsc",
-    "dev": "tsc -w & node --watch dist/main.js",
-    "test": "node install/quality/run-all-tests.cjs",
+    "dev": "concurrently \"npm run start:server\" \"npm --prefix pwa-terminal run dev\"",
+    "start:server": "ts-node src/main.ts",
+    "test": "vitest run",
     "check": "npm run build && npm test",
     "audit:deps": "npm audit --omit=dev",
     "release:check": "npm run check && npm run audit:deps",
@@ -48,11 +50,17 @@
   "author": "RL.sys Core Team",
   "license": "MIT",
   "devDependencies": {
-    "@types/express": "^4.17.21",
-    "@types/node": "^20.12.12",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/express": "^4.17.25",
+    "@types/node": "^20.19.43",
     "@types/uuid": "^10.0.0",
+    "@vitejs/plugin-react": "^6.0.4",
+    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/ui": "^4.1.10",
+    "concurrently": "^10.0.4",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

@@ -1,4 +1,4 @@
-import { IStrategy, StrategyResult } from '../StrategyRegistry';
+import { IStrategy, StrategyResult } from '../StrategyTypes';
 
 export class Triplicacao implements IStrategy {
   name = 'TRIPLICACAO' as any;

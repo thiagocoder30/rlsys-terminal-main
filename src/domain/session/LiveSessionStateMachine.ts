@@ -1,7 +1,4 @@
-import type { LiveSessionSnapshot, LiveSessionStatus } from './LiveSessionRuntime';
-
-export type LiveSessionPhase = 'COLLECTING_WARMUP' | 'WARMUP_COMPLETE' | 'DECISION_READY' | 'COOLDOWN' | 'BLOCKED';
-export type LiveSessionNextAction = 'INGEST_ROUND' | 'EVALUATE_DECISION' | 'WAIT_COOLDOWN' | 'REJECT_EVENT';
+import type { LiveSessionStatus, LiveSessionSnapshot, LiveSessionPhase, LiveSessionNextAction, LiveSessionControlFrame } from './LiveSessionTypes';
 
 export interface LiveSessionStateMachineOptions {
   readonly warmupSize: number;
@@ -9,16 +6,6 @@ export interface LiveSessionStateMachineOptions {
   readonly cooldownSpins?: number;
   readonly entropyCooldownThreshold?: number;
   readonly concentrationCooldownThreshold?: number;
-}
-
-export interface LiveSessionControlFrame {
-  readonly phase: LiveSessionPhase;
-  readonly nextAction: LiveSessionNextAction;
-  readonly spinsUntilWarmup: number;
-  readonly spinsUntilDecision: number;
-  readonly cooldownRemainingSpins: number;
-  readonly decisionWindowSize: number;
-  readonly reason: string;
 }
 
 interface ControlInput {
@@ -101,3 +88,4 @@ function clamp(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.min(1, Math.max(0, value));
 }
+export type { LiveSessionPhase, LiveSessionNextAction, LiveSessionControlFrame } from "./LiveSessionTypes";
