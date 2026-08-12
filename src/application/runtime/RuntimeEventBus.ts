@@ -1,80 +1,188 @@
+export interface RuntimeEvent {
+  readonly id: string;
+  readonly type: string;
+  readonly occurredAtEpochMs: number;
+  readonly payload?: unknown;
+}
+
+export interface RuntimeEventListener {
+  readonly name: string;
+  readonly handle: (event: RuntimeEvent) => Promise<void>;
+}
+
+export interface RuntimeEventFailure {
+  readonly listenerName: string;
+  readonly message: string;
+}
+
+export interface RuntimeEventPublishResult {
+  readonly delivered: number;
+  readonly failed: number;
+  readonly failures: readonly RuntimeEventFailure[];
+}
+
+export interface RuntimeEventBusOptions {
+  readonly maxProcessedEventIds?: number;
+}
+
 /**
- * @file RuntimeEventBus.ts
- * @description Barramento de eventos central do RL.SYS. 
- * Implementa o padrão Observer em O(1) e utiliza o SignalObjectPool para garantir 
- * Zero-Allocation, prevenindo paragens do Garbage Collector no Helio P22.
+ * Runtime-level asynchronous event bus.
+ *
+ * Responsibilities:
+ * - named runtime listeners;
+ * - isolated listener failures;
+ * - bounded event-id idempotency;
+ * - generic runtime event publication;
+ * - compatibility adapter for legacy dispatchSignal callers.
+ *
+ * This is intentionally separate from domain/events/InternalEventBus,
+ * which remains the deterministic synchronous domain event bus.
  */
-
-import { SignalObjectPool, PooledSignal } from '../../domain/memory/SignalObjectPool';
-
-/**
- * Assinatura estrita para subscritores. 
- * REGRA INSTITUCIONAL: Handlers DEVEM ser síncronos para permitir a reciclagem imediata do sinal.
- */
-export type SignalHandler = (signal: PooledSignal) => void;
-
 export class RuntimeEventBus {
-    private readonly pool: SignalObjectPool;
-    private readonly subscribers: Set<SignalHandler> = new Set();
+  private readonly listeners = new Map<string, RuntimeEventListener>();
+  private readonly processedEventIds = new Set<string>();
+  private readonly maxProcessedEventIds: number;
 
-    /**
-     * @param poolCapacity Capacidade pré-alocada na RAM para suportar picos de volatilidade.
-     */
-    constructor(poolCapacity: number = 250) {
-        this.pool = new SignalObjectPool(poolCapacity);
+  /**
+   * The numeric form is retained for compatibility with the original
+   * `new RuntimeEventBus(250)` call sites.
+   */
+  public constructor(options: RuntimeEventBusOptions | number = {}) {
+    const configuredLimit =
+      typeof options === 'number'
+        ? options
+        : options.maxProcessedEventIds ?? 1000;
+
+    if (!Number.isFinite(configuredLimit) || configuredLimit < 1) {
+      throw new Error('maxProcessedEventIds must be a positive number');
     }
 
-    /**
-     * Regista um novo módulo para escutar os sinais da mesa.
-     */
-    public subscribe(handler: SignalHandler): void {
-        this.subscribers.add(handler);
+    this.maxProcessedEventIds = Math.max(1, Math.trunc(configuredLimit));
+  }
+
+  public subscribe(listener: RuntimeEventListener): void {
+    if (!listener?.name?.trim()) {
+      throw new Error('listener name must be provided');
     }
 
-    /**
-     * Remove um módulo da lista de escuta (evita Memory Leaks de referências perdidas).
-     */
-    public unsubscribe(handler: SignalHandler): void {
-        this.subscribers.delete(handler);
+    if (typeof listener.handle !== 'function') {
+      throw new Error('listener handle must be provided');
     }
 
-    /**
-     * Emite um sinal quantitativo para todos os módulos conectados sem utilizar a palavra-chave 'new'.
-     * @param id Identificador único do evento.
-     * @param targetSector Setor ou alvo calculado.
-     * @param confidence Grau de confiança (0-100) gerado pelo motor de convergência.
-     * @param strategyId ID exato da estratégia (ex: CROSS_GRID_HEDGE).
-     */
-    public dispatchSignal(id: string, targetSector: number, confidence: number, strategyId: string): void {
-        const signal = this.pool.acquire();
-        
-        if (!signal) {
-            // Em HFT, se a pool esgotar, descartamos o sinal para não corromper o Event Loop.
-            console.error('[CRITICAL] SignalObjectPool esgotada. Sinal descartado para proteger a CPU.');
-            return;
-        }
+    this.listeners.set(listener.name, listener);
+  }
 
-        // Preenchimento do objeto reciclado (Zero-Allocation)
-        signal.id = id;
-        signal.targetSector = targetSector;
-        signal.confidence = confidence;
-        signal.strategyId = strategyId;
+  public unsubscribe(listenerName: string): boolean {
+    return this.listeners.delete(listenerName);
+  }
 
-        try {
-            // Notificação síncrona aos subscritores
-            for (const handler of this.subscribers) {
-                handler(signal);
-            }
-        } finally {
-            // Libertação imediata: O objeto regressa à piscina no mesmo ciclo de relógio.
-            this.pool.release(signal);
-        }
+  public listenerCount(): number {
+    return this.listeners.size;
+  }
+
+  /**
+   * Legacy telemetry alias retained during canonical migration.
+   */
+  public getActiveSubscribersCount(): number {
+    return this.listenerCount();
+  }
+
+  /**
+   * Compatibility adapter for the original quantitative signal callers.
+   */
+  public async dispatchSignal(
+    id: string,
+    targetSector: number,
+    confidence: number,
+    strategyId: string
+  ): Promise<RuntimeEventPublishResult> {
+    return this.publish({
+      id,
+      type: 'SIGNAL',
+      occurredAtEpochMs: Date.now(),
+      payload: {
+        targetSector,
+        confidence,
+        strategyId
+      }
+    });
+  }
+
+  public async publish(
+    event: RuntimeEvent
+  ): Promise<RuntimeEventPublishResult> {
+    this.validateEvent(event);
+
+    if (this.processedEventIds.has(event.id)) {
+      return {
+        delivered: 0,
+        failed: 0,
+        failures: []
+      };
     }
-    
-    /**
-     * Retorna a quantidade de handlers ativos (Telemetria).
-     */
-    public getActiveSubscribersCount(): number {
-        return this.subscribers.size;
+
+    this.trackProcessedEventId(event.id);
+
+    let delivered = 0;
+    let failed = 0;
+    const failures: RuntimeEventFailure[] = [];
+
+    for (const [listenerName, listener] of this.listeners) {
+      try {
+        await listener.handle(event);
+        delivered += 1;
+      } catch (error) {
+        failed += 1;
+
+        failures.push({
+          listenerName,
+          message: error instanceof Error ? error.message : String(error)
+        });
+      }
     }
+
+    return {
+      delivered,
+      failed,
+      failures
+    };
+  }
+
+  private validateEvent(event: RuntimeEvent): void {
+    if (!event || typeof event !== 'object') {
+      throw new Error('runtime event must be provided');
+    }
+
+    if (typeof event.id !== 'string' || event.id.trim().length === 0) {
+      throw new Error('event id is required');
+    }
+
+    if (
+      typeof event.occurredAtEpochMs !== 'number' ||
+      !Number.isFinite(event.occurredAtEpochMs) ||
+      event.occurredAtEpochMs <= 0
+    ) {
+      throw new Error('invalid occurredAtEpochMs');
+    }
+
+    if (typeof event.type !== 'string' || event.type.trim().length === 0) {
+      throw new Error('event type is required');
+    }
+  }
+
+  private trackProcessedEventId(eventId: string): void {
+    while (this.processedEventIds.size >= this.maxProcessedEventIds) {
+      const oldest = this.processedEventIds.values().next().value as
+        | string
+        | undefined;
+
+      if (oldest === undefined) {
+        break;
+      }
+
+      this.processedEventIds.delete(oldest);
+    }
+
+    this.processedEventIds.add(eventId);
+  }
 }
