@@ -1,7 +1,10 @@
-import readline from 'readline/promises';
+import readline from 'node:readline/promises';
 
 import { RuntimeKernel } from './application/runtime/RuntimeKernel';
-import { RuntimeShutdownCoordinator } from './application/runtime/RuntimeShutdownCoordinator';
+import {
+  RuntimeShutdownCoordinator,
+  type RuntimeShutdownReason,
+} from './application/runtime/RuntimeShutdownCoordinator';
 import { JsonLinesReplayRepository } from './infrastructure/replay/JsonLinesReplayRepository';
 
 import { RuntimeStressSampler } from './application/stress/RuntimeStressSampler';
@@ -14,7 +17,6 @@ import { RuntimeStressHarness } from './domain/stress/RuntimeStressHarness';
 import { OperatorHudFormatter } from './domain/operator';
 
 async function bootstrap() {
-
   const repo = new JsonLinesReplayRepository('./data/replay.jsonl');
 
   const kernel = new RuntimeKernel(
@@ -30,29 +32,59 @@ async function bootstrap() {
 
   const shutdown = new RuntimeShutdownCoordinator(kernel);
 
-  const rl = readline.createInterface({
+  const terminal = readline.createInterface({
     input: process.stdin,
     output: process.stdout
   });
 
+  let shuttingDown = false;
+
+  const terminate = (reason: RuntimeShutdownReason, exitCode = 0) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+
+    try {
+      shutdown.shutdown(reason);
+    } finally {
+      terminal.close();
+      process.exit(exitCode);
+    }
+  };
+
+  process.once('SIGINT', () => terminate('SIGINT'));
+  process.once('SIGTERM', () => terminate('SIGTERM'));
+
+  terminal.once('close', () => terminate('REPL_CLOSED'));
+
+  process.once('uncaughtException', (error) => {
+    console.error('[UNCAUGHT_EXCEPTION]', error);
+    terminate('UNCAUGHT_EXCEPTION', 1);
+  });
+
+  process.once('unhandledRejection', (reason) => {
+    console.error('[UNHANDLED_REJECTION]', reason);
+    terminate('UNHANDLED_REJECTION', 1);
+  });
+
   console.log('rlsys> CORE INITIALIZED');
+  console.log('Commands: status | quit | exit');
 
   while (true) {
-    const input = await rl.question('rlsys> ');
+    const input = await terminal.question('rlsys> ');
     const cmd = input.trim().toUpperCase();
 
     if (cmd === 'STATUS' || cmd === 'S') {
-      console.log({ session: kernel.getSessionId?.() ?? 'unknown' });
+      console.log({
+        status: 'RUNNING',
+        session: kernel.getSessionId?.() ?? 'unknown'
+      });
       continue;
     }
 
     if (cmd === 'QUIT' || cmd === 'EXIT') {
       console.log('Shutting down...');
-
-      shutdown.shutdown('OPERATOR_QUIT');
-
-      rl.close();
-      process.exit(0);
+      terminate('OPERATOR_QUIT');
+      return;
     }
 
     console.log(`Unknown command: ${cmd}`);
