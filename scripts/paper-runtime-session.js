@@ -92,6 +92,30 @@ const {
   TriplicacaoCounterfactualSettlementPresenter,
 } = require('../dist/application/runtime/TriplicacaoCounterfactualSettlementPresenter.js');
 
+const {
+  HeatmapDynamicLiveTerminalController,
+} = require('../dist/application/runtime/HeatmapDynamicLiveTerminalController.js');
+
+const {
+  HeatmapDynamicLiveObservability,
+} = require('../dist/application/runtime/HeatmapDynamicLiveObservability.js');
+
+const {
+  HeatmapDynamicLiveStatsPresenter,
+} = require('../dist/application/runtime/HeatmapDynamicLiveStatsPresenter.js');
+
+const {
+  FusionReducedLiveTerminalController,
+} = require('../dist/application/runtime/FusionReducedLiveTerminalController.js');
+
+const {
+  FusionReducedLiveObservability,
+} = require('../dist/application/runtime/FusionReducedLiveObservability.js');
+
+const {
+  FusionReducedLiveStatsPresenter,
+} = require('../dist/application/runtime/FusionReducedLiveStatsPresenter.js');
+
 
 function resolveSnapshotPath() {
   return (
@@ -376,6 +400,82 @@ function createTriplicacaoLiveController(
         'paper-runtime',
         `triplicacao-${configuration.sessionId}.json`,
       ),
+  });
+}
+
+
+function createHeatmapDynamicLiveController(
+  setupSnapshot,
+) {
+  const configuration =
+    setupSnapshot.configuration;
+
+  if (
+    configuration === null
+  ) {
+    throw new Error(
+      'paper_runtime_heatmap_dynamic_configuration_missing',
+    );
+  }
+
+  const history =
+    setupSnapshot.history;
+
+  if (
+    history === null ||
+    !Array.isArray(
+      history.rounds,
+    )
+  ) {
+    throw new Error(
+      'paper_runtime_heatmap_dynamic_history_missing',
+    );
+  }
+
+  return new HeatmapDynamicLiveTerminalController({
+    sessionId:
+      configuration.sessionId,
+
+    synchronizedHistory:
+      history.rounds,
+  });
+}
+
+
+function createFusionReducedLiveController(
+  setupSnapshot,
+) {
+  const configuration =
+    setupSnapshot.configuration;
+
+  if (
+    configuration === null
+  ) {
+    throw new Error(
+      'paper_runtime_fusion_reduced_configuration_missing',
+    );
+  }
+
+  const history =
+    setupSnapshot.history;
+
+  if (
+    history === null ||
+    !Array.isArray(
+      history.rounds,
+    )
+  ) {
+    throw new Error(
+      'paper_runtime_fusion_reduced_history_missing',
+    );
+  }
+
+  return new FusionReducedLiveTerminalController({
+    sessionId:
+      configuration.sessionId,
+
+    synchronizedHistory:
+      history.rounds,
   });
 }
 
@@ -1564,8 +1664,20 @@ async function runInteractiveSession() {
   let triplicacaoLive =
     null;
 
+  let heatmapDynamicLive =
+    null;
+
+  let fusionReducedLive =
+    null;
+
   const triplicacaoObservability =
     new TriplicacaoLiveObservability();
+
+  const heatmapDynamicObservability =
+    new HeatmapDynamicLiveObservability();
+
+  const fusionReducedObservability =
+    new FusionReducedLiveObservability();
 
   const operatorExplainability =
     new OperatorExplainabilityPresenter();
@@ -1575,6 +1687,12 @@ async function runInteractiveSession() {
 
   const triplicacaoStatsPresenter =
     new TriplicacaoLiveStatsPresenter();
+
+  const heatmapDynamicStatsPresenter =
+    new HeatmapDynamicLiveStatsPresenter();
+
+  const fusionReducedStatsPresenter =
+    new FusionReducedLiveStatsPresenter();
 
   const triplicacaoCalibrationPresenter =
     new TriplicacaoCounterfactualCalibrationPresenter();
@@ -1935,6 +2053,16 @@ async function runInteractiveSession() {
                 setupSnapshot,
               );
 
+            heatmapDynamicLive =
+              createHeatmapDynamicLiveController(
+                setupSnapshot,
+              );
+
+            fusionReducedLive =
+              createFusionReducedLiveController(
+                setupSnapshot,
+              );
+
             awaitingTriplicacaoDecision =
               false;
 
@@ -1952,6 +2080,8 @@ async function runInteractiveSession() {
               '',
               `Oráculo inicializado com ${setupSnapshot.history.roundCount} giros do Sync.`,
               'Triplicação institucional inicializada.',
+              'Fusion Reduzida inicializada.',
+              'Heatmap Dynamic inicializado.',
               '',
               'Antes do primeiro giro prospectivo,',
               'confirme a fronteira temporal do Sync.',
@@ -2014,8 +2144,136 @@ async function runInteractiveSession() {
             triplicacaoObservability,
           );
 
+          if (
+            heatmapDynamicLive !==
+            null
+          ) {
+            console.log(
+              heatmapDynamicObservability
+                .status(
+                  heatmapDynamicLive
+                    .snapshot(),
+                )
+                .join('\n'),
+            );
+          }
+
+          if (
+            fusionReducedLive !==
+            null
+          ) {
+            console.log(
+              fusionReducedObservability
+                .status(
+                  fusionReducedLive
+                    .snapshot(),
+                )
+                .join('\n'),
+            );
+          }
+
           return;
         }
+
+        if (
+          command === 'fusion stats' ||
+          command === 'fusion stats detail'
+        ) {
+          if (
+            fusionReducedLive ===
+            null
+          ) {
+            console.log([
+              '',
+              'ESTATÍSTICAS FUSION REDUZIDA INDISPONÍVEIS',
+              'A estratégia ainda não foi inicializada.',
+              '',
+            ].join('\n'));
+
+            return;
+          }
+
+          const fusionReducedStatsReport =
+            fusionReducedLive
+              .statsSnapshot(
+                command ===
+                  'fusion stats detail'
+                  ? 18
+                  : 6,
+              );
+
+          if (
+            command ===
+            'fusion stats detail'
+          ) {
+            console.log(
+              fusionReducedStatsPresenter
+                .detail(
+                  fusionReducedStatsReport,
+                ),
+            );
+          } else {
+            console.log(
+              fusionReducedStatsPresenter
+                .compact(
+                  fusionReducedStatsReport,
+                ),
+            );
+          }
+
+          return;
+        }
+
+
+        if (
+          command === 'heatmap stats' ||
+          command === 'heatmap stats detail'
+        ) {
+          if (
+            heatmapDynamicLive ===
+            null
+          ) {
+            console.log([
+              '',
+              'ESTATÍSTICAS HEATMAP DYNAMIC INDISPONÍVEIS',
+              'A estratégia ainda não foi inicializada.',
+              '',
+            ].join('\n'));
+
+            return;
+          }
+
+          const heatmapDynamicStatsReport =
+            heatmapDynamicLive
+              .statsSnapshot(
+                command ===
+                  'heatmap stats detail'
+                  ? 18
+                  : 6,
+              );
+
+          if (
+            command ===
+            'heatmap stats detail'
+          ) {
+            console.log(
+              heatmapDynamicStatsPresenter
+                .detail(
+                  heatmapDynamicStatsReport,
+                ),
+            );
+          } else {
+            console.log(
+              heatmapDynamicStatsPresenter
+                .compact(
+                  heatmapDynamicStatsReport,
+                ),
+            );
+          }
+
+          return;
+        }
+
 
         if (
           command === 'stats' ||
@@ -2113,7 +2371,9 @@ async function runInteractiveSession() {
 
         if (
           liveOracle === null ||
-          triplicacaoLive === null
+          triplicacaoLive === null ||
+          heatmapDynamicLive === null ||
+          fusionReducedLive === null
         ) {
           console.log([
             'Runtime live indisponível.',
@@ -2181,6 +2441,16 @@ async function runInteractiveSession() {
           }
 
           triplicacaoLive
+            .confirmHistoryCurrent(
+              command,
+            );
+
+          heatmapDynamicLive
+            .confirmHistoryCurrent(
+              command,
+            );
+
+          fusionReducedLive
             .confirmHistoryCurrent(
               command,
             );
@@ -2253,6 +2523,12 @@ async function runInteractiveSession() {
             triplicacaoLive
               .finishCatchUp();
 
+            heatmapDynamicLive
+              .finishCatchUp();
+
+            fusionReducedLive
+              .finishCatchUp();
+
             /*
              * Rebuild the general Oracle with the fully updated
              * history so catch-up becomes context rather than
@@ -2309,6 +2585,16 @@ async function runInteractiveSession() {
                 catchUpSpin,
               );
 
+          heatmapDynamicLive
+            .recordCatchUpSpin(
+              catchUpSpin,
+            );
+
+          fusionReducedLive
+            .recordCatchUpSpin(
+              catchUpSpin,
+            );
+
           console.log(
             `Catch-up registrado: ${catchUpSpin} | total=${snapshot.catchUpSpinCount}`,
           );
@@ -2364,6 +2650,18 @@ async function runInteractiveSession() {
               spin,
             );
 
+        const heatmapDynamicResult =
+          heatmapDynamicLive
+            .ingestLiveSpin(
+              spin,
+            );
+
+        const fusionReducedResult =
+          fusionReducedLive
+            .ingestLiveSpin(
+              spin,
+            );
+
         const baseStake =
           readinessReport?.risk
             ?.requestedStake ??
@@ -2379,6 +2677,89 @@ async function runInteractiveSession() {
           triplicacaoObservability,
           operatorExplainability,
         );
+
+        const heatmapDynamicObservation =
+          heatmapDynamicObservability
+            .observe(
+              heatmapDynamicResult,
+            );
+
+        console.log([
+          '',
+          'Heatmap Dynamic',
+          `Estado .............. ${heatmapDynamicObservation.state}`,
+          `Modo analítico ...... ${heatmapDynamicObservation.analyticalMode}`,
+          `Sinal ............... ${heatmapDynamicObservation.signalStrength}`,
+          `Região .............. ${heatmapDynamicObservation.targetRegionId ?? '-'}`,
+          `Números ............. ${
+            heatmapDynamicObservation.targetNumbers.length > 0
+              ? heatmapDynamicObservation.targetNumbers.join(' ')
+              : '-'
+          }`,
+          `Tamanho alvo ........ ${heatmapDynamicObservation.targetSize}`,
+          `Cobertura ........... ${heatmapDynamicObservation.coveragePercent
+            .toFixed(1)
+            .replace('.', ',')}%`,
+          `Resumo ............... ${heatmapDynamicObservation.summary}`,
+          '',
+          'Nenhuma entrada é executada automaticamente.',
+          '',
+        ].join('\n'));
+
+        const fusionReducedObservation =
+          fusionReducedObservability
+            .observe(
+              fusionReducedResult,
+            );
+
+        console.log([
+          '',
+          'Fusion Reduzida',
+          `Estado .............. ${fusionReducedObservation.state}`,
+          `Elegível ............ ${fusionReducedObservation.eligible ? 'SIM' : 'NÃO'}`,
+          `Confiança ........... ${(
+            fusionReducedObservation.confidenceScore *
+            100
+          )
+            .toFixed(1)
+            .replace('.', ',')}%`,
+          `Risco ............... ${(
+            fusionReducedObservation.riskScore *
+            100
+          )
+            .toFixed(1)
+            .replace('.', ',')}%`,
+          `Hit global .......... ${(
+            fusionReducedObservation.observedHitRate *
+            100
+          )
+            .toFixed(1)
+            .replace('.', ',')}%`,
+          `Hit recente ......... ${(
+            fusionReducedObservation.recentHitRate *
+            100
+          )
+            .toFixed(1)
+            .replace('.', ',')}%`,
+          `Drift ............... ${(
+            fusionReducedObservation.rateDrift *
+            100
+          )
+            .toFixed(1)
+            .replace('.', ',')}%`,
+          'Alvo ................ 23 ± 9',
+          `Números ............. ${fusionReducedObservation.targetNumbers.join(' ')}`,
+          `Cobertura ........... ${fusionReducedObservation.coveragePercent
+            .toFixed(2)
+            .replace('.', ',')}%`,
+          `Validade ............ ${fusionReducedObservation.recommendationIssued ? 'PRÓXIMO GIRO' : '-'}`,
+          `Settlement anterior . ${fusionReducedObservation.previousSettlementOutcome ?? '-'}`,
+          `Resumo .............. ${fusionReducedObservation.summary}`,
+          '',
+          'Nenhuma entrada é executada automaticamente.',
+          '',
+        ].join('\n'));
+
 
         if (
           triplicacaoResult.runtime.event ===
@@ -2731,7 +3112,9 @@ async function runInteractiveSession() {
         paperRunning &&
         (
           liveOracle === null ||
-          triplicacaoLive === null
+          triplicacaoLive === null ||
+          heatmapDynamicLive === null ||
+          fusionReducedLive === null
         )
       ) {
         liveBootstrapBlocked =
