@@ -1,4 +1,8 @@
-export type RuntimePressureLevel = "LOW" | "ELEVATED" | "HIGH" | "CRITICAL";
+export type RuntimePressureLevel =
+  | "LOW"
+  | "ELEVATED"
+  | "HIGH"
+  | "CRITICAL";
 
 export interface RuntimeSoakPressureCalibrationConfig {
   readonly warmupIterations: number;
@@ -21,83 +25,181 @@ export interface RuntimeSoakPressureCalibrationResult {
 }
 
 /**
+ * Incremental O(1)-memory pressure calibration accumulator.
+ *
+ * It preserves the exact semantics of RuntimeSoakPressureCalibration.evaluate
+ * while allowing long-running soak processes to discard samples immediately
+ * after observation.
+ */
+export class RuntimeSoakPressureCalibrationAccumulator {
+  private ignoredWarmupSamples = 0;
+  private measuredIterations = 0;
+  private transientPressureSpikes = 0;
+  private sustainedPressureViolations = 0;
+  private currentPressureRun = 0;
+
+  public constructor(
+    private readonly config:
+      RuntimeSoakPressureCalibrationConfig,
+  ) {
+    RuntimeSoakPressureCalibration.validateConfig(
+      config,
+    );
+  }
+
+  public observe(
+    sample: RuntimeSoakPressureSample,
+  ): void {
+    if (
+      sample.iteration <=
+      this.config.warmupIterations
+    ) {
+      this.ignoredWarmupSamples += 1;
+      return;
+    }
+
+    this.measuredIterations += 1;
+
+    if (
+      RuntimeSoakPressureCalibration.isPressureViolation(
+        sample.pressure,
+        this.config.forbiddenPressure,
+      )
+    ) {
+      this.transientPressureSpikes += 1;
+      this.currentPressureRun += 1;
+
+      if (
+        this.currentPressureRun >=
+        this.config.sustainedPressureWindow
+      ) {
+        this.sustainedPressureViolations += 1;
+      }
+
+      return;
+    }
+
+    this.currentPressureRun = 0;
+  }
+
+  public result():
+    RuntimeSoakPressureCalibrationResult {
+    return Object.freeze({
+      measuredIterations:
+        this.measuredIterations,
+
+      ignoredWarmupSamples:
+        this.ignoredWarmupSamples,
+
+      transientPressureSpikes:
+        this.transientPressureSpikes,
+
+      sustainedPressureViolations:
+        this.sustainedPressureViolations,
+
+      stable:
+        this.sustainedPressureViolations === 0 &&
+        this.transientPressureSpikes <=
+          this.config.allowedTransientPressureSpikes,
+    });
+  }
+}
+
+/**
  * Calibrates soak pressure evaluation for mobile runtimes.
  *
- * Warm-up samples are ignored to avoid classifying initial GC/heap expansion as
- * sustained failure. After warm-up, transient spikes are counted separately from
- * sustained pressure windows.
+ * evaluate() remains available for compatibility with existing callers and
+ * tests. Long-running callers should prefer createAccumulator() so samples
+ * can be consumed incrementally with O(1) memory.
  *
  * Complexity:
- * - O(n), where n is sample count.
- * - Memory O(1).
+ * - evaluate: O(n) time, O(1) internal memory.
+ * - accumulator: O(1) per sample, O(1) memory.
  */
 export class RuntimeSoakPressureCalibration {
+  public createAccumulator(
+    config: RuntimeSoakPressureCalibrationConfig,
+  ): RuntimeSoakPressureCalibrationAccumulator {
+    return new RuntimeSoakPressureCalibrationAccumulator(
+      config,
+    );
+  }
+
   public evaluate(
     samples: readonly RuntimeSoakPressureSample[],
     config: RuntimeSoakPressureCalibrationConfig,
   ): RuntimeSoakPressureCalibrationResult {
-    this.validate(config);
-
-    let ignoredWarmupSamples = 0;
-    let measuredIterations = 0;
-    let transientPressureSpikes = 0;
-    let sustainedPressureViolations = 0;
-    let currentPressureRun = 0;
+    const accumulator =
+      this.createAccumulator(
+        config,
+      );
 
     for (const sample of samples) {
-      if (sample.iteration <= config.warmupIterations) {
-        ignoredWarmupSamples += 1;
-        continue;
-      }
+      accumulator.observe(
+        sample,
+      );
+    }
 
-      measuredIterations += 1;
+    return accumulator.result();
+  }
 
-      if (this.isViolation(sample.pressure, config.forbiddenPressure)) {
-        transientPressureSpikes += 1;
-        currentPressureRun += 1;
+  public static validateConfig(
+    config: RuntimeSoakPressureCalibrationConfig,
+  ): void {
+    const numericFields:
+      ReadonlyArray<
+        readonly [string, number]
+      > = [
+        [
+          "warmupIterations",
+          config.warmupIterations,
+        ],
+        [
+          "allowedTransientPressureSpikes",
+          config.allowedTransientPressureSpikes,
+        ],
+        [
+          "sustainedPressureWindow",
+          config.sustainedPressureWindow,
+        ],
+      ];
 
-        if (currentPressureRun >= config.sustainedPressureWindow) {
-          sustainedPressureViolations += 1;
-        }
-      } else {
-        currentPressureRun = 0;
+    for (
+      const [name, value]
+      of numericFields
+    ) {
+      if (
+        !Number.isInteger(value) ||
+        value < 0
+      ) {
+        throw new Error(
+          `Invalid pressure calibration config: ${name} must be a non-negative integer.`,
+        );
       }
     }
 
-    return {
-      measuredIterations,
-      ignoredWarmupSamples,
-      transientPressureSpikes,
-      sustainedPressureViolations,
-      stable:
-        sustainedPressureViolations === 0
-        && transientPressureSpikes <= config.allowedTransientPressureSpikes,
-    };
-  }
-
-  private validate(config: RuntimeSoakPressureCalibrationConfig): void {
-    const numericFields: ReadonlyArray<readonly [string, number]> = [
-      ["warmupIterations", config.warmupIterations],
-      ["allowedTransientPressureSpikes", config.allowedTransientPressureSpikes],
-      ["sustainedPressureWindow", config.sustainedPressureWindow],
-    ];
-
-    for (const [name, value] of numericFields) {
-      if (!Number.isInteger(value) || value < 0) {
-        throw new Error(`Invalid pressure calibration config: ${name} must be a non-negative integer.`);
-      }
-    }
-
-    if (config.sustainedPressureWindow <= 0) {
-      throw new Error("Invalid pressure calibration config: sustainedPressureWindow must be positive.");
+    if (
+      config.sustainedPressureWindow <= 0
+    ) {
+      throw new Error(
+        "Invalid pressure calibration config: sustainedPressureWindow must be positive.",
+      );
     }
   }
 
-  private isViolation(current: RuntimePressureLevel, forbidden: RuntimePressureLevel): boolean {
-    return this.rank(current) >= this.rank(forbidden);
+  public static isPressureViolation(
+    current: RuntimePressureLevel,
+    forbidden: RuntimePressureLevel,
+  ): boolean {
+    return (
+      this.rank(current) >=
+      this.rank(forbidden)
+    );
   }
 
-  private rank(level: RuntimePressureLevel): number {
+  private static rank(
+    level: RuntimePressureLevel,
+  ): number {
     switch (level) {
       case "LOW":
         return 0;
