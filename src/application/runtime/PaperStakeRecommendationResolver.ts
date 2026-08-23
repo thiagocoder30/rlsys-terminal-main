@@ -52,6 +52,16 @@ export interface PaperStakeRecommendation {
   readonly exposureLimitFraction:
     number;
 
+  /**
+   * Monetary representation of the sovereign exposure ceiling.
+   *
+   * CRITICAL:
+   *
+   * This value is always rounded DOWN to cents and can therefore
+   * never exceed:
+   *
+   * bankroll × exposureLimitFraction
+   */
   readonly exposureLimitAmount:
     number;
 
@@ -76,11 +86,14 @@ export interface PaperStakeRecommendation {
   readonly blockers:
     readonly string[];
 
-  readonly recommendationOnly: true;
+  readonly recommendationOnly:
+    true;
 
-  readonly humanExecutionRequired: true;
+  readonly humanExecutionRequired:
+    true;
 
-  readonly automaticBetExecutionAllowed: false;
+  readonly automaticBetExecutionAllowed:
+    false;
 }
 
 
@@ -100,34 +113,34 @@ const POLICY:
       PaperStakeProfilePolicy
     >
   > =
-    Object.freeze({
-      conservative:
-        Object.freeze({
-          exposureFraction:
-            0.01,
+  Object.freeze({
+    conservative:
+      Object.freeze({
+        exposureFraction:
+          0.01,
 
-          maximumStrategyRisk:
-            0.34,
-        }),
+        maximumStrategyRisk:
+          0.34,
+      }),
 
-      moderate:
-        Object.freeze({
-          exposureFraction:
-            0.02,
+    moderate:
+      Object.freeze({
+        exposureFraction:
+          0.02,
 
-          maximumStrategyRisk:
-            0.48,
-        }),
+        maximumStrategyRisk:
+          0.48,
+      }),
 
-      aggressive:
-        Object.freeze({
-          exposureFraction:
-            0.03,
+    aggressive:
+      Object.freeze({
+        exposureFraction:
+          0.03,
 
-          maximumStrategyRisk:
-            0.62,
-        }),
-    });
+        maximumStrategyRisk:
+          0.62,
+      }),
+  });
 
 
 /**
@@ -137,11 +150,12 @@ const POLICY:
  *
  * 1. Stake is derived from CURRENT bankroll.
  * 2. Stake never exceeds the risk-mode exposure cap.
- * 3. Stake is rounded DOWN to the provider minimum-chip increment.
- * 4. If even the minimum chip exceeds safe exposure, operation blocks.
- * 5. Strategy confidence never increases financial exposure.
- * 6. High strategy risk may block but never increase stake.
- * 7. Nothing in this class executes a bet.
+ * 3. Monetary exposure ceiling is rounded DOWN, never nearest/up.
+ * 4. Stake is rounded DOWN to the provider minimum-chip increment.
+ * 5. If even the minimum chip exceeds safe exposure, operation blocks.
+ * 6. Strategy confidence never increases financial exposure.
+ * 7. High strategy risk may block but never increase stake.
+ * 8. Nothing in this class executes a bet.
  */
 export class PaperStakeRecommendationResolver {
   public resolve(
@@ -157,10 +171,32 @@ export class PaperStakeRecommendationResolver {
         input.riskMode
       ];
 
+    /*
+     * IMPORTANT:
+     *
+     * Do not use ordinary monetary rounding here.
+     *
+     * Example:
+     *
+     * bankroll = 119.80
+     * moderate = 2%
+     *
+     * mathematical cap = 2.396
+     *
+     * Math.round(..., 2 decimals) => 2.40
+     *
+     * 2.40 / 119.80 > 2%
+     *
+     * Therefore the sovereign cap itself must always be
+     * represented conservatively.
+     */
+    const rawExposureLimitAmount =
+      input.bankroll *
+      policy.exposureFraction;
+
     const exposureLimitAmount =
-      this.money(
-        input.bankroll *
-        policy.exposureFraction,
+      this.floorMoney(
+        rawExposureLimitAmount,
       );
 
     const base =
@@ -197,6 +233,7 @@ export class PaperStakeRecommendationResolver {
           false as const,
       };
 
+
     if (
       input.strategyRiskScore >
       policy.maximumStrategyRisk
@@ -227,8 +264,9 @@ export class PaperStakeRecommendationResolver {
       });
     }
 
+
     if (
-      exposureLimitAmount <
+      rawExposureLimitAmount <
       input.minimumStake
     ) {
       return Object.freeze({
@@ -256,14 +294,23 @@ export class PaperStakeRecommendationResolver {
       });
     }
 
+
+    /*
+     * Quantization happens from the unrounded mathematical cap.
+     *
+     * This guarantees that an intermediate cent-rounding step
+     * can never accidentally increase the authorized exposure.
+     */
     const suggestedStake =
       this.floorToIncrement(
-        exposureLimitAmount,
+        rawExposureLimitAmount,
         input.minimumStake,
       );
 
+
     if (
-      suggestedStake <= 0
+      suggestedStake <=
+      0
     ) {
       return Object.freeze({
         ...base,
@@ -289,19 +336,37 @@ export class PaperStakeRecommendationResolver {
       });
     }
 
+
+    /*
+     * Defense in depth against any future regression in money
+     * or increment quantization.
+     */
+    if (
+      suggestedStake >
+      rawExposureLimitAmount +
+      1e-9
+    ) {
+      throw new Error(
+        'paper_stake_exposure_amount_invariant_violated',
+      );
+    }
+
+
     const effectiveExposureFraction =
       suggestedStake /
       input.bankroll;
 
+
     if (
       effectiveExposureFraction >
       policy.exposureFraction +
-      Number.EPSILON
+      1e-12
     ) {
       throw new Error(
         'paper_stake_exposure_invariant_violated',
       );
     }
+
 
     return Object.freeze({
       ...base,
@@ -347,9 +412,19 @@ export class PaperStakeRecommendationResolver {
         increment,
       );
 
-    return this.money(
+    const value =
       units *
-      increment,
+      increment;
+
+    /*
+     * Quantization itself is already downward.
+     *
+     * money() here only removes floating-point noise from values
+     * such as 0.30000000000000004. It cannot raise the number of
+     * complete increments because that was fixed above.
+     */
+    return this.money(
+      value,
     );
   }
 
@@ -362,7 +437,8 @@ export class PaperStakeRecommendationResolver {
       !Number.isFinite(
         input.bankroll,
       ) ||
-      input.bankroll <= 0
+      input.bankroll <=
+        0
     ) {
       throw new Error(
         'paper_stake_invalid_bankroll',
@@ -386,7 +462,8 @@ export class PaperStakeRecommendationResolver {
       !Number.isFinite(
         input.minimumStake,
       ) ||
-      input.minimumStake <= 0
+      input.minimumStake <=
+        0
     ) {
       throw new Error(
         'paper_stake_invalid_minimum',
@@ -397,8 +474,10 @@ export class PaperStakeRecommendationResolver {
       !Number.isFinite(
         input.strategyRiskScore,
       ) ||
-      input.strategyRiskScore < 0 ||
-      input.strategyRiskScore > 1
+      input.strategyRiskScore <
+        0 ||
+      input.strategyRiskScore >
+        1
     ) {
       throw new Error(
         'paper_stake_invalid_strategy_risk',
@@ -407,6 +486,12 @@ export class PaperStakeRecommendationResolver {
   }
 
 
+  /**
+   * Ordinary monetary normalization.
+   *
+   * Suitable for display/state values that are not themselves
+   * sovereign risk ceilings.
+   */
   private money(
     value:
       number,
@@ -414,7 +499,29 @@ export class PaperStakeRecommendationResolver {
     return Math.round(
       value *
       100,
-    ) / 100;
+    ) /
+    100;
+  }
+
+
+  /**
+   * Conservative monetary normalization for a hard risk cap.
+   *
+   * A risk ceiling may lose fractions of a cent.
+   * It may never gain them.
+   */
+  private floorMoney(
+    value:
+      number,
+  ): number {
+    return Math.floor(
+      (
+        value +
+        1e-9
+      ) *
+      100,
+    ) /
+    100;
   }
 
 
