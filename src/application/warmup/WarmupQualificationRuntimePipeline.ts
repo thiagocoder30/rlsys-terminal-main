@@ -9,6 +9,7 @@ export type WarmupQualificationReason =
   | 'EMPTY_INPUT'
   | 'VISION_REJECTED'
   | 'OCR_RELIABILITY_REJECTED'
+  | 'MANUAL_RELIABILITY_REJECTED'
   | 'WARMUP_TABLE_NO_GO'
   | 'WARMUP_TABLE_OBSERVE'
   | 'WARMUP_TABLE_QUALIFIED'
@@ -97,13 +98,20 @@ export class WarmupQualificationRuntimePipeline {
         return this.buildReport({
           source,
           status: 'BLOCKED',
-          reason: 'OCR_RELIABILITY_REJECTED',
+          reason: source === 'manual'
+            ? 'MANUAL_RELIABILITY_REJECTED'
+            : 'OCR_RELIABILITY_REJECTED',
           extraction,
           confidenceScore: extraction.reliability.score,
-          explanation: [
-            'A confiabilidade da extração ficou abaixo do mínimo institucional.',
-            'O sistema bloqueou a operação para proteger a banca.'
-          ]
+          explanation: source === 'manual'
+            ? [
+                'A amostra manual possui confiabilidade insuficiente para a qualificação institucional.',
+                'Sincronize a quantidade recomendada de rodadas antes de tentar liberar a operação PAPER.'
+              ]
+            : [
+                'A confiabilidade da extração visual ficou abaixo do mínimo institucional.',
+                'Revise a extração antes de prosseguir.'
+              ]
         });
       }
 
