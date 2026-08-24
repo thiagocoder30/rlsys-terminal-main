@@ -116,6 +116,14 @@ const {
   FusionReducedLiveStatsPresenter,
 } = require('../dist/application/runtime/FusionReducedLiveStatsPresenter.js');
 
+const {
+  PaperHistoricalShadowSessionEngine,
+} = require('../dist/application/runtime/PaperHistoricalShadowSessionEngine.js');
+
+const {
+  PaperHistoricalShadowPresenter,
+} = require('../dist/application/runtime/PaperHistoricalShadowPresenter.js');
+
 
 function resolveSnapshotPath() {
   return (
@@ -477,6 +485,79 @@ function createFusionReducedLiveController(
     synchronizedHistory:
       history.rounds,
   });
+}
+
+
+function createHistoricalShadowSessionSnapshot(
+  setupSnapshot,
+) {
+  const configuration =
+    setupSnapshot.configuration;
+
+  if (
+    configuration === null
+  ) {
+    throw new Error(
+      'paper_runtime_historical_shadow_configuration_missing',
+    );
+  }
+
+  const history =
+    setupSnapshot.history;
+
+  if (
+    history === null ||
+    !Array.isArray(
+      history.rounds,
+    )
+  ) {
+    throw new Error(
+      'paper_runtime_historical_shadow_history_missing',
+    );
+  }
+
+  const provider =
+    String(
+      configuration.provider ??
+      '',
+    )
+      .trim()
+      .toUpperCase();
+
+  if (
+    provider !== 'PRAGMATIC' &&
+    provider !== 'EVOLUTION'
+  ) {
+    throw new Error(
+      `paper_runtime_historical_shadow_invalid_provider:${provider}`,
+    );
+  }
+
+  return new PaperHistoricalShadowSessionEngine()
+    .run({
+      history:
+        history.rounds,
+
+      initialBankroll:
+        configuration.bankroll,
+
+      riskMode:
+        normalizePaperRiskMode(
+          configuration.riskMode,
+        ),
+
+      provider,
+
+      minimumChipValue:
+        resolvePaperMinimumStake(
+          configuration,
+        ),
+
+      martingaleEnabled:
+        resolvePaperMartingaleEnabled(
+          configuration,
+        ),
+    });
 }
 
 
@@ -1670,6 +1751,9 @@ async function runInteractiveSession() {
   let fusionReducedLive =
     null;
 
+  let historicalShadowSnapshot =
+    null;
+
   const triplicacaoObservability =
     new TriplicacaoLiveObservability();
 
@@ -1693,6 +1777,9 @@ async function runInteractiveSession() {
 
   const fusionReducedStatsPresenter =
     new FusionReducedLiveStatsPresenter();
+
+  const historicalShadowPresenter =
+    new PaperHistoricalShadowPresenter();
 
   const triplicacaoCalibrationPresenter =
     new TriplicacaoCounterfactualCalibrationPresenter();
@@ -2039,6 +2126,20 @@ async function runInteractiveSession() {
             const setupSnapshot =
               setup.coordinator.snapshot();
 
+            /*
+             * Historical SHADOW closes the retrospective phase.
+             *
+             * It receives only the already-synchronized history.
+             * No catch-up spin and no LIVE spin exists at this point.
+             *
+             * Any failure here occurs before prospective controllers
+             * are initialized, keeping the bootstrap fail-closed.
+             */
+            historicalShadowSnapshot =
+              createHistoricalShadowSessionSnapshot(
+                setupSnapshot,
+              );
+
             liveBootstrapBlocked =
               false;
 
@@ -2068,6 +2169,13 @@ async function runInteractiveSession() {
 
             liveBootstrapBlocked =
               false;
+
+            console.log(
+              historicalShadowPresenter
+                .render(
+                  historicalShadowSnapshot,
+                ),
+            );
 
             saveAutomaticRuntimeSnapshot(
               loop,
