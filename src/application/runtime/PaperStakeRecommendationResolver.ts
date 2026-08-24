@@ -1,3 +1,8 @@
+import {
+  PaperBaseExposureRiskPolicy,
+} from './PaperBaseExposureRiskPolicy.js';
+
+
 export type PaperStakeRiskMode =
   | 'conservative'
   | 'moderate'
@@ -98,14 +103,21 @@ export interface PaperStakeRecommendation {
 
 
 interface PaperStakeProfilePolicy {
-  readonly exposureFraction:
-    number;
-
   readonly maximumStrategyRisk:
     number;
 }
 
 
+/**
+ * Strategy-risk admissibility remains local to the stake resolver.
+ *
+ * IMPORTANT:
+ *
+ * Base financial exposure does NOT live here.
+ *
+ * The canonical authority for the risk-mode exposure fraction is
+ * PaperBaseExposureRiskPolicy.
+ */
 const POLICY:
   Readonly<
     Record<
@@ -116,27 +128,18 @@ const POLICY:
   Object.freeze({
     conservative:
       Object.freeze({
-        exposureFraction:
-          0.01,
-
         maximumStrategyRisk:
           0.34,
       }),
 
     moderate:
       Object.freeze({
-        exposureFraction:
-          0.02,
-
         maximumStrategyRisk:
           0.48,
       }),
 
     aggressive:
       Object.freeze({
-        exposureFraction:
-          0.03,
-
         maximumStrategyRisk:
           0.62,
       }),
@@ -149,15 +152,21 @@ const POLICY:
  * Critical invariants:
  *
  * 1. Stake is derived from CURRENT bankroll.
- * 2. Stake never exceeds the risk-mode exposure cap.
- * 3. Monetary exposure ceiling is rounded DOWN, never nearest/up.
- * 4. Stake is rounded DOWN to the provider minimum-chip increment.
- * 5. If even the minimum chip exceeds safe exposure, operation blocks.
- * 6. Strategy confidence never increases financial exposure.
- * 7. High strategy risk may block but never increase stake.
- * 8. Nothing in this class executes a bet.
+ * 2. Base exposure comes from the canonical
+ *    PaperBaseExposureRiskPolicy.
+ * 3. Stake never exceeds the risk-mode exposure cap.
+ * 4. Monetary exposure ceiling is rounded DOWN, never nearest/up.
+ * 5. Stake is rounded DOWN to the provider minimum-chip increment.
+ * 6. If even the minimum chip exceeds safe exposure, operation blocks.
+ * 7. Strategy confidence never increases financial exposure.
+ * 8. High strategy risk may block but never increase stake.
+ * 9. Nothing in this class executes a bet.
  */
 export class PaperStakeRecommendationResolver {
+  private readonly baseExposureRiskPolicy =
+    new PaperBaseExposureRiskPolicy();
+
+
   public resolve(
     input:
       PaperStakeRecommendationInput,
@@ -170,6 +179,19 @@ export class PaperStakeRecommendationResolver {
       POLICY[
         input.riskMode
       ];
+
+    /*
+     * Canonical financial doctrine.
+     *
+     * The resolver intentionally does not own the numerical
+     * conservative/moderate/aggressive exposure fractions.
+     */
+    const exposureLimitFraction =
+      this.baseExposureRiskPolicy
+        .resolve(
+          input.riskMode,
+        )
+        .exposureFraction;
 
     /*
      * IMPORTANT:
@@ -192,7 +214,7 @@ export class PaperStakeRecommendationResolver {
      */
     const rawExposureLimitAmount =
       input.bankroll *
-      policy.exposureFraction;
+      exposureLimitFraction;
 
     const exposureLimitAmount =
       this.floorMoney(
@@ -209,8 +231,7 @@ export class PaperStakeRecommendationResolver {
         riskMode:
           input.riskMode,
 
-        exposureLimitFraction:
-          policy.exposureFraction,
+        exposureLimitFraction,
 
         exposureLimitAmount,
 
@@ -359,7 +380,7 @@ export class PaperStakeRecommendationResolver {
 
     if (
       effectiveExposureFraction >
-      policy.exposureFraction +
+      exposureLimitFraction +
       1e-12
     ) {
       throw new Error(
@@ -384,7 +405,7 @@ export class PaperStakeRecommendationResolver {
       reasons:
         Object.freeze([
           `RISK_MODE:${input.riskMode}`,
-          `EXPOSURE_LIMIT_FRACTION:${policy.exposureFraction}`,
+          `EXPOSURE_LIMIT_FRACTION:${exposureLimitFraction}`,
           `EXPOSURE_LIMIT_AMOUNT:${exposureLimitAmount}`,
           `SUGGESTED_STAKE:${suggestedStake}`,
           `STRATEGY_RISK:${input.strategyRiskScore}`,
@@ -416,13 +437,6 @@ export class PaperStakeRecommendationResolver {
       units *
       increment;
 
-    /*
-     * Quantization itself is already downward.
-     *
-     * money() here only removes floating-point noise from values
-     * such as 0.30000000000000004. It cannot raise the number of
-     * complete increments because that was fixed above.
-     */
     return this.money(
       value,
     );
@@ -486,12 +500,6 @@ export class PaperStakeRecommendationResolver {
   }
 
 
-  /**
-   * Ordinary monetary normalization.
-   *
-   * Suitable for display/state values that are not themselves
-   * sovereign risk ceilings.
-   */
   private money(
     value:
       number,
@@ -504,12 +512,6 @@ export class PaperStakeRecommendationResolver {
   }
 
 
-  /**
-   * Conservative monetary normalization for a hard risk cap.
-   *
-   * A risk ceiling may lose fractions of a cent.
-   * It may never gain them.
-   */
   private floorMoney(
     value:
       number,
