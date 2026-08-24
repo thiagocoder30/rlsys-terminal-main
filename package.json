@@ -36,7 +36,7 @@
     "warmup:fetch": "bash scripts/fetch-latest-screenshot.sh",
     "paper": "node scripts/paper-runtime-session.js",
     "paper:live": "node scripts/paper-runtime-session.js",
-    "paper:manual": "node scripts/manual-warmup-injector.js"
+    "paper:manual": "node scripts/paper-runtime-session.js"
   },
   "keywords": [
     "rl-sys",

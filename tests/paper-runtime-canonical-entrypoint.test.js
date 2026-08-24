@@ -54,23 +54,36 @@ function canonicalRuntimeSource() {
 
 
 test(
-  'paper and paper:live share the canonical supervised runtime',
+  'paper paper:live and paper:manual share the canonical supervised runtime',
   () => {
     const pkg =
       packageJson();
 
+    const canonical =
+      'node scripts/paper-runtime-session.js';
+
     assert.equal(
       pkg.scripts.paper,
-      'node scripts/paper-runtime-session.js',
+      canonical,
     );
 
     assert.equal(
       pkg.scripts['paper:live'],
-      'node scripts/paper-runtime-session.js',
+      canonical,
+    );
+
+    assert.equal(
+      pkg.scripts['paper:manual'],
+      canonical,
     );
 
     assert.equal(
       pkg.scripts['paper:live'],
+      pkg.scripts.paper,
+    );
+
+    assert.equal(
+      pkg.scripts['paper:manual'],
       pkg.scripts.paper,
     );
   },
@@ -78,15 +91,37 @@ test(
 
 
 test(
-  'paper:live does not invoke legacy tactical orchestrator',
+  'paper entrypoints do not invoke legacy tactical orchestrator',
   () => {
     const pkg =
       packageJson();
 
-    assert.doesNotMatch(
-      pkg.scripts['paper:live'],
-      /live-paper-orchestrator/,
-    );
+    for (
+      const command of [
+        pkg.scripts.paper,
+        pkg.scripts['paper:live'],
+        pkg.scripts['paper:manual'],
+      ]
+    ) {
+      assert.doesNotMatch(
+        command,
+        /live-paper-orchestrator/,
+      );
+
+      assert.doesNotMatch(
+        command,
+        /manual-warmup-injector/,
+      );
+    }
+  },
+);
+
+
+test(
+  'paper:live no longer injects implicit OCR warmup fetch',
+  () => {
+    const pkg =
+      packageJson();
 
     assert.doesNotMatch(
       pkg.scripts['paper:live'],
@@ -119,14 +154,6 @@ test(
     const source =
       canonicalRuntimeSource();
 
-    /*
-     * The entrypoint is an operator-facing supervised runtime.
-     *
-     * Recommendation-only semantics are certified in the strategy
-     * wiring suites. At this boundary we assert the stronger and
-     * more stable structural property: the runtime itself exposes
-     * no direct casino execution primitive.
-     */
     assert.doesNotMatch(
       source,
       /\bplaceBet\s*\(/,
