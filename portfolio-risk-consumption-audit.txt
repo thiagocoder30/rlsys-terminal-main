@@ -1,0 +1,761 @@
+======================================================
+RL.SYS — PORTFOLIO RISK CONSUMPTION AUDIT
+======================================================
+
+HEAD:
+e788008 feat(risk): add sovereign prospective portfolio exposure authority
+
+======================================================
+PORTFOLIO RISK CONTROLLER REFERENCES
+======================================================
+src/application/runtime/PaperProspectivePortfolioRiskController.ts:220:export class PaperProspectivePortfolioRiskController {
+tests/application/runtime/PaperProspectivePortfolioRiskController.test.js:2:  PaperProspectivePortfolioRiskController,
+tests/application/runtime/PaperProspectivePortfolioRiskController.test.js:4:  '../../../dist/application/runtime/PaperProspectivePortfolioRiskController.js',
+tests/application/runtime/PaperProspectivePortfolioRiskController.test.js:11:  return new PaperProspectivePortfolioRiskController({
+tests/application/runtime/PaperProspectivePortfolioRiskController.test.js:24:  'PaperProspectivePortfolioRiskController',
+tests/application/runtime/PaperProspectivePortfolioRiskController.test.js:697:  'PaperProspectivePortfolioRiskController sovereign authority hardening',
+tests/application/runtime/PaperProspectivePortfolioRiskController.test.js:715:          new PaperProspectivePortfolioRiskController(
+tests/application/runtime/PaperProspectivePortfolioRiskController.test.js:779:          new PaperProspectivePortfolioRiskController(
+
+======================================================
+RECOVERY CONTROLLER REFERENCES
+======================================================
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:28:  PaperInstitutionalRecoveryController,
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:31:} from './PaperInstitutionalRecoveryController.js';
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:72:    PaperInstitutionalRecoveryController;
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:236:    PaperInstitutionalRecoveryController | null;
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:299:        new PaperInstitutionalRecoveryController({
+src/application/runtime/PaperInstitutionalRecoveryController.ts:209:export class PaperInstitutionalRecoveryController {
+
+======================================================
+TRIPLICACAO RUNTIME STAKE FLOW
+======================================================
+
+======================================================
+FUSION RUNTIME REFERENCES
+======================================================
+src/application/runtime/InstitutionalMultiStrategyConsensusRuntime.ts:230:  public fromFusionReducedAnalysis(input: {
+src/application/runtime/OperatorHudMinimalistAdapter.ts:15:  readonly suggestedStake: number;
+src/application/runtime/OperatorHudMinimalistAdapter.ts:65:    lines.push(`║ • Stake sugerido: R$ ${input.suggestedStake}`);
+src/application/runtime/PaperSessionHudFinalizer.ts:33:    const suggestedStake = entryAllowed ? input.requestedStake : 0;
+src/application/runtime/PaperSessionHudFinalizer.ts:37:      suggestedStake,
+src/application/runtime/PaperLiveOracleEngine.ts:571:        `Stake PAPER calculada: R$ ${target.suggestedStake
+src/application/runtime/PaperOracleTargetResolver.ts:67:  readonly suggestedStake:
+src/application/runtime/PaperOracleTargetResolver.ts:296:    const suggestedStake =
+src/application/runtime/PaperOracleTargetResolver.ts:321:      suggestedStake,
+src/application/runtime/PaperOracleTargetResolver.ts:474:      suggestedStake:
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:71:  readonly financialController?:
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:92:  readonly suggestedStake?:
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:235:  private readonly financialController:
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:296:      this.financialController =
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:298:          .financialController ??
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:318:      this.financialController =
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:512:      this.financialController
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:575:    const suggestedStake =
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:577:        ?.suggestedStake ??
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:578:      input.suggestedStake;
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:581:      suggestedStake ===
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:583:      suggestedStake ===
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:594:      suggestedStake;
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:609:        suggestedStake,
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:698:      this.financialController
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:865:      this.financialController
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:866:        ? this.financialController.settle({
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:875:            suggestedStake:
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:877:                .suggestedStake,
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:938:      this.financialController
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:1033:      `Stake sugerida: R$ ${this.formatMoney(signal.suggestedStake)}.`,
+src/application/runtime/FusionReducedProspectiveDecisionSemantics.ts:2:  FusionReducedDoctrineSnapshot,
+src/application/runtime/FusionReducedProspectiveDecisionSemantics.ts:3:} from './FusionReducedDoctrineEngine.js';
+src/application/runtime/FusionReducedProspectiveDecisionSemantics.ts:6:export type FusionReducedProspectiveStatus =
+src/application/runtime/FusionReducedProspectiveDecisionSemantics.ts:12:export interface FusionReducedProspectiveHypothesis {
+src/application/runtime/FusionReducedProspectiveDecisionSemantics.ts:40:export interface FusionReducedProspectiveDecision {
+src/application/runtime/FusionReducedProspectiveDecisionSemantics.ts:43:    FusionReducedProspectiveStatus;
+src/application/runtime/FusionReducedProspectiveDecisionSemantics.ts:46:    FusionReducedProspectiveHypothesis | null;
+src/application/runtime/FusionReducedProspectiveDecisionSemantics.ts:68:export interface FusionReducedEvidence {
+src/application/runtime/FusionReducedProspectiveDecisionSemantics.ts:102:export class FusionReducedProspectiveDecisionSemantics {
+src/application/runtime/FusionReducedProspectiveDecisionSemantics.ts:106:      FusionReducedDoctrineSnapshot,
+src/application/runtime/FusionReducedProspectiveDecisionSemantics.ts:112:      FusionReducedEvidence,
+src/application/runtime/FusionReducedProspectiveDecisionSemantics.ts:114:    FusionReducedProspectiveDecision {
+src/application/runtime/FusionReducedProspectiveDecisionSemantics.ts:182:      FusionReducedProspectiveStatus,
+src/application/runtime/FusionReducedProspectiveDecisionSemantics.ts:185:      FusionReducedProspectiveHypothesis | null,
+src/application/runtime/FusionReducedProspectiveDecisionSemantics.ts:188:      FusionReducedEvidence,
+src/application/runtime/FusionReducedProspectiveDecisionSemantics.ts:193:    FusionReducedProspectiveDecision {
+src/application/runtime/FusionReducedCounterfactualSettlementEngine.ts:2:  FusionReducedProspectiveDecision,
+src/application/runtime/FusionReducedCounterfactualSettlementEngine.ts:3:} from './FusionReducedProspectiveDecisionSemantics.js';
+src/application/runtime/FusionReducedCounterfactualSettlementEngine.ts:6:export type FusionReducedCounterfactualOutcome =
+src/application/runtime/FusionReducedCounterfactualSettlementEngine.ts:11:export interface FusionReducedCounterfactualDecisionPoint {
+src/application/runtime/FusionReducedCounterfactualSettlementEngine.ts:26:export interface FusionReducedCounterfactualSettlement {
+src/application/runtime/FusionReducedCounterfactualSettlementEngine.ts:31:    FusionReducedCounterfactualOutcome;
+src/application/runtime/FusionReducedCounterfactualSettlementEngine.ts:44:export interface FusionReducedCounterfactualSnapshot {
+src/application/runtime/FusionReducedCounterfactualSettlementEngine.ts:49:    FusionReducedCounterfactualDecisionPoint | null;
+src/application/runtime/FusionReducedCounterfactualSettlementEngine.ts:87:export class FusionReducedCounterfactualSettlementEngine {
+src/application/runtime/FusionReducedCounterfactualSettlementEngine.ts:90:    FusionReducedCounterfactualDecisionPoint | null =
+src/application/runtime/FusionReducedCounterfactualSettlementEngine.ts:95:    FusionReducedCounterfactualSettlement[] =
+src/application/runtime/FusionReducedCounterfactualSettlementEngine.ts:101:      FusionReducedProspectiveDecision,
+src/application/runtime/FusionReducedCounterfactualSettlementEngine.ts:103:    FusionReducedCounterfactualDecisionPoint | null {
+src/application/runtime/FusionReducedCounterfactualSettlementEngine.ts:148:    FusionReducedCounterfactualSettlement | null {
+src/application/runtime/FusionReducedCounterfactualSettlementEngine.ts:203:    FusionReducedCounterfactualSnapshot {
+src/application/runtime/FusionReducedCounterfactualSettlementEngine.ts:277:    readonly FusionReducedCounterfactualSettlement[] {
+src/application/runtime/FusionReducedCounterfactualSettlementEngine.ts:285:    FusionReducedCounterfactualDecisionPoint | null {
+src/application/runtime/FusionReducedEvidenceEngine.ts:2:  FusionReducedDoctrineEngine,
+src/application/runtime/FusionReducedEvidenceEngine.ts:3:  type FusionReducedDoctrineSnapshot,
+src/application/runtime/FusionReducedEvidenceEngine.ts:4:} from './FusionReducedDoctrineEngine.js';
+src/application/runtime/FusionReducedEvidenceEngine.ts:7:  FusionReducedEvidence,
+src/application/runtime/FusionReducedEvidenceEngine.ts:8:} from './FusionReducedProspectiveDecisionSemantics.js';
+src/application/runtime/FusionReducedEvidenceEngine.ts:11:export interface FusionReducedEvidenceOptions {
+src/application/runtime/FusionReducedEvidenceEngine.ts:47:export interface FusionReducedEvidenceReport
+src/application/runtime/FusionReducedEvidenceEngine.ts:48:  extends FusionReducedEvidence {
+src/application/runtime/FusionReducedEvidenceEngine.ts:103:interface ResolvedFusionReducedEvidenceOptions {
+src/application/runtime/FusionReducedEvidenceEngine.ts:122:  ResolvedFusionReducedEvidenceOptions =
+src/application/runtime/FusionReducedEvidenceEngine.ts:153: * It comes exclusively from FusionReducedDoctrineEngine:
+src/application/runtime/FusionReducedEvidenceEngine.ts:160:export class FusionReducedEvidenceEngine {
+src/application/runtime/FusionReducedEvidenceEngine.ts:162:    FusionReducedDoctrineSnapshot;
+src/application/runtime/FusionReducedEvidenceEngine.ts:167:      FusionReducedDoctrineSnapshot =
+src/application/runtime/FusionReducedEvidenceEngine.ts:168:        new FusionReducedDoctrineEngine()
+src/application/runtime/FusionReducedEvidenceEngine.ts:181:      FusionReducedEvidenceOptions = {},
+src/application/runtime/FusionReducedEvidenceEngine.ts:182:  ): FusionReducedEvidenceReport {
+src/application/runtime/FusionReducedEvidenceEngine.ts:503:      FusionReducedEvidenceOptions,
+src/application/runtime/FusionReducedEvidenceEngine.ts:504:  ): ResolvedFusionReducedEvidenceOptions {
+src/application/runtime/FusionReducedLiveTerminalController.ts:2:  FusionReducedDoctrineEngine,
+src/application/runtime/FusionReducedLiveTerminalController.ts:3:  type FusionReducedDoctrineSnapshot,
+src/application/runtime/FusionReducedLiveTerminalController.ts:4:} from './FusionReducedDoctrineEngine.js';
+src/application/runtime/FusionReducedLiveTerminalController.ts:7:  FusionReducedEvidenceEngine,
+src/application/runtime/FusionReducedLiveTerminalController.ts:8:  type FusionReducedEvidenceOptions,
+src/application/runtime/FusionReducedLiveTerminalController.ts:9:  type FusionReducedEvidenceReport,
+src/application/runtime/FusionReducedLiveTerminalController.ts:10:} from './FusionReducedEvidenceEngine.js';
+src/application/runtime/FusionReducedLiveTerminalController.ts:13:  FusionReducedProspectiveDecisionSemantics,
+src/application/runtime/FusionReducedLiveTerminalController.ts:14:  type FusionReducedProspectiveDecision,
+src/application/runtime/FusionReducedLiveTerminalController.ts:15:} from './FusionReducedProspectiveDecisionSemantics.js';
+src/application/runtime/FusionReducedLiveTerminalController.ts:18:  FusionReducedCounterfactualSettlementEngine,
+src/application/runtime/FusionReducedLiveTerminalController.ts:19:  type FusionReducedCounterfactualDecisionPoint,
+src/application/runtime/FusionReducedLiveTerminalController.ts:20:  type FusionReducedCounterfactualSettlement,
+src/application/runtime/FusionReducedLiveTerminalController.ts:21:  type FusionReducedCounterfactualSnapshot,
+src/application/runtime/FusionReducedLiveTerminalController.ts:22:} from './FusionReducedCounterfactualSettlementEngine.js';
+src/application/runtime/FusionReducedLiveTerminalController.ts:25:  FusionReducedLiveStatsDiagnostics,
+src/application/runtime/FusionReducedLiveTerminalController.ts:26:  type FusionReducedLiveStatsSnapshot,
+src/application/runtime/FusionReducedLiveTerminalController.ts:27:} from './FusionReducedLiveStatsDiagnostics.js';
+src/application/runtime/FusionReducedLiveTerminalController.ts:30:export type FusionReducedLiveTerminalMode =
+src/application/runtime/FusionReducedLiveTerminalController.ts:36:export interface FusionReducedLiveTerminalConfiguration {
+src/application/runtime/FusionReducedLiveTerminalController.ts:44:    FusionReducedEvidenceOptions;
+src/application/runtime/FusionReducedLiveTerminalController.ts:48:export interface FusionReducedLiveTerminalSnapshot {
+src/application/runtime/FusionReducedLiveTerminalController.ts:56:    FusionReducedLiveTerminalMode;
+src/application/runtime/FusionReducedLiveTerminalController.ts:74:    FusionReducedEvidenceReport | null;
+src/application/runtime/FusionReducedLiveTerminalController.ts:77:    FusionReducedProspectiveDecision | null;
+src/application/runtime/FusionReducedLiveTerminalController.ts:80:    FusionReducedDoctrineSnapshot;
+src/application/runtime/FusionReducedLiveTerminalController.ts:114:export interface FusionReducedLiveTerminalSpinResult {
+src/application/runtime/FusionReducedLiveTerminalController.ts:131:    FusionReducedDoctrineSnapshot;
+src/application/runtime/FusionReducedLiveTerminalController.ts:134:    FusionReducedEvidenceReport;
+src/application/runtime/FusionReducedLiveTerminalController.ts:137:    FusionReducedProspectiveDecision;
+src/application/runtime/FusionReducedLiveTerminalController.ts:143:    FusionReducedCounterfactualSettlement | null;
+src/application/runtime/FusionReducedLiveTerminalController.ts:150:    FusionReducedCounterfactualDecisionPoint | null;
+src/application/runtime/FusionReducedLiveTerminalController.ts:153:    FusionReducedCounterfactualSnapshot;
+src/application/runtime/FusionReducedLiveTerminalController.ts:175:export interface FusionReducedEvidencePort {
+src/application/runtime/FusionReducedLiveTerminalController.ts:181:      FusionReducedEvidenceOptions,
+src/application/runtime/FusionReducedLiveTerminalController.ts:182:  ): FusionReducedEvidenceReport;
+src/application/runtime/FusionReducedLiveTerminalController.ts:186:export interface FusionReducedDecisionPort {
+src/application/runtime/FusionReducedLiveTerminalController.ts:189:      FusionReducedEvidenceReport,
+src/application/runtime/FusionReducedLiveTerminalController.ts:190:  ): FusionReducedProspectiveDecision;
+src/application/runtime/FusionReducedLiveTerminalController.ts:221:export class FusionReducedLiveTerminalController {
+src/application/runtime/FusionReducedLiveTerminalController.ts:226:    FusionReducedDoctrineSnapshot;
+src/application/runtime/FusionReducedLiveTerminalController.ts:229:    FusionReducedEvidenceOptions;
+src/application/runtime/FusionReducedLiveTerminalController.ts:235:    FusionReducedEvidencePort;
+src/application/runtime/FusionReducedLiveTerminalController.ts:238:    FusionReducedDecisionPort;
+src/application/runtime/FusionReducedLiveTerminalController.ts:241:    FusionReducedCounterfactualSettlementEngine;
+src/application/runtime/FusionReducedLiveTerminalController.ts:244:    FusionReducedLiveStatsDiagnostics;
+src/application/runtime/FusionReducedLiveTerminalController.ts:250:    FusionReducedLiveTerminalMode =
+src/application/runtime/FusionReducedLiveTerminalController.ts:264:    FusionReducedEvidenceReport | null =
+src/application/runtime/FusionReducedLiveTerminalController.ts:268:    FusionReducedProspectiveDecision | null =
+src/application/runtime/FusionReducedLiveTerminalController.ts:274:      FusionReducedLiveTerminalConfiguration,
+src/application/runtime/FusionReducedLiveTerminalController.ts:277:      FusionReducedEvidencePort,
+src/application/runtime/FusionReducedLiveTerminalController.ts:280:      FusionReducedDecisionPort,
+src/application/runtime/FusionReducedLiveTerminalController.ts:283:      FusionReducedCounterfactualSettlementEngine =
+src/application/runtime/FusionReducedLiveTerminalController.ts:284:        new FusionReducedCounterfactualSettlementEngine(),
+src/application/runtime/FusionReducedLiveTerminalController.ts:287:      FusionReducedLiveStatsDiagnostics =
+src/application/runtime/FusionReducedLiveTerminalController.ts:288:        new FusionReducedLiveStatsDiagnostics(),
+src/application/runtime/FusionReducedLiveTerminalController.ts:314:      new FusionReducedDoctrineEngine()
+src/application/runtime/FusionReducedLiveTerminalController.ts:319:      new FusionReducedEvidenceEngine(
+src/application/runtime/FusionReducedLiveTerminalController.ts:325:      new FusionReducedProspectiveDecisionSemantics(
+src/application/runtime/FusionReducedLiveTerminalController.ts:340:  ): FusionReducedLiveTerminalSnapshot {
+src/application/runtime/FusionReducedLiveTerminalController.ts:384:  ): FusionReducedLiveTerminalSnapshot {
+src/application/runtime/FusionReducedLiveTerminalController.ts:406:    FusionReducedLiveTerminalSnapshot {
+src/application/runtime/FusionReducedLiveTerminalController.ts:422:  ): FusionReducedLiveTerminalSpinResult {
+src/application/runtime/FusionReducedLiveTerminalController.ts:496:      FusionReducedLiveTerminalSpinResult =
+src/application/runtime/FusionReducedLiveTerminalController.ts:557:  ): FusionReducedLiveStatsSnapshot {
+src/application/runtime/FusionReducedLiveTerminalController.ts:566:    FusionReducedCounterfactualSnapshot {
+src/application/runtime/FusionReducedLiveTerminalController.ts:573:    readonly FusionReducedCounterfactualSettlement[] {
+src/application/runtime/FusionReducedLiveTerminalController.ts:580:    FusionReducedCounterfactualDecisionPoint | null {
+src/application/runtime/FusionReducedLiveTerminalController.ts:587:    FusionReducedLiveTerminalSnapshot {
+src/application/runtime/FusionReducedLiveTerminalController.ts:670:      FusionReducedLiveTerminalConfiguration,
+src/application/runtime/FusionReducedLiveTerminalController.ts:711:      FusionReducedLiveTerminalMode,
+src/application/runtime/FusionReducedLiveStatsDiagnostics.ts:2:  FusionReducedLiveTerminalSpinResult,
+src/application/runtime/FusionReducedLiveStatsDiagnostics.ts:3:} from './FusionReducedLiveTerminalController.js';
+src/application/runtime/FusionReducedLiveStatsDiagnostics.ts:6:export interface FusionReducedLiveDiagnosticEvent {
+src/application/runtime/FusionReducedLiveStatsDiagnostics.ts:63:export interface FusionReducedBlockerFrequency {
+src/application/runtime/FusionReducedLiveStatsDiagnostics.ts:72:export interface FusionReducedLiveStatsSnapshot {
+src/application/runtime/FusionReducedLiveStatsDiagnostics.ts:143:    readonly FusionReducedBlockerFrequency[];
+src/application/runtime/FusionReducedLiveStatsDiagnostics.ts:146:    readonly FusionReducedLiveDiagnosticEvent[];
+src/application/runtime/FusionReducedLiveStatsDiagnostics.ts:174:export class FusionReducedLiveStatsDiagnostics {
+src/application/runtime/FusionReducedLiveStatsDiagnostics.ts:176:    FusionReducedLiveDiagnosticEvent[] =
+src/application/runtime/FusionReducedLiveStatsDiagnostics.ts:182:      FusionReducedLiveTerminalSpinResult,
+src/application/runtime/FusionReducedLiveStatsDiagnostics.ts:183:  ): FusionReducedLiveDiagnosticEvent {
+src/application/runtime/FusionReducedLiveStatsDiagnostics.ts:185:      FusionReducedLiveDiagnosticEvent =
+src/application/runtime/FusionReducedLiveStatsDiagnostics.ts:266:  ): FusionReducedLiveStatsSnapshot {
+src/application/runtime/FusionReducedLiveStatsDiagnostics.ts:462:    readonly FusionReducedLiveDiagnosticEvent[] {
+src/application/runtime/FusionReducedLiveStatsDiagnostics.ts:482:    readonly FusionReducedBlockerFrequency[] {
+src/application/runtime/FusionReducedLiveStatsDiagnostics.ts:543:      readonly FusionReducedLiveDiagnosticEvent[],
+src/application/runtime/FusionReducedShadowAdapter.ts:2:  FusionReducedDoctrineEngine,
+src/application/runtime/FusionReducedShadowAdapter.ts:3:  type FusionReducedDoctrineSnapshot,
+src/application/runtime/FusionReducedShadowAdapter.ts:4:} from './FusionReducedDoctrineEngine.js';
+src/application/runtime/FusionReducedShadowAdapter.ts:7:  FusionReducedEvidenceEngine,
+src/application/runtime/FusionReducedShadowAdapter.ts:8:  type FusionReducedEvidenceOptions,
+src/application/runtime/FusionReducedShadowAdapter.ts:9:  type FusionReducedEvidenceReport,
+src/application/runtime/FusionReducedShadowAdapter.ts:10:} from './FusionReducedEvidenceEngine.js';
+src/application/runtime/FusionReducedShadowAdapter.ts:13:  FusionReducedProspectiveDecisionSemantics,
+src/application/runtime/FusionReducedShadowAdapter.ts:14:  type FusionReducedProspectiveDecision,
+src/application/runtime/FusionReducedShadowAdapter.ts:15:} from './FusionReducedProspectiveDecisionSemantics.js';
+src/application/runtime/FusionReducedShadowAdapter.ts:39:export interface FusionReducedShadowAdapterConfiguration {
+src/application/runtime/FusionReducedShadowAdapter.ts:41:    FusionReducedEvidenceOptions;
+src/application/runtime/FusionReducedShadowAdapter.ts:45:export interface FusionReducedShadowDecisionMetadata
+src/application/runtime/FusionReducedShadowAdapter.ts:74:export interface FusionReducedShadowTradeMetadata
+src/application/runtime/FusionReducedShadowAdapter.ts:133:export class FusionReducedShadowAdapter
+src/application/runtime/FusionReducedShadowAdapter.ts:147:    FusionReducedDoctrineSnapshot;
+src/application/runtime/FusionReducedShadowAdapter.ts:150:    FusionReducedEvidenceEngine;
+src/application/runtime/FusionReducedShadowAdapter.ts:153:    FusionReducedProspectiveDecisionSemantics;
+src/application/runtime/FusionReducedShadowAdapter.ts:156:    FusionReducedEvidenceOptions;
+src/application/runtime/FusionReducedShadowAdapter.ts:160:      FusionReducedShadowAdapterConfiguration = {},
+src/application/runtime/FusionReducedShadowAdapter.ts:175:      new FusionReducedDoctrineEngine()
+src/application/runtime/FusionReducedShadowAdapter.ts:179:      new FusionReducedEvidenceEngine(
+src/application/runtime/FusionReducedShadowAdapter.ts:184:      new FusionReducedProspectiveDecisionSemantics(
+src/application/runtime/FusionReducedShadowAdapter.ts:233:      FusionReducedShadowDecisionMetadata =
+src/application/runtime/FusionReducedShadowAdapter.ts:300:     * suggestedStake is interpreted as the maximum TOTAL
+src/application/runtime/FusionReducedShadowAdapter.ts:322:      recommendation.suggestedStake ===
+src/application/runtime/FusionReducedShadowAdapter.ts:344:            recommendation.suggestedStake,
+src/application/runtime/FusionReducedShadowAdapter.ts:360:      recommendation.suggestedStake +
+src/application/runtime/FusionReducedShadowAdapter.ts:369:      FusionReducedShadowTradeMetadata =
+src/application/runtime/FusionReducedShadowAdapter.ts:387:          recommendation.suggestedStake,
+src/application/runtime/FusionReducedShadowAdapter.ts:490:    FusionReducedDoctrineSnapshot {
+src/application/runtime/FusionReducedShadowAdapter.ts:497:      FusionReducedProspectiveDecision,
+src/application/runtime/FusionReducedShadowAdapter.ts:500:      FusionReducedEvidenceReport,
+src/application/runtime/FusionReducedShadowAdapter.ts:538:  ): FusionReducedShadowDecisionMetadata {
+src/application/runtime/FusionReducedShadowAdapter.ts:571:      FusionReducedShadowDecisionMetadata;
+src/application/runtime/FusionReducedShadowAdapter.ts:578:  ): FusionReducedShadowTradeMetadata {
+src/application/runtime/FusionReducedShadowAdapter.ts:609:      FusionReducedShadowTradeMetadata;
+src/application/runtime/TriplicacaoShadowAdapter.ts:367:      baseStake.suggestedStake ===
+src/application/runtime/TriplicacaoShadowAdapter.ts:390:    let suggestedStake =
+src/application/runtime/TriplicacaoShadowAdapter.ts:391:      baseStake.suggestedStake;
+src/application/runtime/TriplicacaoShadowAdapter.ts:424:              baseStake.suggestedStake,
+src/application/runtime/TriplicacaoShadowAdapter.ts:445:        recovery.suggestedStake !==
+src/application/runtime/TriplicacaoShadowAdapter.ts:450:        suggestedStake =
+src/application/runtime/TriplicacaoShadowAdapter.ts:451:          recovery.suggestedStake;
+src/application/runtime/TriplicacaoShadowAdapter.ts:459:      suggestedStake >
+src/application/runtime/TriplicacaoShadowAdapter.ts:484:          baseStake.suggestedStake,
+src/application/runtime/TriplicacaoShadowAdapter.ts:508:        suggestedStake,
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:83:  readonly suggestedStake:
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:178:  readonly suggestedStake:
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:219: *   = suggestedStake
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:296:      input.suggestedStake,
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:301:      input.suggestedStake;
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:308:      suggestedStake:
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:309:        input.suggestedStake,
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:393:          suggestedStake:
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:395:              input.suggestedStake,
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:737:      readonly suggestedStake:
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:778:        input.suggestedStake,
+src/application/runtime/TriplicacaoProspectivePerformanceAnalyzer.ts:604:              record.suggestedStake,
+src/application/runtime/TriplicacaoProspectivePerformanceAnalyzer.ts:872:        record.suggestedStake,
+src/application/runtime/TriplicacaoProspectivePerformanceAnalyzer.ts:874:      record.suggestedStake <
+src/application/runtime/PaperStakeRecommendationResolver.ts:76:  readonly suggestedStake:
+src/application/runtime/PaperStakeRecommendationResolver.ts:268:        suggestedStake:
+src/application/runtime/PaperStakeRecommendationResolver.ts:299:        suggestedStake:
+src/application/runtime/PaperStakeRecommendationResolver.ts:325:    const suggestedStake =
+src/application/runtime/PaperStakeRecommendationResolver.ts:333:      suggestedStake <=
+src/application/runtime/PaperStakeRecommendationResolver.ts:342:        suggestedStake:
+src/application/runtime/PaperStakeRecommendationResolver.ts:366:      suggestedStake >
+src/application/runtime/PaperStakeRecommendationResolver.ts:377:      suggestedStake /
+src/application/runtime/PaperStakeRecommendationResolver.ts:398:      suggestedStake,
+src/application/runtime/PaperStakeRecommendationResolver.ts:410:          `SUGGESTED_STAKE:${suggestedStake}`,
+src/application/runtime/ControlledRecoveryEngine.ts:84:  readonly suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:210: *   suggestedStake - baseStake
+src/application/runtime/ControlledRecoveryEngine.ts:293:        suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:326:        suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:364:        suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:401:        suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:440:        suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:484:        suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:528:    const suggestedStake =
+src/application/runtime/ControlledRecoveryEngine.ts:541:          suggestedStake -
+src/application/runtime/ControlledRecoveryEngine.ts:556:        suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:623:      suggestedStake,
+src/application/runtime/ControlledRecoveryEngine.ts:635:          `RECOVERY_STAKE:${suggestedStake}`,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:80:  readonly suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:138:  readonly suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:315:        suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:353:      baseStake.suggestedStake ===
+src/application/runtime/PaperInstitutionalRecoveryController.ts:367:        suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:411:        suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:412:          baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:415:          baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:468:          baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:485:      recovery.suggestedStake ===
+src/application/runtime/PaperInstitutionalRecoveryController.ts:504:        suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:505:          baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:508:          baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:542:        suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:543:          baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:546:          baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:575:      suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:576:        recovery.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:579:        baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:680:        ? input.suggestedStake
+src/application/runtime/PaperInstitutionalRecoveryController.ts:681:        : -input.suggestedStake;
+src/application/runtime/PaperInstitutionalRecoveryController.ts:730:          input.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:983:      readonly suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:1015:      suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:1016:        input.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:1158:        input.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:1160:      input.suggestedStake <=
+src/application/runtime/PaperInstitutionalRecoveryController.ts:1174:      input.suggestedStake
+src/application/runtime/PaperHistoricalShadowSessionEngine.ts:8:  FusionReducedShadowAdapter,
+src/application/runtime/PaperHistoricalShadowSessionEngine.ts:9:} from './FusionReducedShadowAdapter.js';
+src/application/runtime/PaperHistoricalShadowSessionEngine.ts:227:          new FusionReducedShadowAdapter(),
+src/application/runtime/FusionReducedDoctrineEngine.ts:1:export interface FusionReducedDoctrineSnapshot {
+src/application/runtime/FusionReducedDoctrineEngine.ts:52:export class FusionReducedDoctrineEngine {
+src/application/runtime/FusionReducedDoctrineEngine.ts:55:    FusionReducedDoctrineSnapshot {
+src/application/runtime/FusionReducedLiveObservability.ts:2:  FusionReducedLiveTerminalSnapshot,
+src/application/runtime/FusionReducedLiveObservability.ts:3:  FusionReducedLiveTerminalSpinResult,
+src/application/runtime/FusionReducedLiveObservability.ts:4:} from './FusionReducedLiveTerminalController.js';
+src/application/runtime/FusionReducedLiveObservability.ts:7:export type FusionReducedObservationState =
+src/application/runtime/FusionReducedLiveObservability.ts:13:export interface FusionReducedLiveObservation {
+src/application/runtime/FusionReducedLiveObservability.ts:24:    FusionReducedObservationState;
+src/application/runtime/FusionReducedLiveObservability.ts:99:export class FusionReducedLiveObservability {
+src/application/runtime/FusionReducedLiveObservability.ts:102:      FusionReducedLiveTerminalSpinResult,
+src/application/runtime/FusionReducedLiveObservability.ts:103:  ): FusionReducedLiveObservation {
+src/application/runtime/FusionReducedLiveObservability.ts:199:      FusionReducedLiveTerminalSnapshot,
+src/application/runtime/FusionReducedLiveObservability.ts:229:      FusionReducedObservationState,
+src/application/runtime/FusionReducedLiveStatsPresenter.ts:2:  FusionReducedLiveStatsSnapshot,
+src/application/runtime/FusionReducedLiveStatsPresenter.ts:3:} from './FusionReducedLiveStatsDiagnostics.js';
+src/application/runtime/FusionReducedLiveStatsPresenter.ts:6:export class FusionReducedLiveStatsPresenter {
+src/application/runtime/FusionReducedLiveStatsPresenter.ts:9:      FusionReducedLiveStatsSnapshot,
+src/application/runtime/FusionReducedLiveStatsPresenter.ts:93:      FusionReducedLiveStatsSnapshot,
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:365:     * suggestedStake is a maximum TOTAL exposure.
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:387:      recommendation.suggestedStake ===
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:409:            recommendation.suggestedStake,
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:421:      recommendation.suggestedStake +
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:463:          recommendation.suggestedStake,
+
+======================================================
+HEATMAP RUNTIME REFERENCES
+======================================================
+src/application/runtime/AnalyticsDecisionEngine.ts:2:import { FusionHeatmapIntegrationEngine } from './FusionHeatmapIntegrationEngine.js';
+src/application/runtime/AnalyticsDecisionEngine.ts:64:    const heatmap = this.computeHeatmap(allRounds);
+src/application/runtime/AnalyticsDecisionEngine.ts:121:    legacyHeatmap: AnalyticsDecisionEngineResult['heatmap']
+src/application/runtime/AnalyticsDecisionEngine.ts:132:      const fusionReport = new FusionHeatmapIntegrationEngine().analyze(allRounds);
+src/application/runtime/AnalyticsDecisionEngine.ts:143:          legacyHotNumbers: legacyHeatmap.hotNumbers,
+src/application/runtime/AnalyticsDecisionEngine.ts:182:  private computeHeatmap(rounds: readonly number[]): AnalyticsDecisionEngineResult['heatmap'] {
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:2:  WheelHeatmapAnalyticsEngine,
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:3:  type WheelHeatmapReport,
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:6:} from '../../domain/analytics/WheelHeatmapAnalyticsEngine.js';
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:8:export type FusionHeatmapMode = 'BLOCKED' | 'OBSERVE' | 'FUSION_READY';
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:9:export type FusionHeatmapSignalStrength = 'NONE' | 'WEAK' | 'MODERATE' | 'STRONG';
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:11:export interface FusionHeatmapIntegrationOptions {
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:20:export interface FusionHeatmapTargetRegion {
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:28:export interface FusionHeatmapIntegrationReport {
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:29:  readonly heatmap: WheelHeatmapReport;
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:30:  readonly mode: FusionHeatmapMode;
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:31:  readonly signalStrength: FusionHeatmapSignalStrength;
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:34:  readonly targetRegions: readonly FusionHeatmapTargetRegion[];
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:54:export class FusionHeatmapIntegrationEngine {
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:55:  private readonly heatmapEngine: WheelHeatmapAnalyticsEngine;
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:57:  public constructor(heatmapEngine: WheelHeatmapAnalyticsEngine = new WheelHeatmapAnalyticsEngine()) {
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:63:    options: FusionHeatmapIntegrationOptions = {},
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:64:  ): FusionHeatmapIntegrationReport {
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:128:    const mode: FusionHeatmapMode =
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:166:  public toConsensusSignal(report: FusionHeatmapIntegrationReport): {
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:196:  private targetRegions(heatmap: WheelHeatmapReport): readonly FusionHeatmapTargetRegion[] {
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:202:  private fromSector(sector: WheelSectorHeat): FusionHeatmapTargetRegion {
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:212:  private hotNumberClusters(hotNumbers: readonly WheelNumberHeat[]): readonly FusionHeatmapTargetRegion[] {
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:227:    readonly heatmap: WheelHeatmapReport;
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:228:    readonly targetRegions: readonly FusionHeatmapTargetRegion[];
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:246:    readonly heatmap: WheelHeatmapReport;
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:247:    readonly targetRegions: readonly FusionHeatmapTargetRegion[];
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:263:  ): FusionHeatmapSignalStrength {
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:272:    readonly mode: FusionHeatmapMode;
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:273:    readonly signalStrength: FusionHeatmapSignalStrength;
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:276:    readonly targetRegions: readonly FusionHeatmapTargetRegion[];
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:279:    readonly heatmap: WheelHeatmapReport;
+src/application/runtime/OperatorHudMinimalistAdapter.ts:15:  readonly suggestedStake: number;
+src/application/runtime/OperatorHudMinimalistAdapter.ts:65:    lines.push(`║ • Stake sugerido: R$ ${input.suggestedStake}`);
+src/application/runtime/PaperSessionHudFinalizer.ts:33:    const suggestedStake = entryAllowed ? input.requestedStake : 0;
+src/application/runtime/PaperSessionHudFinalizer.ts:37:      suggestedStake,
+src/application/runtime/PaperLiveOracleEngine.ts:571:        `Stake PAPER calculada: R$ ${target.suggestedStake
+src/application/runtime/PaperOracleTargetResolver.ts:67:  readonly suggestedStake:
+src/application/runtime/PaperOracleTargetResolver.ts:296:    const suggestedStake =
+src/application/runtime/PaperOracleTargetResolver.ts:321:      suggestedStake,
+src/application/runtime/PaperOracleTargetResolver.ts:474:      suggestedStake:
+src/application/runtime/PaperOracleStrategyArena.ts:7:  FusionHeatmapIntegrationEngine,
+src/application/runtime/PaperOracleStrategyArena.ts:8:  type FusionHeatmapIntegrationReport,
+src/application/runtime/PaperOracleStrategyArena.ts:9:} from './FusionHeatmapIntegrationEngine.js';
+src/application/runtime/PaperOracleStrategyArena.ts:70:  ): FusionHeatmapIntegrationReport;
+src/application/runtime/PaperOracleStrategyArena.ts:142:    FusionHeatmapIntegrationReport;
+src/application/runtime/PaperOracleStrategyArena.ts:216:        new FusionHeatmapIntegrationEngine(),
+src/application/runtime/PaperOracleStrategyArena.ts:506:      FusionHeatmapIntegrationReport,
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:71:  readonly financialController?:
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:92:  readonly suggestedStake?:
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:235:  private readonly financialController:
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:296:      this.financialController =
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:298:          .financialController ??
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:318:      this.financialController =
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:512:      this.financialController
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:575:    const suggestedStake =
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:577:        ?.suggestedStake ??
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:578:      input.suggestedStake;
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:581:      suggestedStake ===
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:583:      suggestedStake ===
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:594:      suggestedStake;
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:609:        suggestedStake,
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:698:      this.financialController
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:865:      this.financialController
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:866:        ? this.financialController.settle({
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:875:            suggestedStake:
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:877:                .suggestedStake,
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:938:      this.financialController
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:1033:      `Stake sugerida: R$ ${this.formatMoney(signal.suggestedStake)}.`,
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:2:  HeatmapDynamicIntegrationEngine,
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:3:  type HeatmapDynamicIntegrationOptions,
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:4:  type HeatmapDynamicIntegrationReport,
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:5:} from './HeatmapDynamicIntegrationEngine.js';
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:8:  HeatmapDynamicProspectiveDecisionSemantics,
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:9:  type HeatmapDynamicProspectiveDecision,
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:10:} from './HeatmapDynamicProspectiveDecisionSemantics.js';
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:13:  HeatmapDynamicCounterfactualSettlementEngine,
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:14:  type HeatmapDynamicCounterfactualDecisionPoint,
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:15:  type HeatmapDynamicCounterfactualSettlement,
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:16:  type HeatmapDynamicCounterfactualSnapshot,
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:17:} from './HeatmapDynamicCounterfactualSettlementEngine.js';
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:20:  HeatmapDynamicLiveStatsDiagnostics,
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:21:  type HeatmapDynamicLiveStatsSnapshot,
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:22:} from './HeatmapDynamicLiveStatsDiagnostics.js';
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:25:export type HeatmapDynamicLiveTerminalMode =
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:31:export interface HeatmapDynamicLiveTerminalConfiguration {
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:39:    HeatmapDynamicIntegrationOptions;
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:43:export interface HeatmapDynamicLiveTerminalSnapshot {
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:51:    HeatmapDynamicLiveTerminalMode;
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:69:    HeatmapDynamicIntegrationReport | null;
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:72:    HeatmapDynamicProspectiveDecision | null;
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:106:export interface HeatmapDynamicLiveTerminalSpinResult {
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:123:    HeatmapDynamicIntegrationReport;
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:126:    HeatmapDynamicProspectiveDecision;
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:133:    HeatmapDynamicCounterfactualSettlement | null;
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:140:    HeatmapDynamicCounterfactualDecisionPoint | null;
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:143:    HeatmapDynamicCounterfactualSnapshot;
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:165:export interface HeatmapDynamicLiveTerminalAnalyticsPort {
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:171:      HeatmapDynamicIntegrationOptions,
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:172:  ): HeatmapDynamicIntegrationReport;
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:176:export interface HeatmapDynamicLiveTerminalDecisionPort {
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:179:      HeatmapDynamicIntegrationReport,
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:180:  ): HeatmapDynamicProspectiveDecision;
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:214: * Heatmap Dynamic permanece:
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:222:export class HeatmapDynamicLiveTerminalController {
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:227:    HeatmapDynamicIntegrationOptions;
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:236:    HeatmapDynamicLiveTerminalMode =
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:250:    HeatmapDynamicIntegrationReport | null =
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:254:    HeatmapDynamicProspectiveDecision | null =
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:258:    HeatmapDynamicCounterfactualSettlementEngine;
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:261:    HeatmapDynamicLiveStatsDiagnostics;
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:266:      HeatmapDynamicLiveTerminalConfiguration,
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:269:      HeatmapDynamicLiveTerminalAnalyticsPort =
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:270:        new HeatmapDynamicIntegrationEngine(),
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:273:      HeatmapDynamicLiveTerminalDecisionPort =
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:274:        new HeatmapDynamicProspectiveDecisionSemantics(),
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:277:      HeatmapDynamicCounterfactualSettlementEngine =
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:278:        new HeatmapDynamicCounterfactualSettlementEngine(),
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:281:      HeatmapDynamicLiveStatsDiagnostics =
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:282:        new HeatmapDynamicLiveStatsDiagnostics(),
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:318:  ): HeatmapDynamicLiveTerminalSnapshot {
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:362:  ): HeatmapDynamicLiveTerminalSnapshot {
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:384:    HeatmapDynamicLiveTerminalSnapshot {
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:400:  ): HeatmapDynamicLiveTerminalSpinResult {
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:472:      HeatmapDynamicLiveTerminalSpinResult =
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:530:  ): HeatmapDynamicLiveStatsSnapshot {
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:539:    HeatmapDynamicCounterfactualSnapshot {
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:546:    readonly HeatmapDynamicCounterfactualSettlement[] {
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:553:    HeatmapDynamicCounterfactualDecisionPoint | null {
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:560:    HeatmapDynamicLiveTerminalSnapshot {
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:640:      HeatmapDynamicLiveTerminalConfiguration,
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:681:      HeatmapDynamicLiveTerminalMode,
+src/application/runtime/FusionReducedShadowAdapter.ts:300:     * suggestedStake is interpreted as the maximum TOTAL
+src/application/runtime/FusionReducedShadowAdapter.ts:322:      recommendation.suggestedStake ===
+src/application/runtime/FusionReducedShadowAdapter.ts:344:            recommendation.suggestedStake,
+src/application/runtime/FusionReducedShadowAdapter.ts:360:      recommendation.suggestedStake +
+src/application/runtime/FusionReducedShadowAdapter.ts:387:          recommendation.suggestedStake,
+src/application/runtime/StrategyPaperStakePlan.ts:35:   * Heatmap Dynamic = variável.
+src/application/runtime/TriplicacaoShadowAdapter.ts:367:      baseStake.suggestedStake ===
+src/application/runtime/TriplicacaoShadowAdapter.ts:390:    let suggestedStake =
+src/application/runtime/TriplicacaoShadowAdapter.ts:391:      baseStake.suggestedStake;
+src/application/runtime/TriplicacaoShadowAdapter.ts:424:              baseStake.suggestedStake,
+src/application/runtime/TriplicacaoShadowAdapter.ts:445:        recovery.suggestedStake !==
+src/application/runtime/TriplicacaoShadowAdapter.ts:450:        suggestedStake =
+src/application/runtime/TriplicacaoShadowAdapter.ts:451:          recovery.suggestedStake;
+src/application/runtime/TriplicacaoShadowAdapter.ts:459:      suggestedStake >
+src/application/runtime/TriplicacaoShadowAdapter.ts:484:          baseStake.suggestedStake,
+src/application/runtime/TriplicacaoShadowAdapter.ts:508:        suggestedStake,
+src/application/runtime/PaperOracleStrategyEnsembleRuntime.ts:7:  FusionHeatmapIntegrationEngine,
+src/application/runtime/PaperOracleStrategyEnsembleRuntime.ts:8:  type FusionHeatmapIntegrationReport,
+src/application/runtime/PaperOracleStrategyEnsembleRuntime.ts:9:} from './FusionHeatmapIntegrationEngine.js';
+src/application/runtime/PaperOracleStrategyEnsembleRuntime.ts:40:  ): FusionHeatmapIntegrationReport;
+src/application/runtime/PaperOracleStrategyEnsembleRuntime.ts:111:    FusionHeatmapIntegrationReport;
+src/application/runtime/PaperOracleStrategyEnsembleRuntime.ts:141: * - Fusion Heatmap
+src/application/runtime/PaperOracleStrategyEnsembleRuntime.ts:161:        new FusionHeatmapIntegrationEngine(),
+src/application/runtime/PaperOracleStrategyEnsembleRuntime.ts:405:      FusionHeatmapIntegrationReport,
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:83:  readonly suggestedStake:
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:178:  readonly suggestedStake:
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:219: *   = suggestedStake
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:296:      input.suggestedStake,
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:301:      input.suggestedStake;
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:308:      suggestedStake:
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:309:        input.suggestedStake,
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:393:          suggestedStake:
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:395:              input.suggestedStake,
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:737:      readonly suggestedStake:
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:778:        input.suggestedStake,
+src/application/runtime/TriplicacaoProspectivePerformanceAnalyzer.ts:604:              record.suggestedStake,
+src/application/runtime/TriplicacaoProspectivePerformanceAnalyzer.ts:872:        record.suggestedStake,
+src/application/runtime/TriplicacaoProspectivePerformanceAnalyzer.ts:874:      record.suggestedStake <
+src/application/runtime/PaperStakeRecommendationResolver.ts:76:  readonly suggestedStake:
+src/application/runtime/PaperStakeRecommendationResolver.ts:268:        suggestedStake:
+src/application/runtime/PaperStakeRecommendationResolver.ts:299:        suggestedStake:
+src/application/runtime/PaperStakeRecommendationResolver.ts:325:    const suggestedStake =
+src/application/runtime/PaperStakeRecommendationResolver.ts:333:      suggestedStake <=
+src/application/runtime/PaperStakeRecommendationResolver.ts:342:        suggestedStake:
+src/application/runtime/PaperStakeRecommendationResolver.ts:366:      suggestedStake >
+src/application/runtime/PaperStakeRecommendationResolver.ts:377:      suggestedStake /
+src/application/runtime/PaperStakeRecommendationResolver.ts:398:      suggestedStake,
+src/application/runtime/PaperStakeRecommendationResolver.ts:410:          `SUGGESTED_STAKE:${suggestedStake}`,
+src/application/runtime/ControlledRecoveryEngine.ts:84:  readonly suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:210: *   suggestedStake - baseStake
+src/application/runtime/ControlledRecoveryEngine.ts:293:        suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:326:        suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:364:        suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:401:        suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:440:        suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:484:        suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:528:    const suggestedStake =
+src/application/runtime/ControlledRecoveryEngine.ts:541:          suggestedStake -
+src/application/runtime/ControlledRecoveryEngine.ts:556:        suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:623:      suggestedStake,
+src/application/runtime/ControlledRecoveryEngine.ts:635:          `RECOVERY_STAKE:${suggestedStake}`,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:80:  readonly suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:138:  readonly suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:315:        suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:353:      baseStake.suggestedStake ===
+src/application/runtime/PaperInstitutionalRecoveryController.ts:367:        suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:411:        suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:412:          baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:415:          baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:468:          baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:485:      recovery.suggestedStake ===
+src/application/runtime/PaperInstitutionalRecoveryController.ts:504:        suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:505:          baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:508:          baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:542:        suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:543:          baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:546:          baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:575:      suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:576:        recovery.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:579:        baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:680:        ? input.suggestedStake
+src/application/runtime/PaperInstitutionalRecoveryController.ts:681:        : -input.suggestedStake;
+src/application/runtime/PaperInstitutionalRecoveryController.ts:730:          input.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:983:      readonly suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:1015:      suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:1016:        input.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:1158:        input.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:1160:      input.suggestedStake <=
+src/application/runtime/PaperInstitutionalRecoveryController.ts:1174:      input.suggestedStake
+src/application/runtime/PaperHistoricalShadowSessionEngine.ts:12:  HeatmapDynamicShadowAdapter,
+src/application/runtime/PaperHistoricalShadowSessionEngine.ts:13:} from './HeatmapDynamicShadowAdapter.js';
+src/application/runtime/PaperHistoricalShadowSessionEngine.ts:235:          new HeatmapDynamicShadowAdapter(),
+src/application/runtime/HeatmapDynamicIntegrationEngine.ts:2:  FusionHeatmapIntegrationEngine,
+src/application/runtime/HeatmapDynamicIntegrationEngine.ts:3:  type FusionHeatmapIntegrationOptions,
+src/application/runtime/HeatmapDynamicIntegrationEngine.ts:4:  type FusionHeatmapIntegrationReport,
+src/application/runtime/HeatmapDynamicIntegrationEngine.ts:5:} from './FusionHeatmapIntegrationEngine.js';
+src/application/runtime/HeatmapDynamicIntegrationEngine.ts:8:export type HeatmapDynamicIntegrationOptions =
+src/application/runtime/HeatmapDynamicIntegrationEngine.ts:9:  FusionHeatmapIntegrationOptions;
+src/application/runtime/HeatmapDynamicIntegrationEngine.ts:12:export type HeatmapDynamicIntegrationReport =
+src/application/runtime/HeatmapDynamicIntegrationEngine.ts:13:  FusionHeatmapIntegrationReport;
+src/application/runtime/HeatmapDynamicIntegrationEngine.ts:16:export interface HeatmapDynamicConsensusSignal {
+src/application/runtime/HeatmapDynamicIntegrationEngine.ts:52: * Canonical identity boundary for the dynamic Heatmap strategy.
+src/application/runtime/HeatmapDynamicIntegrationEngine.ts:57: * FusionHeatmapIntegrationEngine analytical mathematics.
+src/application/runtime/HeatmapDynamicIntegrationEngine.ts:62: * Heatmap Dynamic:
+src/application/runtime/HeatmapDynamicIntegrationEngine.ts:71:export class HeatmapDynamicIntegrationEngine {
+src/application/runtime/HeatmapDynamicIntegrationEngine.ts:74:      FusionHeatmapIntegrationEngine =
+src/application/runtime/HeatmapDynamicIntegrationEngine.ts:75:        new FusionHeatmapIntegrationEngine(),
+src/application/runtime/HeatmapDynamicIntegrationEngine.ts:84:      HeatmapDynamicIntegrationOptions = {},
+src/application/runtime/HeatmapDynamicIntegrationEngine.ts:85:  ): HeatmapDynamicIntegrationReport {
+src/application/runtime/HeatmapDynamicIntegrationEngine.ts:96:      HeatmapDynamicIntegrationReport,
+src/application/runtime/HeatmapDynamicIntegrationEngine.ts:97:  ): HeatmapDynamicConsensusSignal {
+src/application/runtime/HeatmapDynamicProspectiveDecisionSemantics.ts:2:  FusionHeatmapIntegrationReport,
+src/application/runtime/HeatmapDynamicProspectiveDecisionSemantics.ts:3:  FusionHeatmapTargetRegion,
+src/application/runtime/HeatmapDynamicProspectiveDecisionSemantics.ts:4:} from './FusionHeatmapIntegrationEngine.js';
+src/application/runtime/HeatmapDynamicProspectiveDecisionSemantics.ts:7:export type HeatmapDynamicProspectiveDecisionStatus =
+src/application/runtime/HeatmapDynamicProspectiveDecisionSemantics.ts:13:export interface HeatmapDynamicProspectiveHypothesis {
+src/application/runtime/HeatmapDynamicProspectiveDecisionSemantics.ts:24:    FusionHeatmapTargetRegion['source'];
+src/application/runtime/HeatmapDynamicProspectiveDecisionSemantics.ts:36:    FusionHeatmapIntegrationReport['signalStrength'];
+src/application/runtime/HeatmapDynamicProspectiveDecisionSemantics.ts:52:export interface HeatmapDynamicProspectiveDecision {
+src/application/runtime/HeatmapDynamicProspectiveDecisionSemantics.ts:54:    HeatmapDynamicProspectiveDecisionStatus;
+src/application/runtime/HeatmapDynamicProspectiveDecisionSemantics.ts:57:    HeatmapDynamicProspectiveHypothesis | null;
+src/application/runtime/HeatmapDynamicProspectiveDecisionSemantics.ts:102:export class HeatmapDynamicProspectiveDecisionSemantics {
+src/application/runtime/HeatmapDynamicProspectiveDecisionSemantics.ts:105:      FusionHeatmapIntegrationReport,
+src/application/runtime/HeatmapDynamicProspectiveDecisionSemantics.ts:106:  ): HeatmapDynamicProspectiveDecision {
+src/application/runtime/HeatmapDynamicProspectiveDecisionSemantics.ts:214:      HeatmapDynamicProspectiveHypothesis =
+src/application/runtime/HeatmapDynamicProspectiveDecisionSemantics.ts:280:        HeatmapDynamicProspectiveDecisionStatus;
+src/application/runtime/HeatmapDynamicProspectiveDecisionSemantics.ts:283:        HeatmapDynamicProspectiveHypothesis | null;
+src/application/runtime/HeatmapDynamicProspectiveDecisionSemantics.ts:294:  ): HeatmapDynamicProspectiveDecision {
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:2:  HeatmapDynamicProspectiveDecision,
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:3:  HeatmapDynamicProspectiveHypothesis,
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:4:} from './HeatmapDynamicProspectiveDecisionSemantics.js';
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:7:export type HeatmapDynamicCounterfactualOutcome =
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:12:export interface HeatmapDynamicCounterfactualDecisionPoint {
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:20:    HeatmapDynamicProspectiveDecision;
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:23:    HeatmapDynamicProspectiveHypothesis;
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:36:export interface HeatmapDynamicCounterfactualSettlement {
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:44:    HeatmapDynamicProspectiveDecision;
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:47:    HeatmapDynamicProspectiveHypothesis;
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:59:    HeatmapDynamicCounterfactualOutcome;
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:75:export interface HeatmapDynamicCounterfactualSnapshot {
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:80:    HeatmapDynamicCounterfactualDecisionPoint | null;
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:161:    HeatmapDynamicProspectiveHypothesis,
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:165:): HeatmapDynamicProspectiveHypothesis {
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:179:    HeatmapDynamicProspectiveDecision,
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:182:    HeatmapDynamicProspectiveHypothesis,
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:183:): HeatmapDynamicProspectiveDecision {
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:214: * Heatmap Dynamic produces PAPER_READY(t)
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:237:export class HeatmapDynamicCounterfactualSettlementEngine {
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:242:    HeatmapDynamicCounterfactualDecisionPoint | null =
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:246:    HeatmapDynamicCounterfactualSettlement[] =
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:252:      HeatmapDynamicProspectiveDecision,
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:253:  ): HeatmapDynamicCounterfactualDecisionPoint | null {
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:309:      HeatmapDynamicCounterfactualDecisionPoint =
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:348:  ): HeatmapDynamicCounterfactualSettlement | null {
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:367:      HeatmapDynamicCounterfactualOutcome =
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:377:      HeatmapDynamicCounterfactualSettlement =
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:426:    HeatmapDynamicCounterfactualDecisionPoint | null {
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:441:    readonly HeatmapDynamicCounterfactualSettlement[] {
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:454:    HeatmapDynamicCounterfactualSnapshot {
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:599:      HeatmapDynamicCounterfactualDecisionPoint,
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:600:  ): HeatmapDynamicCounterfactualDecisionPoint {
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:640:      HeatmapDynamicCounterfactualSettlement,
+src/application/runtime/HeatmapDynamicCounterfactualSettlementEngine.ts:641:  ): HeatmapDynamicCounterfactualSettlement {
+src/application/runtime/HeatmapDynamicLiveObservability.ts:2:  HeatmapDynamicLiveTerminalSnapshot,
+src/application/runtime/HeatmapDynamicLiveObservability.ts:3:  HeatmapDynamicLiveTerminalSpinResult,
+src/application/runtime/HeatmapDynamicLiveObservability.ts:4:} from './HeatmapDynamicLiveTerminalController.js';
+src/application/runtime/HeatmapDynamicLiveObservability.ts:7:export type HeatmapDynamicObservationState =
+src/application/runtime/HeatmapDynamicLiveObservability.ts:13:export interface HeatmapDynamicLiveObservation {
+src/application/runtime/HeatmapDynamicLiveObservability.ts:24:    HeatmapDynamicObservationState;
+src/application/runtime/HeatmapDynamicLiveObservability.ts:103:export class HeatmapDynamicLiveObservability {
+src/application/runtime/HeatmapDynamicLiveObservability.ts:106:      HeatmapDynamicLiveTerminalSpinResult,
+src/application/runtime/HeatmapDynamicLiveObservability.ts:107:  ): HeatmapDynamicLiveObservation {
+src/application/runtime/HeatmapDynamicLiveObservability.ts:253:      HeatmapDynamicLiveTerminalSnapshot,
+src/application/runtime/HeatmapDynamicLiveObservability.ts:278:      HeatmapDynamicLiveTerminalSpinResult,
+src/application/runtime/HeatmapDynamicLiveObservability.ts:285:        'Heatmap Dynamic identificou uma hipótese prospectiva ' +
+src/application/runtime/HeatmapDynamicLiveObservability.ts:295:        'Heatmap Dynamic está bloqueado pelos gates analíticos atuais.'
+src/application/runtime/HeatmapDynamicLiveObservability.ts:300:      'Heatmap Dynamic permanece em observação.'
+src/application/runtime/HeatmapDynamicLiveStatsDiagnostics.ts:2:  HeatmapDynamicLiveTerminalSpinResult,
+src/application/runtime/HeatmapDynamicLiveStatsDiagnostics.ts:3:} from './HeatmapDynamicLiveTerminalController.js';
+src/application/runtime/HeatmapDynamicLiveStatsDiagnostics.ts:6:export interface HeatmapDynamicLiveDiagnosticEvent {
+src/application/runtime/HeatmapDynamicLiveStatsDiagnostics.ts:69:export interface HeatmapDynamicRegionFrequency {
+src/application/runtime/HeatmapDynamicLiveStatsDiagnostics.ts:81:export interface HeatmapDynamicBlockerFrequency {
+src/application/runtime/HeatmapDynamicLiveStatsDiagnostics.ts:90:export interface HeatmapDynamicLiveStatsSnapshot {
+src/application/runtime/HeatmapDynamicLiveStatsDiagnostics.ts:140:    readonly HeatmapDynamicRegionFrequency[];
+src/application/runtime/HeatmapDynamicLiveStatsDiagnostics.ts:143:    readonly HeatmapDynamicBlockerFrequency[];
+src/application/runtime/HeatmapDynamicLiveStatsDiagnostics.ts:167:    readonly HeatmapDynamicLiveDiagnosticEvent[];
+src/application/runtime/HeatmapDynamicLiveStatsDiagnostics.ts:196:export class HeatmapDynamicLiveStatsDiagnostics {
+src/application/runtime/HeatmapDynamicLiveStatsDiagnostics.ts:198:    HeatmapDynamicLiveDiagnosticEvent[] =
+src/application/runtime/HeatmapDynamicLiveStatsDiagnostics.ts:204:      HeatmapDynamicLiveTerminalSpinResult,
+src/application/runtime/HeatmapDynamicLiveStatsDiagnostics.ts:205:  ): HeatmapDynamicLiveDiagnosticEvent {
+src/application/runtime/HeatmapDynamicLiveStatsDiagnostics.ts:256:      HeatmapDynamicLiveDiagnosticEvent =
+src/application/runtime/HeatmapDynamicLiveStatsDiagnostics.ts:342:  ): HeatmapDynamicLiveStatsSnapshot {
+src/application/runtime/HeatmapDynamicLiveStatsDiagnostics.ts:563:    readonly HeatmapDynamicLiveDiagnosticEvent[] {
+src/application/runtime/HeatmapDynamicLiveStatsDiagnostics.ts:583:    readonly HeatmapDynamicRegionFrequency[] {
+src/application/runtime/HeatmapDynamicLiveStatsDiagnostics.ts:664:    readonly HeatmapDynamicBlockerFrequency[] {
+src/application/runtime/HeatmapDynamicLiveStatsDiagnostics.ts:725:      readonly HeatmapDynamicLiveDiagnosticEvent[],
+src/application/runtime/HeatmapDynamicLiveStatsPresenter.ts:2:  HeatmapDynamicLiveStatsSnapshot,
+src/application/runtime/HeatmapDynamicLiveStatsPresenter.ts:3:} from './HeatmapDynamicLiveStatsDiagnostics.js';
+src/application/runtime/HeatmapDynamicLiveStatsPresenter.ts:6:export class HeatmapDynamicLiveStatsPresenter {
+src/application/runtime/HeatmapDynamicLiveStatsPresenter.ts:9:      HeatmapDynamicLiveStatsSnapshot,
+src/application/runtime/HeatmapDynamicLiveStatsPresenter.ts:119:      HeatmapDynamicLiveStatsSnapshot,
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:2:  HeatmapDynamicIntegrationEngine,
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:3:  type HeatmapDynamicIntegrationOptions,
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:4:  type HeatmapDynamicIntegrationReport,
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:5:} from './HeatmapDynamicIntegrationEngine.js';
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:8:  HeatmapDynamicProspectiveDecisionSemantics,
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:9:  type HeatmapDynamicProspectiveDecision,
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:10:} from './HeatmapDynamicProspectiveDecisionSemantics.js';
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:13:  FusionHeatmapTargetRegion,
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:14:  FusionHeatmapSignalStrength,
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:15:} from './FusionHeatmapIntegrationEngine.js';
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:39:export interface HeatmapDynamicShadowAdapterConfiguration {
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:41:    HeatmapDynamicIntegrationOptions;
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:45:export interface HeatmapDynamicShadowAnalyticsPort {
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:51:      HeatmapDynamicIntegrationOptions,
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:52:  ): HeatmapDynamicIntegrationReport;
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:56:export interface HeatmapDynamicShadowDecisionPort {
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:59:      HeatmapDynamicIntegrationReport,
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:60:  ): HeatmapDynamicProspectiveDecision;
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:64:export interface HeatmapDynamicShadowDecisionMetadata
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:80:    FusionHeatmapTargetRegion['source'];
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:92:    FusionHeatmapSignalStrength;
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:105:export interface HeatmapDynamicShadowTradeMetadata
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:121:    FusionHeatmapTargetRegion['source'];
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:145:    FusionHeatmapSignalStrength;
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:154: * - applies canonical Heatmap Dynamic prospective semantics;
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:176:export class HeatmapDynamicShadowAdapter
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:186:    HeatmapDynamicIntegrationOptions;
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:191:      HeatmapDynamicShadowAdapterConfiguration = {},
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:194:      HeatmapDynamicShadowAnalyticsPort =
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:195:        new HeatmapDynamicIntegrationEngine(),
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:198:      HeatmapDynamicShadowDecisionPort =
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:199:        new HeatmapDynamicProspectiveDecisionSemantics(),
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:278:      HeatmapDynamicShadowDecisionMetadata =
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:365:     * suggestedStake is a maximum TOTAL exposure.
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:387:      recommendation.suggestedStake ===
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:409:            recommendation.suggestedStake,
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:421:      recommendation.suggestedStake +
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:439:      HeatmapDynamicShadowTradeMetadata =
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:463:          recommendation.suggestedStake,
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:588:      HeatmapDynamicProspectiveDecision,
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:591:      HeatmapDynamicIntegrationReport,
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:762:  ): HeatmapDynamicShadowDecisionMetadata {
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:810:      HeatmapDynamicShadowDecisionMetadata;
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:817:  ): HeatmapDynamicShadowTradeMetadata {
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:867:      HeatmapDynamicShadowTradeMetadata;
+
+======================================================
+CONSTRUCTOR DEPENDENCY MAP
+======================================================
+src/application/runtime/DailyRiskLockRecoveryCoordinator.ts:81:  public constructor(
+src/application/runtime/FusionHeatmapIntegrationEngine.ts:57:  public constructor(heatmapEngine: WheelHeatmapAnalyticsEngine = new WheelHeatmapAnalyticsEngine()) {
+src/application/runtime/RuntimeRecoveryBootCoordinator.ts:40:  public constructor(
+src/application/runtime/RuntimeRecoveryService.ts:33:  public constructor(
+src/application/runtime/TriplicacaoStrategyRuntimeBinder.ts:65:  public constructor(cliSession: PerSpinOperatorCliSession = new PerSpinOperatorCliSession()) {
+src/application/runtime/TriplicacaoProspectiveFormationCoordinator.ts:159:  public constructor(
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:239:  public constructor(
+src/application/runtime/TriplicacaoLiveStatsDiagnostics.ts:326:  public constructor(
+src/application/runtime/HeatmapDynamicLiveTerminalController.ts:264:  public constructor(
+src/application/runtime/FusionReducedProspectiveDecisionSemantics.ts:104:  public constructor(
+src/application/runtime/FusionReducedEvidenceEngine.ts:165:  public constructor(
+src/application/runtime/FusionReducedLiveTerminalController.ts:272:  public constructor(
+src/application/runtime/FusionReducedShadowAdapter.ts:158:  public constructor(
+src/application/runtime/TriplicacaoShadowAdapter.ts:159:  public constructor(
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:228:  public constructor(
+src/application/runtime/PaperInstitutionalRecoveryController.ts:229:  public constructor(
+src/application/runtime/TriplicacaoLiveTerminalController.ts:201:  public constructor(
+src/application/runtime/TriplicacaoCounterfactualSettlementEngine.ts:192:  public constructor(
+src/application/runtime/HeatmapDynamicIntegrationEngine.ts:72:  public constructor(
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:189:  public constructor(
+src/application/runtime/PaperProspectivePortfolioRiskController.ts:250:  public constructor(
+
+======================================================
+END AUDIT
+======================================================

@@ -55,6 +55,15 @@ export interface PaperInstitutionalRecoveryConfiguration {
 }
 
 
+export interface PaperInstitutionalExternalCapitalState {
+  readonly currentBankroll:
+    number;
+
+  readonly peakBankroll:
+    number;
+}
+
+
 export interface PaperInstitutionalStakeRecommendation {
   readonly decision:
     PaperInstitutionalStakeDecision;
@@ -266,13 +275,23 @@ export class PaperInstitutionalRecoveryController {
   public recommend(
     strategyRiskScore:
       number,
+
+    externalCapitalState?:
+      PaperInstitutionalExternalCapitalState,
   ): PaperInstitutionalStakeRecommendation {
     this.validateRisk(
       strategyRiskScore,
     );
 
+    const financialState =
+      this.resolveFinancialState(
+        externalCapitalState,
+      );
+
     const capital =
-      this.evaluateCapital();
+      this.evaluateCapitalFrom(
+        financialState,
+      );
 
     const ledger =
       this.recoveryLedger.snapshot();
@@ -317,7 +336,7 @@ export class PaperInstitutionalRecoveryController {
     const baseStake =
       this.stakeResolver.resolve({
         bankroll:
-          this.currentBankroll,
+          financialState.currentBankroll,
 
         riskMode:
           this.riskMode,
@@ -437,7 +456,7 @@ export class PaperInstitutionalRecoveryController {
     const recovery =
       this.recoveryEngine.evaluate({
         bankroll:
-          this.currentBankroll,
+          financialState.currentBankroll,
 
         riskMode:
           this.riskMode,
@@ -580,13 +599,21 @@ export class PaperInstitutionalRecoveryController {
   public settle(
     input:
       PaperInstitutionalSettlementInput,
+
+    externalCapitalState?:
+      PaperInstitutionalExternalCapitalState,
   ): PaperInstitutionalSettlementReport {
     this.validateSettlementInput(
       input,
     );
 
+    const financialState =
+      this.resolveFinancialState(
+        externalCapitalState,
+      );
+
     const bankrollBefore =
-      this.currentBankroll;
+      financialState.currentBankroll;
 
     if (
       input.operatorDecision !==
@@ -605,7 +632,9 @@ export class PaperInstitutionalRecoveryController {
         });
 
       const capital =
-        this.evaluateCapital();
+        this.evaluateCapitalFrom(
+          financialState,
+        );
 
       return Object.freeze({
         financialSettlement:
@@ -617,10 +646,10 @@ export class PaperInstitutionalRecoveryController {
           0,
 
         bankrollAfter:
-          this.currentBankroll,
+          financialState.currentBankroll,
 
         peakBankroll:
-          this.peakBankroll,
+          financialState.peakBankroll,
 
         drawdownFraction:
           capital.drawdownFraction,
@@ -651,14 +680,14 @@ export class PaperInstitutionalRecoveryController {
         ? input.suggestedStake
         : -input.suggestedStake;
 
-    this.currentBankroll =
+    const bankrollAfter =
       this.money(
-        this.currentBankroll +
+        bankrollBefore +
         bankrollDelta,
       );
 
     if (
-      this.currentBankroll <
+      bankrollAfter <
       0
     ) {
       throw new Error(
@@ -666,11 +695,31 @@ export class PaperInstitutionalRecoveryController {
       );
     }
 
-    this.peakBankroll =
-      Math.max(
-        this.peakBankroll,
-        this.currentBankroll,
+    const peakBankroll =
+      this.money(
+        Math.max(
+          financialState.peakBankroll,
+          bankrollAfter,
+        ),
       );
+
+    /*
+     * Backward-compatible legacy mode.
+     *
+     * Once the prospective Portfolio becomes the sole session
+     * authority, callers will always supply externalCapitalState
+     * and these internal fields will no longer mutate.
+     */
+    if (
+      externalCapitalState ===
+      undefined
+    ) {
+      this.currentBankroll =
+        bankrollAfter;
+
+      this.peakBankroll =
+        peakBankroll;
+    }
 
     const recoveryLedger =
       this.recoveryLedger.apply({
@@ -688,7 +737,12 @@ export class PaperInstitutionalRecoveryController {
       });
 
     const capital =
-      this.evaluateCapital();
+      this.evaluateCapitalFrom({
+        currentBankroll:
+          bankrollAfter,
+
+        peakBankroll,
+      });
 
     return Object.freeze({
       financialSettlement,
@@ -700,11 +754,9 @@ export class PaperInstitutionalRecoveryController {
           bankrollDelta,
         ),
 
-      bankrollAfter:
-        this.currentBankroll,
+      bankrollAfter,
 
-      peakBankroll:
-        this.peakBankroll,
+      peakBankroll,
 
       drawdownFraction:
         capital.drawdownFraction,
@@ -829,18 +881,87 @@ export class PaperInstitutionalRecoveryController {
 
   private evaluateCapital():
     PaperCapitalPreservationReport {
-    return this.capitalGuard.evaluate({
-      initialBankroll:
-        this.initialBankroll,
-
+    return this.evaluateCapitalFrom({
       currentBankroll:
         this.currentBankroll,
 
       peakBankroll:
         this.peakBankroll,
+    });
+  }
+
+
+  private evaluateCapitalFrom(
+    state:
+      PaperInstitutionalExternalCapitalState,
+  ): PaperCapitalPreservationReport {
+    return this.capitalGuard.evaluate({
+      initialBankroll:
+        this.initialBankroll,
+
+      currentBankroll:
+        state.currentBankroll,
+
+      peakBankroll:
+        state.peakBankroll,
 
       riskMode:
         this.riskMode,
+    });
+  }
+
+
+  private resolveFinancialState(
+    externalCapitalState:
+      PaperInstitutionalExternalCapitalState | undefined,
+  ): PaperInstitutionalExternalCapitalState {
+    if (
+      externalCapitalState ===
+      undefined
+    ) {
+      return Object.freeze({
+        currentBankroll:
+          this.currentBankroll,
+
+        peakBankroll:
+          this.peakBankroll,
+      });
+    }
+
+    if (
+      !Number.isFinite(
+        externalCapitalState.currentBankroll,
+      ) ||
+      externalCapitalState.currentBankroll <=
+        0
+    ) {
+      throw new Error(
+        'institutional_recovery_invalid_external_bankroll',
+      );
+    }
+
+    if (
+      !Number.isFinite(
+        externalCapitalState.peakBankroll,
+      ) ||
+      externalCapitalState.peakBankroll <
+        externalCapitalState.currentBankroll
+    ) {
+      throw new Error(
+        'institutional_recovery_invalid_external_peak_bankroll',
+      );
+    }
+
+    return Object.freeze({
+      currentBankroll:
+        this.money(
+          externalCapitalState.currentBankroll,
+        ),
+
+      peakBankroll:
+        this.money(
+          externalCapitalState.peakBankroll,
+        ),
     });
   }
 
@@ -901,10 +1022,10 @@ export class PaperInstitutionalRecoveryController {
         input.recoveryComponent,
 
       currentBankroll:
-        this.currentBankroll,
+        input.capital.currentBankroll,
 
       peakBankroll:
-        this.peakBankroll,
+        input.capital.peakBankroll,
 
       pendingLossDebt:
         this.recoveryLedger

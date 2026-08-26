@@ -801,3 +801,381 @@ describe(
     );
   },
 );
+
+
+describe(
+  'PaperInstitutionalRecoveryController external capital contract',
+  () => {
+    test(
+      'external bankroll governs base stake calculation without mutating internal bankroll',
+      () => {
+        const runtime =
+          controller();
+
+        const recommendation =
+          runtime.recommend(
+            0.19,
+            {
+              currentBankroll:
+                29,
+
+              peakBankroll:
+                30,
+            },
+          );
+
+        expect(
+          recommendation.suggestedStake,
+        ).toBe(
+          0.50,
+        );
+
+        expect(
+          runtime.snapshot()
+            .currentBankroll,
+        ).toBe(
+          30,
+        );
+      },
+    );
+
+
+    test(
+      'external peak and bankroll govern Capital Preservation evaluation',
+      () => {
+        const runtime =
+          controller();
+
+        const recommendation =
+          runtime.recommend(
+            0.19,
+            {
+              currentBankroll:
+                27,
+
+              peakBankroll:
+                30,
+            },
+          );
+
+        expect(
+          recommendation.capital
+            .currentBankroll,
+        ).toBe(
+          27,
+        );
+
+        expect(
+          recommendation.capital
+            .peakBankroll,
+        ).toBe(
+          30,
+        );
+      },
+    );
+
+
+    test(
+      'invalid external capital state is rejected',
+      () => {
+        const runtime =
+          controller();
+
+        expect(
+          () =>
+            runtime.recommend(
+              0.19,
+              {
+                currentBankroll:
+                  31,
+
+                peakBankroll:
+                  30,
+              },
+            ),
+        ).toThrow(
+          'institutional_recovery_invalid_external_peak_bankroll',
+        );
+      },
+    );
+  },
+);
+
+
+describe(
+  'PaperInstitutionalRecoveryController external settlement contract',
+  () => {
+    test(
+      'recommendation exposes the same external bankroll used for stake calculation',
+      () => {
+        const runtime =
+          controller();
+
+        const recommendation =
+          runtime.recommend(
+            0.19,
+            {
+              currentBankroll:
+                29,
+
+              peakBankroll:
+                30,
+            },
+          );
+
+        expect(
+          recommendation.currentBankroll,
+        ).toBe(
+          29,
+        );
+
+        expect(
+          recommendation.peakBankroll,
+        ).toBe(
+          30,
+        );
+
+        expect(
+          recommendation.suggestedStake,
+        ).toBe(
+          0.50,
+        );
+
+        expect(
+          runtime.snapshot()
+            .currentBankroll,
+        ).toBe(
+          30,
+        );
+      },
+    );
+
+
+    test(
+      'external followed loss returns projected bankroll without mutating internal bankroll',
+      () => {
+        const runtime =
+          controller();
+
+        const recommendation =
+          runtime.recommend(
+            0.19,
+            {
+              currentBankroll:
+                29,
+
+              peakBankroll:
+                30,
+            },
+          );
+
+        const settlement =
+          runtime.settle(
+            {
+              operatorDecision:
+                'FOLLOWED',
+
+              statisticalResult:
+                'LOSS',
+
+              thirdColor:
+                'BLACK',
+
+              suggestedStake:
+                recommendation.suggestedStake,
+
+              recoveryComponent:
+                recommendation.recoveryComponent,
+            },
+            {
+              currentBankroll:
+                29,
+
+              peakBankroll:
+                30,
+            },
+          );
+
+        expect(
+          settlement.financialSettlement,
+        ).toBe(
+          'LOSS',
+        );
+
+        expect(
+          settlement.bankrollBefore,
+        ).toBe(
+          29,
+        );
+
+        expect(
+          settlement.bankrollDelta,
+        ).toBe(
+          -0.50,
+        );
+
+        expect(
+          settlement.bankrollAfter,
+        ).toBe(
+          28.50,
+        );
+
+        expect(
+          settlement.peakBankroll,
+        ).toBe(
+          30,
+        );
+
+        expect(
+          settlement.recoveryLedger
+            .pendingLossDebt,
+        ).toBe(
+          0.50,
+        );
+
+        expect(
+          runtime.snapshot()
+            .currentBankroll,
+        ).toBe(
+          30,
+        );
+      },
+    );
+
+
+    test(
+      'external followed win projects new peak without mutating internal bankroll',
+      () => {
+        const runtime =
+          controller();
+
+        const settlement =
+          runtime.settle(
+            {
+              operatorDecision:
+                'FOLLOWED',
+
+              statisticalResult:
+                'WIN',
+
+              thirdColor:
+                'RED',
+
+              suggestedStake:
+                0.60,
+
+              recoveryComponent:
+                0,
+            },
+            {
+              currentBankroll:
+                30,
+
+              peakBankroll:
+                30,
+            },
+          );
+
+        expect(
+          settlement.bankrollAfter,
+        ).toBe(
+          30.60,
+        );
+
+        expect(
+          settlement.peakBankroll,
+        ).toBe(
+          30.60,
+        );
+
+        expect(
+          runtime.snapshot()
+            .currentBankroll,
+        ).toBe(
+          30,
+        );
+
+        expect(
+          runtime.snapshot()
+            .peakBankroll,
+        ).toBe(
+          30,
+        );
+      },
+    );
+
+
+    test(
+      'external ignored settlement preserves external bankroll and creates no recovery debt',
+      () => {
+        const runtime =
+          controller();
+
+        const settlement =
+          runtime.settle(
+            {
+              operatorDecision:
+                'IGNORED',
+
+              statisticalResult:
+                'LOSS',
+
+              thirdColor:
+                'BLACK',
+
+              suggestedStake:
+                0.50,
+
+              recoveryComponent:
+                0,
+            },
+            {
+              currentBankroll:
+                29,
+
+              peakBankroll:
+                30,
+            },
+          );
+
+        expect(
+          settlement.financialSettlement,
+        ).toBe(
+          'NO_EXPOSURE',
+        );
+
+        expect(
+          settlement.bankrollBefore,
+        ).toBe(
+          29,
+        );
+
+        expect(
+          settlement.bankrollAfter,
+        ).toBe(
+          29,
+        );
+
+        expect(
+          settlement.bankrollDelta,
+        ).toBe(
+          0,
+        );
+
+        expect(
+          settlement.recoveryLedger
+            .pendingLossDebt,
+        ).toBe(
+          0,
+        );
+
+        expect(
+          runtime.snapshot()
+            .currentBankroll,
+        ).toBe(
+          30,
+        );
+      },
+    );
+  },
+);

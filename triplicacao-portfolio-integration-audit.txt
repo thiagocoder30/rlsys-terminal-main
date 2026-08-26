@@ -1,0 +1,384 @@
+======================================================
+RL.SYS — TRIPLICAÇÃO PORTFOLIO INTEGRATION AUDIT
+======================================================
+
+HEAD:
+e788008 feat(risk): add sovereign prospective portfolio exposure authority
+
+======================================================
+FILES
+======================================================
+
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts
+src/application/runtime/FusionReducedShadowAdapter.ts
+src/application/runtime/TriplicacaoShadowAdapter.ts
+src/application/runtime/PaperStakeRecommendationResolver.ts
+src/application/runtime/ControlledRecoveryEngine.ts
+src/application/runtime/PaperInstitutionalRecoveryController.ts
+src/application/runtime/HistoricalShadowReplayEngine.ts
+src/application/runtime/HeatmapDynamicShadowAdapter.ts
+src/application/runtime/PaperProspectivePortfolioRiskController.ts
+tests/application/runtime/PaperStakeRecommendationResolver.test.js
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js
+tests/application/runtime/PaperProspectivePortfolioRiskController.test.js
+tests/application/runtime/PaperBaseExposureRiskPolicy.test.js
+tests/application/runtime/PaperStakeRecommendationResolverRoundingRegression.test.js
+tests/application/runtime/PaperCanonicalFinancialAuthority.test.js
+
+======================================================
+REFERENCES
+======================================================
+
+src/application/runtime/OperatorHudMinimalistAdapter.ts:15:  readonly suggestedStake: number;
+src/application/runtime/OperatorHudMinimalistAdapter.ts:65:    lines.push(`║ • Stake sugerido: R$ ${input.suggestedStake}`);
+src/application/runtime/PaperSessionHudFinalizer.ts:33:    const suggestedStake = entryAllowed ? input.requestedStake : 0;
+src/application/runtime/PaperSessionHudFinalizer.ts:37:      suggestedStake,
+src/application/runtime/PaperLiveOracleEngine.ts:571:        `Stake PAPER calculada: R$ ${target.suggestedStake
+src/application/runtime/PaperOracleTargetResolver.ts:67:  readonly suggestedStake:
+src/application/runtime/PaperOracleTargetResolver.ts:296:    const suggestedStake =
+src/application/runtime/PaperOracleTargetResolver.ts:321:      suggestedStake,
+src/application/runtime/PaperOracleTargetResolver.ts:474:      suggestedStake:
+src/application/runtime/TriplicacaoProspectiveFormationCoordinator.ts:428:      this.settle(
+src/application/runtime/TriplicacaoProspectiveFormationCoordinator.ts:518:  private settle(
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:28:  PaperInstitutionalRecoveryController,
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:31:} from './PaperInstitutionalRecoveryController.js';
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:72:    PaperInstitutionalRecoveryController;
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:92:  readonly suggestedStake?:
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:236:    PaperInstitutionalRecoveryController | null;
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:299:        new PaperInstitutionalRecoveryController({
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:575:    const suggestedStake =
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:577:        ?.suggestedStake ??
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:578:      input.suggestedStake;
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:581:      suggestedStake ===
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:583:      suggestedStake ===
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:594:      suggestedStake;
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:609:        suggestedStake,
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:823:      this.recorder.settle({
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:830:     * Recorder.settle() guarantees these fields logically.
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:866:        ? this.financialController.settle({
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:875:            suggestedStake:
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:877:                .suggestedStake,
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts:1033:      `Stake sugerida: R$ ${this.formatMoney(signal.suggestedStake)}.`,
+src/application/runtime/FusionReducedShadowAdapter.ts:18:  PaperStakeRecommendationResolver,
+src/application/runtime/FusionReducedShadowAdapter.ts:19:} from './PaperStakeRecommendationResolver.js';
+src/application/runtime/FusionReducedShadowAdapter.ts:118: * - ask PaperStakeRecommendationResolver for the sovereign
+src/application/runtime/FusionReducedShadowAdapter.ts:123: * settle():
+src/application/runtime/FusionReducedShadowAdapter.ts:163:      PaperStakeRecommendationResolver =
+src/application/runtime/FusionReducedShadowAdapter.ts:164:        new PaperStakeRecommendationResolver(),
+src/application/runtime/FusionReducedShadowAdapter.ts:300:     * suggestedStake is interpreted as the maximum TOTAL
+src/application/runtime/FusionReducedShadowAdapter.ts:322:      recommendation.suggestedStake ===
+src/application/runtime/FusionReducedShadowAdapter.ts:344:            recommendation.suggestedStake,
+src/application/runtime/FusionReducedShadowAdapter.ts:360:      recommendation.suggestedStake +
+src/application/runtime/FusionReducedShadowAdapter.ts:387:          recommendation.suggestedStake,
+src/application/runtime/FusionReducedShadowAdapter.ts:415:  public settle(
+src/application/runtime/FusionReducedShadowAdapter.ts:438:        .settle({
+src/application/runtime/StraightUpPaperFinancialSettlement.ts:93:  public settle(
+src/application/runtime/TriplicacaoShadowAdapter.ts:13:  PaperStakeRecommendationResolver,
+src/application/runtime/TriplicacaoShadowAdapter.ts:14:} from './PaperStakeRecommendationResolver.js';
+src/application/runtime/TriplicacaoShadowAdapter.ts:131: * - PaperStakeRecommendationResolver owns base exposure;
+src/application/runtime/TriplicacaoShadowAdapter.ts:172:      PaperStakeRecommendationResolver =
+src/application/runtime/TriplicacaoShadowAdapter.ts:173:        new PaperStakeRecommendationResolver(),
+src/application/runtime/TriplicacaoShadowAdapter.ts:367:      baseStake.suggestedStake ===
+src/application/runtime/TriplicacaoShadowAdapter.ts:390:    let suggestedStake =
+src/application/runtime/TriplicacaoShadowAdapter.ts:391:      baseStake.suggestedStake;
+src/application/runtime/TriplicacaoShadowAdapter.ts:424:              baseStake.suggestedStake,
+src/application/runtime/TriplicacaoShadowAdapter.ts:445:        recovery.suggestedStake !==
+src/application/runtime/TriplicacaoShadowAdapter.ts:450:        suggestedStake =
+src/application/runtime/TriplicacaoShadowAdapter.ts:451:          recovery.suggestedStake;
+src/application/runtime/TriplicacaoShadowAdapter.ts:459:      suggestedStake >
+src/application/runtime/TriplicacaoShadowAdapter.ts:484:          baseStake.suggestedStake,
+src/application/runtime/TriplicacaoShadowAdapter.ts:508:        suggestedStake,
+src/application/runtime/TriplicacaoShadowAdapter.ts:516:  public settle(
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:83:  readonly suggestedStake:
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:178:  readonly suggestedStake:
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:219: *   = suggestedStake
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:296:      input.suggestedStake,
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:301:      input.suggestedStake;
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:308:      suggestedStake:
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:309:        input.suggestedStake,
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:393:          suggestedStake:
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:395:              input.suggestedStake,
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:547:  public settle(
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:737:      readonly suggestedStake:
+src/application/runtime/TriplicacaoProspectiveRecorder.ts:778:        input.suggestedStake,
+src/application/runtime/TriplicacaoProspectivePerformanceAnalyzer.ts:604:              record.suggestedStake,
+src/application/runtime/TriplicacaoProspectivePerformanceAnalyzer.ts:872:        record.suggestedStake,
+src/application/runtime/TriplicacaoProspectivePerformanceAnalyzer.ts:874:      record.suggestedStake <
+src/application/runtime/PaperStakeRecommendationResolver.ts:76:  readonly suggestedStake:
+src/application/runtime/PaperStakeRecommendationResolver.ts:165:export class PaperStakeRecommendationResolver {
+src/application/runtime/PaperStakeRecommendationResolver.ts:268:        suggestedStake:
+src/application/runtime/PaperStakeRecommendationResolver.ts:299:        suggestedStake:
+src/application/runtime/PaperStakeRecommendationResolver.ts:325:    const suggestedStake =
+src/application/runtime/PaperStakeRecommendationResolver.ts:333:      suggestedStake <=
+src/application/runtime/PaperStakeRecommendationResolver.ts:342:        suggestedStake:
+src/application/runtime/PaperStakeRecommendationResolver.ts:366:      suggestedStake >
+src/application/runtime/PaperStakeRecommendationResolver.ts:377:      suggestedStake /
+src/application/runtime/PaperStakeRecommendationResolver.ts:398:      suggestedStake,
+src/application/runtime/PaperStakeRecommendationResolver.ts:410:          `SUGGESTED_STAKE:${suggestedStake}`,
+src/application/runtime/ControlledRecoveryEngine.ts:26:   * Safe stake already calculated by PaperStakeRecommendationResolver.
+src/application/runtime/ControlledRecoveryEngine.ts:84:  readonly suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:210: *   suggestedStake - baseStake
+src/application/runtime/ControlledRecoveryEngine.ts:293:        suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:326:        suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:364:        suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:401:        suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:440:        suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:484:        suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:528:    const suggestedStake =
+src/application/runtime/ControlledRecoveryEngine.ts:541:          suggestedStake -
+src/application/runtime/ControlledRecoveryEngine.ts:556:        suggestedStake:
+src/application/runtime/ControlledRecoveryEngine.ts:623:      suggestedStake,
+src/application/runtime/ControlledRecoveryEngine.ts:635:          `RECOVERY_STAKE:${suggestedStake}`,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:8:  PaperStakeRecommendationResolver,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:10:} from './PaperStakeRecommendationResolver.js';
+src/application/runtime/PaperInstitutionalRecoveryController.ts:80:  readonly suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:138:  readonly suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:209:export class PaperInstitutionalRecoveryController {
+src/application/runtime/PaperInstitutionalRecoveryController.ts:238:      PaperStakeRecommendationResolver =
+src/application/runtime/PaperInstitutionalRecoveryController.ts:239:        new PaperStakeRecommendationResolver(),
+src/application/runtime/PaperInstitutionalRecoveryController.ts:315:        suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:353:      baseStake.suggestedStake ===
+src/application/runtime/PaperInstitutionalRecoveryController.ts:367:        suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:411:        suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:412:          baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:415:          baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:468:          baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:485:      recovery.suggestedStake ===
+src/application/runtime/PaperInstitutionalRecoveryController.ts:504:        suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:505:          baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:508:          baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:542:        suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:543:          baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:546:          baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:575:      suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:576:        recovery.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:579:        baseStake.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:599:  public settle(
+src/application/runtime/PaperInstitutionalRecoveryController.ts:680:        ? input.suggestedStake
+src/application/runtime/PaperInstitutionalRecoveryController.ts:681:        : -input.suggestedStake;
+src/application/runtime/PaperInstitutionalRecoveryController.ts:730:          input.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:983:      readonly suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:1015:      suggestedStake:
+src/application/runtime/PaperInstitutionalRecoveryController.ts:1016:        input.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:1158:        input.suggestedStake,
+src/application/runtime/PaperInstitutionalRecoveryController.ts:1160:      input.suggestedStake <=
+src/application/runtime/PaperInstitutionalRecoveryController.ts:1174:      input.suggestedStake
+src/application/runtime/HistoricalShadowReplayEngine.ts:43:   * PaperStakeRecommendationResolver.
+src/application/runtime/HistoricalShadowReplayEngine.ts:141:   * - PaperStakeRecommendationResolver;
+src/application/runtime/HistoricalShadowReplayEngine.ts:159:  settle(
+src/application/runtime/HistoricalShadowReplayEngine.ts:609:        adapter.settle(
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:18:  PaperStakeRecommendationResolver,
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:19:} from './PaperStakeRecommendationResolver.js';
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:161: *   PaperStakeRecommendationResolver;
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:165: * settle():
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:202:      PaperStakeRecommendationResolver =
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:203:        new PaperStakeRecommendationResolver(),
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:365:     * suggestedStake is a maximum TOTAL exposure.
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:387:      recommendation.suggestedStake ===
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:409:            recommendation.suggestedStake,
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:421:      recommendation.suggestedStake +
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:463:          recommendation.suggestedStake,
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:497:  public settle(
+src/application/runtime/HeatmapDynamicShadowAdapter.ts:526:        .settle({
+src/application/runtime/PaperProspectivePortfolioRiskController.ts:220:export class PaperProspectivePortfolioRiskController {
+src/application/runtime/PaperProspectivePortfolioRiskController.ts:445:  public settle(
+tests/application/runtime/PaperLiveOracleEngine.test.js:162:    suggestedStake:
+tests/application/runtime/PaperLiveOracleEngine.test.js:211:    suggestedStake:
+tests/application/runtime/PaperOracleTargetResolver.test.js:268:          result.suggestedStake,
+tests/application/runtime/PaperOracleTargetResolver.test.js:307:          result.suggestedStake,
+tests/application/runtime/TriplicacaoProspectiveRecorder.test.js:253:            suggestedStake:
+tests/application/runtime/TriplicacaoProspectiveRecorder.test.js:262:          result.suggestedStake,
+tests/application/runtime/TriplicacaoProspectiveRecorder.test.js:301:            suggestedStake:
+tests/application/runtime/TriplicacaoProspectiveRecorder.test.js:354:            suggestedStake:
+tests/application/runtime/TriplicacaoProspectiveRecorder.test.js:396:            suggestedStake:
+tests/application/runtime/TriplicacaoProspectiveRecorder.test.js:409:          recorder.settle({
+tests/application/runtime/TriplicacaoProspectiveRecorder.test.js:453:              suggestedStake:
+tests/application/runtime/TriplicacaoProspectiveRecorder.test.js:485:            suggestedStake:
+tests/application/runtime/TriplicacaoProspectiveRecorder.test.js:535:            suggestedStake:
+tests/application/runtime/TriplicacaoProspectiveRecorder.test.js:539:        recorder.settle({
+tests/application/runtime/TriplicacaoProspectiveRecorder.test.js:589:            suggestedStake:
+tests/application/runtime/TriplicacaoProspectiveRecorder.test.js:602:          recorder.settle({
+tests/application/runtime/TriplicacaoProspectiveRecorder.test.js:623:          settled.suggestedStake,
+tests/application/runtime/TriplicacaoProspectiveRecorder.test.js:650:            suggestedStake:
+tests/application/runtime/TriplicacaoProspectiveRecorder.test.js:655:          recorder.settle({
+tests/application/runtime/TriplicacaoProspectiveRecorder.test.js:695:            suggestedStake:
+tests/application/runtime/TriplicacaoProspectiveRecorder.test.js:701:            recorder.settle({
+tests/application/runtime/TriplicacaoProspectiveRecorder.test.js:739:          suggestedStake:
+tests/application/runtime/TriplicacaoProspectiveRecorder.test.js:750:          suggestedStake:
+tests/application/runtime/TriplicacaoProspectiveRecorder.test.js:789:            suggestedStake:
+tests/application/runtime/TriplicacaoProspectivePerformanceAnalyzer.test.js:100:    suggestedStake:
+tests/application/runtime/TriplicacaoProspectiveSessionRuntime.test.js:150:    suggestedStake:
+tests/application/runtime/TriplicacaoProspectiveSessionRuntime.test.js:254:          result.recommendation.suggestedStake,
+tests/application/runtime/PaperStakeRecommendationResolver.test.js:2:  PaperStakeRecommendationResolver,
+tests/application/runtime/PaperStakeRecommendationResolver.test.js:4:  '../../../dist/application/runtime/PaperStakeRecommendationResolver.js'
+tests/application/runtime/PaperStakeRecommendationResolver.test.js:9:  'PaperStakeRecommendationResolver',
+tests/application/runtime/PaperStakeRecommendationResolver.test.js:12:      new PaperStakeRecommendationResolver();
+tests/application/runtime/PaperStakeRecommendationResolver.test.js:44:          result.suggestedStake,
+tests/application/runtime/PaperStakeRecommendationResolver.test.js:79:          result.suggestedStake,
+tests/application/runtime/PaperStakeRecommendationResolver.test.js:83:          result.suggestedStake,
+tests/application/runtime/PaperStakeRecommendationResolver.test.js:114:          result.suggestedStake,
+tests/application/runtime/PaperStakeRecommendationResolver.test.js:143:          result.suggestedStake,
+tests/application/runtime/PaperStakeRecommendationResolver.test.js:174:          result.suggestedStake,
+tests/application/runtime/PaperStakeRecommendationResolver.test.js:253:          small.suggestedStake,
+tests/application/runtime/PaperStakeRecommendationResolver.test.js:255:          large.suggestedStake,
+tests/application/runtime/PaperStakeRecommendationResolver.test.js:280:          result.suggestedStake,
+tests/application/runtime/PaperStakeRecommendationResolver.test.js:284:          result.suggestedStake,
+tests/application/runtime/TriplicacaoProspectiveInstitutionalSessionRuntime.test.js:373:            .suggestedStake,
+tests/application/runtime/TriplicacaoProspectiveInstitutionalSessionRuntime.test.js:378:            .suggestedStake,
+tests/application/runtime/TriplicacaoProspectiveInstitutionalSessionRuntime.test.js:684:            .suggestedStake,
+tests/application/runtime/ControlledRecoveryEngine.test.js:52:          result.suggestedStake,
+tests/application/runtime/ControlledRecoveryEngine.test.js:95:          result.suggestedStake,
+tests/application/runtime/ControlledRecoveryEngine.test.js:144:          result.suggestedStake,
+tests/application/runtime/ControlledRecoveryEngine.test.js:150:          result.suggestedStake,
+tests/application/runtime/ControlledRecoveryEngine.test.js:201:          result.suggestedStake,
+tests/application/runtime/ControlledRecoveryEngine.test.js:258:          result.suggestedStake,
+tests/application/runtime/ControlledRecoveryEngine.test.js:307:          result.suggestedStake,
+tests/application/runtime/ControlledRecoveryEngine.test.js:395:          result.suggestedStake,
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:2:  PaperInstitutionalRecoveryController,
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:4:  '../../../dist/application/runtime/PaperInstitutionalRecoveryController.js'
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:11:  return new PaperInstitutionalRecoveryController({
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:30:  'PaperInstitutionalRecoveryController',
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:50:          result.suggestedStake,
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:78:        runtime.settle({
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:88:          suggestedStake:
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:89:            first.suggestedStake,
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:111:          next.suggestedStake,
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:136:        runtime.settle({
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:146:          suggestedStake:
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:147:            first.suggestedStake,
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:169:          next.suggestedStake,
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:194:        runtime.settle({
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:204:          suggestedStake:
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:205:            first.suggestedStake,
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:217:          runtime.settle({
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:227:            suggestedStake:
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:228:              recovery.suggestedStake,
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:258:        runtime.settle({
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:268:          suggestedStake:
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:269:            first.suggestedStake,
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:281:          runtime.settle({
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:291:            suggestedStake:
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:292:              recovery.suggestedStake,
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:322:          runtime.settle({
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:332:            suggestedStake:
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:333:              recommendation.suggestedStake,
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:373:          runtime.settle({
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:383:            suggestedStake:
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:384:              recommendation.suggestedStake,
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:420:          runtime.settle({
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:430:            suggestedStake:
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:431:              recommendation.suggestedStake,
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:459:        runtime.settle({
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:469:          suggestedStake:
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:470:            win.suggestedStake,
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:482:          runtime.settle({
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:492:          suggestedStake:
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:493:              second.suggestedStake,
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:514:          new PaperInstitutionalRecoveryController({
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:550:          runtime.settle({
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:560:            suggestedStake:
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:561:              recommendation.suggestedStake,
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:580:          final.suggestedStake,
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:604:          new PaperInstitutionalRecoveryController({
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:653:          runtime.settle({
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:663:            suggestedStake:
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:664:              recommendation.suggestedStake,
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:729:          result.suggestedStake,
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:807:  'PaperInstitutionalRecoveryController external capital contract',
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:828:          recommendation.suggestedStake,
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:906:  'PaperInstitutionalRecoveryController external settlement contract',
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:939:          recommendation.suggestedStake,
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:973:          runtime.settle(
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:984:              suggestedStake:
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:985:                recommendation.suggestedStake,
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:1053:          runtime.settle(
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:1064:              suggestedStake:
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:1115:          runtime.settle(
+tests/application/runtime/PaperInstitutionalRecoveryController.test.js:1126:              suggestedStake:
+tests/application/runtime/TriplicacaoInstitutionalRecoveryIntegration.test.js:285:            .suggestedStake,
+tests/application/runtime/TriplicacaoInstitutionalRecoveryIntegration.test.js:351:            .suggestedStake,
+tests/application/runtime/TriplicacaoInstitutionalRecoveryIntegration.test.js:382:            .suggestedStake,
+tests/application/runtime/TriplicacaoLiveTerminalController.test.js:344:            .suggestedStake,
+tests/application/runtime/PaperProspectivePortfolioRiskController.test.js:2:  PaperProspectivePortfolioRiskController,
+tests/application/runtime/PaperProspectivePortfolioRiskController.test.js:4:  '../../../dist/application/runtime/PaperProspectivePortfolioRiskController.js',
+tests/application/runtime/PaperProspectivePortfolioRiskController.test.js:11:  return new PaperProspectivePortfolioRiskController({
+tests/application/runtime/PaperProspectivePortfolioRiskController.test.js:24:  'PaperProspectivePortfolioRiskController',
+tests/application/runtime/PaperProspectivePortfolioRiskController.test.js:302:          controller.settle({
+tests/application/runtime/PaperProspectivePortfolioRiskController.test.js:364:        controller.settle({
+tests/application/runtime/PaperProspectivePortfolioRiskController.test.js:458:        controller.settle({
+tests/application/runtime/PaperProspectivePortfolioRiskController.test.js:520:              .settle({
+tests/application/runtime/PaperProspectivePortfolioRiskController.test.js:553:            controller.settle({
+tests/application/runtime/PaperProspectivePortfolioRiskController.test.js:586:            controller.settle({
+tests/application/runtime/PaperProspectivePortfolioRiskController.test.js:619:            controller.settle({
+tests/application/runtime/PaperProspectivePortfolioRiskController.test.js:697:  'PaperProspectivePortfolioRiskController sovereign authority hardening',
+tests/application/runtime/PaperProspectivePortfolioRiskController.test.js:715:          new PaperProspectivePortfolioRiskController(
+tests/application/runtime/PaperProspectivePortfolioRiskController.test.js:779:          new PaperProspectivePortfolioRiskController(
+tests/application/runtime/PaperProspectivePortfolioRiskController.test.js:800:        controller.settle({
+tests/application/runtime/PaperBaseExposureRiskPolicy.test.js:8:  PaperStakeRecommendationResolver,
+tests/application/runtime/PaperBaseExposureRiskPolicy.test.js:10:  '../../../dist/application/runtime/PaperStakeRecommendationResolver.js',
+tests/application/runtime/PaperBaseExposureRiskPolicy.test.js:56:      '%s remains identical to certified PaperStakeRecommendationResolver doctrine',
+tests/application/runtime/PaperBaseExposureRiskPolicy.test.js:67:          new PaperStakeRecommendationResolver()
+tests/application/runtime/PaperBaseExposureRiskPolicy.test.js:131:          new PaperStakeRecommendationResolver(
+tests/application/runtime/TriplicacaoShadowAdapter.test.js:335:          runtime.settle(
+tests/application/runtime/TriplicacaoShadowAdapter.test.js:385:          runtime.settle(
+tests/application/runtime/TriplicacaoShadowAdapter.test.js:437:          runtime.settle(
+tests/application/runtime/TriplicacaoShadowAdapter.test.js:491:        runtime.settle(
+tests/application/runtime/TriplicacaoShadowAdapter.test.js:547:        runtime.settle(
+tests/application/runtime/StraightUpPaperFinancialSettlement.test.js:80:            .settle({
+tests/application/runtime/StraightUpPaperFinancialSettlement.test.js:129:            .settle({
+tests/application/runtime/StraightUpPaperFinancialSettlement.test.js:172:            .settle({
+tests/application/runtime/StraightUpPaperFinancialSettlement.test.js:215:            .settle({
+tests/application/runtime/StraightUpPaperFinancialSettlement.test.js:259:              .settle({
+tests/application/runtime/StraightUpPaperFinancialSettlement.test.js:284:            .settle({
+tests/application/runtime/PaperStakeRecommendationResolverRoundingRegression.test.js:2:  PaperStakeRecommendationResolver,
+tests/application/runtime/PaperStakeRecommendationResolverRoundingRegression.test.js:4:  '../../../dist/application/runtime/PaperStakeRecommendationResolver.js',
+tests/application/runtime/PaperStakeRecommendationResolverRoundingRegression.test.js:9:  'PaperStakeRecommendationResolver monetary cap regression',
+tests/application/runtime/PaperStakeRecommendationResolverRoundingRegression.test.js:15:          new PaperStakeRecommendationResolver();
+tests/application/runtime/PaperStakeRecommendationResolverRoundingRegression.test.js:58:          result.suggestedStake,
+tests/application/runtime/PaperStakeRecommendationResolverRoundingRegression.test.js:64:          result.suggestedStake,
+tests/application/runtime/PaperStakeRecommendationResolverRoundingRegression.test.js:83:          new PaperStakeRecommendationResolver();
+tests/application/runtime/PaperStakeRecommendationResolverRoundingRegression.test.js:123:          result.suggestedStake,
+tests/application/runtime/PaperStakeRecommendationResolverRoundingRegression.test.js:129:          result.suggestedStake,
+tests/application/runtime/PaperStakeRecommendationResolverRoundingRegression.test.js:142:          new PaperStakeRecommendationResolver();
+tests/application/runtime/PaperStakeRecommendationResolverRoundingRegression.test.js:166:          result.suggestedStake,
+tests/application/runtime/PaperStakeRecommendationResolverRoundingRegression.test.js:184:          new PaperStakeRecommendationResolver()
+tests/application/runtime/HistoricalShadowReplayEngine.test.js:90:    settle(
+tests/application/runtime/PaperCanonicalFinancialAuthority.test.js:68:              'src/application/runtime/PaperStakeRecommendationResolver.ts',
+tests/application/runtime/PaperCanonicalFinancialAuthority.test.js:82:          'suggestedStake',
+tests/application/runtime/FusionReducedShadowAdapter.test.js:395:          adapter.settle(
+tests/application/runtime/FusionReducedShadowAdapter.test.js:445:          adapter.settle(
+tests/application/runtime/FusionReducedShadowAdapter.test.js:498:            .settle(
+tests/application/runtime/HeatmapDynamicShadowAdapter.test.js:710:          adapter.settle(
+tests/application/runtime/HeatmapDynamicShadowAdapter.test.js:797:          adapter.settle(
+tests/application/runtime/HeatmapDynamicShadowAdapter.test.js:868:            .settle(
+tests/application/runtime/HeatmapDynamicShadowAdapter.test.js:921:        adapter.settle(
+
+======================================================
+TRIPLICACAO RUNTIME FILE
+======================================================
+
+src/application/runtime/DailyRiskLockRecoveryCoordinator.ts
+src/application/runtime/RuntimeRecoveryBootCoordinator.ts
+src/application/runtime/RuntimeRecoveryService.ts
+src/application/runtime/TriplicacaoAuditExplainabilityEngine.ts
+src/application/runtime/TriplicacaoStrategyRuntimeBinder.ts
+src/application/runtime/TriplicacaoActionSemantics.ts
+src/application/runtime/TriplicacaoProspectiveFormationCoordinator.ts
+src/application/runtime/TriplicacaoProspectiveSessionRuntime.ts
+src/application/runtime/PaperRecoveryLedger.ts
+src/application/runtime/TriplicacaoLiveStatsDiagnostics.ts
+src/application/runtime/TriplicacaoLiveStatsPresenter.ts
+src/application/runtime/TriplicacaoCounterfactualCalibrationPresenter.ts
+src/application/runtime/TriplicacaoJointCounterfactualCalibrationMatrix.ts
+src/application/runtime/TriplicacaoCounterfactualDecisionPoint.ts
+src/application/runtime/TriplicacaoCounterfactualSettlementPresenter.ts
+src/application/runtime/TriplicacaoShadowAdapter.ts
+src/application/runtime/TriplicacaoProspectiveRecorder.ts
+src/application/runtime/TriplicacaoProspectivePerformanceAnalyzer.ts
+src/application/runtime/ControlledRecoveryEngine.ts
+src/application/runtime/PaperInstitutionalRecoveryController.ts
+src/application/runtime/TriplicacaoLiveTerminalController.ts
+src/application/runtime/TriplicacaoLiveObservability.ts
+src/application/runtime/TriplicacaoCounterfactualCalibrationMatrix.ts
+src/application/runtime/TriplicacaoCounterfactualSettlementEngine.ts
+src/application/runtime/PaperProspectivePortfolioRiskController.ts

@@ -1,0 +1,1000 @@
+======================================================
+RL.SYS — TRIPLICAÇÃO PORTFOLIO RUNTIME INJECTION AUDIT
+======================================================
+
+HEAD:
+e788008 feat(risk): add sovereign prospective portfolio exposure authority
+
+======================================================
+IMPORTS
+======================================================
+import {
+  TriplicacaoProspectiveFormationCoordinator,
+  type TriplicacaoFormationState,
+  type TriplicacaoProspectiveResult,
+} from './TriplicacaoProspectiveFormationCoordinator.js';
+
+import {
+  TriplicacaoProspectiveRecorder,
+  type TriplicacaoProspectiveOperatorDecision,
+  type TriplicacaoProspectiveSignalRecord,
+} from './TriplicacaoProspectiveRecorder.js';
+
+import {
+  TriplicacaoProspectivePerformanceAnalyzer,
+  type TriplicacaoProspectivePerformanceReport,
+} from './TriplicacaoProspectivePerformanceAnalyzer.js';
+
+import {
+  PaperOperatorDecisionSemantics,
+} from './PaperOperatorDecisionSemantics.js';
+
+import {
+  PostSyncCatchUpBoundary,
+  type PostSyncCatchUpSnapshot,
+} from './PostSyncCatchUpBoundary.js';
+
+import {
+  PaperInstitutionalRecoveryController,
+  type PaperInstitutionalStakeRecommendation,
+  type PaperInstitutionalSettlementReport,
+} from './PaperInstitutionalRecoveryController.js';
+
+import type {
+  PaperCapitalRiskMode,
+} from './PaperCapitalPreservationGuard.js';
+
+import type {
+  TriplicacaoAdvancedProbabilityAnalysis,
+} from '../../domain/analytics/TriplicacaoAdvancedProbabilityEngine.js';
+
+
+export type TriplicacaoProspectiveSessionEvent =
+  | 'FORMATION_STARTED'
+  | 'RECOMMENDATION_ISSUED'
+  | 'NO_RECOMMENDATION'
+  | 'RECOMMENDATION_SETTLED'
+  | 'TRIO_VOID'
+  | 'STAKE_BLOCKED'
+  | 'CAPITAL_STOP';
+
+
+export interface TriplicacaoProspectiveInstitutionalConfiguration {
+  readonly initialBankroll:
+    number;
+
+  readonly riskMode:
+    PaperCapitalRiskMode;
+
+  readonly minimumStake:
+    number;
+
+  readonly martingaleEnabled?:
+    boolean;
+
+  readonly operatorDecisionSemantics?:
+    PaperOperatorDecisionSemantics;
+
+  readonly postSyncBoundary?:
+    PostSyncCatchUpBoundary;
+
+  readonly financialController?:
+    PaperInstitutionalRecoveryController;
+}
+
+
+export interface TriplicacaoProspectiveSessionInput {
+  readonly sessionId:
+    string;
+
+  readonly spin:
+    number;
+
+  readonly analysis:
+    TriplicacaoAdvancedProbabilityAnalysis;
+
+  /**
+   * Legacy non-institutional testing path only.
+   *
+   * Institutional mode always ignores this and uses the shared
+   * financial controller.
+   */
+  readonly suggestedStake?:
+    number;
+}
+
+
+export interface TriplicacaoProspectiveSessionOperatorDecisionInput {
+  readonly sessionId:
+    string;
+
+  readonly decision:
+    Exclude<
+      TriplicacaoProspectiveOperatorDecision,
+      'UNDECIDED'
+    >;
+}
+
+
+export interface TriplicacaoProspectiveSessionSnapshot {
+  readonly sessionId:
+    string;
+
+  readonly formationState:
+    TriplicacaoFormationState;
+
+  readonly pendingSignalId:
+    string | null;
+
+  readonly pendingOperatorDecision:
+    TriplicacaoProspectiveOperatorDecision | null;
+
+  readonly totalRecordedSignals:
+    number;
+
+  readonly institutionalMode:
+    boolean;
+
+  readonly currentBankroll:
+    number | null;
+
+
+======================================================
+CONSTRUCTOR / DEPENDENCIES
+======================================================
+219-  private readonly sessionId:
+220-    string;
+221-
+222-  private pendingSignalId:
+223-    string | null =
+224-      null;
+225-
+226-  private readonly institutional:
+227-    TriplicacaoProspectiveInstitutionalConfiguration | null;
+228-
+229-  private readonly operatorDecisionSemantics:
+230-    PaperOperatorDecisionSemantics;
+231-
+232-  private readonly postSyncBoundary:
+233-    PostSyncCatchUpBoundary | null;
+234-
+235-  private readonly financialController:
+236-    PaperInstitutionalRecoveryController | null;
+237-
+238-
+239:  public constructor(
+240-    sessionId:
+241-      string,
+242-
+243-    private readonly formation:
+244-      TriplicacaoProspectiveFormationCoordinator,
+245-
+246-    private readonly recorder:
+247-      TriplicacaoProspectiveRecorder,
+248-
+249-    private readonly performanceAnalyzer:
+250-      TriplicacaoProspectivePerformanceAnalyzer =
+251-        new TriplicacaoProspectivePerformanceAnalyzer(),
+252-
+253-    institutionalConfiguration:
+254-      TriplicacaoProspectiveInstitutionalConfiguration | null =
+255-        null,
+256-  ) {
+257-    const normalized =
+258-      sessionId.trim();
+259-
+260-    if (
+261-      normalized.length ===
+262-      0
+263-    ) {
+264-      throw new Error(
+265-        'triplicacao_session_runtime_session_required',
+266-      );
+267-    }
+268-
+269-    this.sessionId =
+270-      normalized;
+271-
+272-    this.institutional =
+273-      institutionalConfiguration;
+274-
+275-    this.operatorDecisionSemantics =
+276-      institutionalConfiguration
+277-        ?.operatorDecisionSemantics ??
+278-      new PaperOperatorDecisionSemantics();
+279-
+280-    this.postSyncBoundary =
+281-      institutionalConfiguration
+282-        ?.postSyncBoundary ??
+283-      (
+284-        institutionalConfiguration
+285-          ? new PostSyncCatchUpBoundary()
+286-          : null
+287-      );
+288-
+289-    if (
+290-      institutionalConfiguration
+291-    ) {
+292-      this.validateInstitutionalConfiguration(
+293-        institutionalConfiguration,
+294-      );
+295-
+296-      this.financialController =
+297-        institutionalConfiguration
+298-          .financialController ??
+299-        new PaperInstitutionalRecoveryController({
+300-          initialBankroll:
+301-            institutionalConfiguration
+302-              .initialBankroll,
+303-
+304-          riskMode:
+305-            institutionalConfiguration
+306-              .riskMode,
+307-
+308-          minimumStake:
+309-            institutionalConfiguration
+310-              .minimumStake,
+311-
+312-          martingaleEnabled:
+313-            institutionalConfiguration
+314-              .martingaleEnabled ??
+315-            false,
+316-        });
+317-    } else {
+318-      this.financialController =
+319-        null;
+320-    }
+321-
+322-    this.restorePendingSignal();
+323-  }
+324-
+325-
+326-  public confirmHistoryCurrent(
+327-    raw:
+328-      string,
+329-  ): PostSyncCatchUpSnapshot {
+330-    return this.requireBoundary()
+331-      .confirmHistoryCurrent(
+332-        raw,
+333-      );
+334-  }
+335-
+336-
+337-  public recordCatchUpSpin(
+338-    spin:
+339-      number,
+340-  ): PostSyncCatchUpSnapshot {
+341-    return this.requireBoundary()
+342-      .recordCatchUpSpin(
+343-        spin,
+344-      );
+345-  }
+346-
+347-
+348-  public finishCatchUp():
+349-    PostSyncCatchUpSnapshot {
+350-    return this.requireBoundary()
+351-      .finishCatchUp();
+352-  }
+353-
+354-
+355-  public recordOperatorDecisionRaw(
+356-    input: {
+357-      readonly sessionId:
+358-        string;
+359-
+
+======================================================
+STAKE FLOW
+======================================================
+52-export interface TriplicacaoProspectiveInstitutionalConfiguration {
+53-  readonly initialBankroll:
+54-    number;
+55-
+56-  readonly riskMode:
+57-    PaperCapitalRiskMode;
+58-
+59-  readonly minimumStake:
+60-    number;
+61-
+62-  readonly martingaleEnabled?:
+63-    boolean;
+64-
+65-  readonly operatorDecisionSemantics?:
+66-    PaperOperatorDecisionSemantics;
+67-
+68-  readonly postSyncBoundary?:
+69-    PostSyncCatchUpBoundary;
+70-
+71-  readonly financialController?:
+72-    PaperInstitutionalRecoveryController;
+73-}
+74-
+75-
+76-export interface TriplicacaoProspectiveSessionInput {
+77-  readonly sessionId:
+78-    string;
+79-
+80-  readonly spin:
+81-    number;
+82-
+83-  readonly analysis:
+84-    TriplicacaoAdvancedProbabilityAnalysis;
+85-
+86-  /**
+87-   * Legacy non-institutional testing path only.
+88-   *
+89-   * Institutional mode always ignores this and uses the shared
+90-   * financial controller.
+91-   */
+92:  readonly suggestedStake?:
+93-    number;
+94-}
+95-
+96-
+97-export interface TriplicacaoProspectiveSessionOperatorDecisionInput {
+98-  readonly sessionId:
+99-    string;
+100-
+101-  readonly decision:
+102-    Exclude<
+103-      TriplicacaoProspectiveOperatorDecision,
+104-      'UNDECIDED'
+105-    >;
+106-}
+107-
+108-
+109-export interface TriplicacaoProspectiveSessionSnapshot {
+110-  readonly sessionId:
+111-    string;
+112-
+113-  readonly formationState:
+114-    TriplicacaoFormationState;
+115-
+116-  readonly pendingSignalId:
+117-    string | null;
+118-
+119-  readonly pendingOperatorDecision:
+120-    TriplicacaoProspectiveOperatorDecision | null;
+121-
+122-  readonly totalRecordedSignals:
+123-    number;
+124-
+125-  readonly institutionalMode:
+126-    boolean;
+127-
+128-  readonly currentBankroll:
+129-    number | null;
+130-
+131-  readonly peakBankroll:
+132-    number | null;
+133-
+134-  readonly pendingLossDebt:
+135-    number | null;
+136-
+137-  readonly capitalDecision:
+138-    string | null;
+139-
+140-  readonly martingaleEnabled:
+141-    boolean | null;
+142-
+143-  readonly postSync:
+144-    PostSyncCatchUpSnapshot | null;
+145-
+146-  readonly paperOnly: true;
+147-
+148-  readonly recommendationOnly: true;
+149-
+150-  readonly humanExecutionRequired: true;
+151-
+152-  readonly liveMoneyAuthorization: false;
+153-
+154-  readonly automaticBetExecutionAllowed: false;
+155-}
+156-
+157-
+158-export interface TriplicacaoProspectiveSessionResult {
+159-  readonly event:
+160-    TriplicacaoProspectiveSessionEvent;
+161-
+162-  readonly sessionId:
+163-    string;
+164-
+165-  readonly spin:
+166-    number;
+167-
+168-  readonly formation:
+169-    TriplicacaoProspectiveResult;
+170-
+171-  readonly recommendation:
+172-    TriplicacaoProspectiveSignalRecord | null;
+--
+535-
+536-        financialRecommendation,
+537-
+538-        financialSettlement:
+539-          null,
+540-
+541-        operatorMessage:
+542-          this.capitalStopMessage(
+543-            financialRecommendation,
+544-          ),
+545-      });
+546-    }
+547-
+548-    if (
+549-      financialRecommendation
+550-        ?.decision ===
+551-      'STAKE_BLOCKED'
+552-    ) {
+553-      return this.buildResult({
+554-        event:
+555-          'STAKE_BLOCKED',
+556-
+557-        formation,
+558-
+559-        recommendation:
+560-          null,
+561-
+562-        settledSignal:
+563-          null,
+564-
+565-        financialRecommendation,
+566-
+567-        financialSettlement:
+568-          null,
+569-
+570-        operatorMessage:
+571-          'Oportunidade estatística detectada, porém a exposição financeira segura não permite entrada.',
+572-      });
+573-    }
+574-
+575:    const suggestedStake =
+576-      financialRecommendation
+577:        ?.suggestedStake ??
+578:      input.suggestedStake;
+579-
+580-    if (
+581:      suggestedStake ===
+582-        undefined ||
+583:      suggestedStake ===
+584-        null
+585-    ) {
+586-      throw new Error(
+587-        'triplicacao_session_runtime_stake_required',
+588-      );
+589-    }
+590-
+591-    const baseStakeAmount =
+592-      financialRecommendation
+593-        ?.baseStakeAmount ??
+594:      suggestedStake;
+595-
+596-    const recoveryComponent =
+597-      financialRecommendation
+598-        ?.recoveryComponent ??
+599-      0;
+600-
+601-    const recommendation =
+602-      this.recorder.recordAction({
+603-        sessionId:
+604-          this.sessionId,
+605-
+606-        action:
+607-          formation.action,
+608-
+609:        suggestedStake,
+610-
+611-        baseStakeAmount,
+612-
+613-        recoveryComponent,
+614-      });
+615-
+616-    this.pendingSignalId =
+617-      recommendation.signalId;
+618-
+619-    return this.buildResult({
+620-      event:
+621-        'RECOMMENDATION_ISSUED',
+622-
+623-      formation,
+624-
+625-      recommendation,
+626-
+627-      settledSignal:
+628-        null,
+629-
+630-      financialRecommendation,
+631-
+632-      financialSettlement:
+633-        null,
+634-
+635-      operatorMessage:
+636-        this.recommendationMessage(
+637-          recommendation,
+638-          financialRecommendation,
+639-        ),
+640-    });
+641-  }
+642-
+643-
+644-  public recordOperatorDecision(
+645-    input:
+646-      TriplicacaoProspectiveSessionOperatorDecisionInput,
+647-  ): TriplicacaoProspectiveSignalRecord {
+648-    this.validateSession(
+649-      input.sessionId,
+650-    );
+651-
+652-    if (
+653-      this.institutional &&
+654-      !this.requireBoundary()
+655-        .snapshot()
+656-        .operatorDecisionPromptAllowed
+657-    ) {
+658-      throw new Error(
+659-        'triplicacao_session_runtime_operator_decision_not_allowed',
+660-      );
+661-    }
+662-
+663-    if (
+664-      this.pendingSignalId ===
+665-      null
+666-    ) {
+667-      throw new Error(
+668-        'triplicacao_session_runtime_no_pending_recommendation',
+669-      );
+670-    }
+671-
+672-    return this.recorder.recordOperatorDecision({
+673-      signalId:
+674-        this.pendingSignalId,
+675-
+676-      decision:
+677-        input.decision,
+678-    });
+679-  }
+680-
+681-
+682-  public performance():
+683-    TriplicacaoProspectivePerformanceReport {
+684-    return this.performanceAnalyzer.analyze(
+685-      this.recorder.listSession(
+686-        this.sessionId,
+687-      ),
+688-    );
+689-  }
+--
+835-     * reaching bankroll accounting.
+836-     */
+837-    const statisticalResult =
+838-      settledSignal.result;
+839-
+840-    if (
+841-      statisticalResult ===
+842-      null
+843-    ) {
+844-      throw new Error(
+845-        'triplicacao_session_runtime_settled_result_missing',
+846-      );
+847-    }
+848-
+849-    const thirdColor =
+850-      settledSignal.thirdColor;
+851-
+852-    if (
+853-      thirdColor ===
+854-      null
+855-    ) {
+856-      throw new Error(
+857-        'triplicacao_session_runtime_settled_color_missing',
+858-      );
+859-    }
+860-
+861-    this.pendingSignalId =
+862-      null;
+863-
+864-    const financialSettlement =
+865-      this.financialController
+866-        ? this.financialController.settle({
+867-            operatorDecision:
+868-              settledSignal
+869-                .operatorDecision,
+870-
+871-            statisticalResult,
+872-
+873-            thirdColor,
+874-
+875:            suggestedStake:
+876-              settledSignal
+877:                .suggestedStake,
+878-
+879-            recoveryComponent:
+880-              settledSignal
+881-                .recoveryComponent,
+882-          })
+883-        : null;
+884-
+885-    return this.buildResult({
+886-      event:
+887-        statisticalResult ===
+888-        'VOID'
+889-          ? 'TRIO_VOID'
+890-          : 'RECOMMENDATION_SETTLED',
+891-
+892-      formation,
+893-
+894-      recommendation:
+895-        null,
+896-
+897-      settledSignal,
+898-
+899-      financialRecommendation:
+900-        null,
+901-
+902-      financialSettlement,
+903-
+904-      operatorMessage:
+905-        this.settlementMessage(
+906-          settledSignal,
+907-          financialSettlement,
+908-        ),
+909-    });
+910-  }
+911-
+912-
+913-  private buildResult(
+914-    input: {
+915-      readonly event:
+916-        TriplicacaoProspectiveSessionEvent;
+917-
+918-      readonly formation:
+919-        TriplicacaoProspectiveResult;
+920-
+921-      readonly recommendation:
+922-        TriplicacaoProspectiveSignalRecord | null;
+923-
+924-      readonly settledSignal:
+925-        TriplicacaoProspectiveSignalRecord | null;
+926-
+927-      readonly financialRecommendation:
+928-        PaperInstitutionalStakeRecommendation | null;
+929-
+930-      readonly financialSettlement:
+931-        PaperInstitutionalSettlementReport | null;
+932-
+933-      readonly operatorMessage:
+934-        string;
+935-    },
+936-  ): TriplicacaoProspectiveSessionResult {
+937-    const financial =
+938-      this.financialController
+939-        ?.snapshot() ??
+940-      null;
+941-
+942-    return Object.freeze({
+943-      event:
+944-        input.event,
+945-
+946-      sessionId:
+947-        this.sessionId,
+948-
+949-      spin:
+950-        input.formation.spin,
+951-
+952-      formation:
+953-        input.formation,
+954-
+955-      recommendation:
+956-        input.recommendation,
+957-
+--
+993-
+994-      paperOnly:
+995-        true as const,
+996-
+997-      recommendationOnly:
+998-        true as const,
+999-
+1000-      humanExecutionRequired:
+1001-        true as const,
+1002-
+1003-      liveMoneyAuthorization:
+1004-        false as const,
+1005-
+1006-      automaticBetExecutionAllowed:
+1007-        false as const,
+1008-
+1009-      operatorDecisionRequired:
+1010-        true as const,
+1011-    });
+1012-  }
+1013-
+1014-
+1015-  private recommendationMessage(
+1016-    signal:
+1017-      TriplicacaoProspectiveSignalRecord,
+1018-
+1019-    financial:
+1020-      PaperInstitutionalStakeRecommendation | null,
+1021-  ): string {
+1022-    const recoveryLabel =
+1023-      signal.recoveryComponent >
+1024-      0
+1025-        ? `Recovery controlado: R$ ${this.formatMoney(signal.recoveryComponent)}.`
+1026-        : 'Recovery: não aplicado.';
+1027-
+1028-    return [
+1029-      'Oportunidade prospectiva de Triplicação identificada.',
+1030-      `Padrão: ${signal.pattern}.`,
+1031-      `Entrada sugerida: ${signal.targetColor}.`,
+1032-      `Stake base: R$ ${this.formatMoney(signal.baseStakeAmount)}.`,
+1033:      `Stake sugerida: R$ ${this.formatMoney(signal.suggestedStake)}.`,
+1034-      recoveryLabel,
+1035-      `Confiança: ${Math.round(signal.confidenceScore * 100)}%.`,
+1036-      `Evidência: ${signal.evidenceScore}.`,
+1037-      `Risco: ${Math.round(signal.riskScore * 100)}%.`,
+1038-      ...(financial
+1039-        ? [
+1040-            `Capital: ${financial.capital.decision}.`,
+1041-            `Martingale: ${financial.martingaleEnabled ? 'ON' : 'OFF'}.`,
+1042-          ]
+1043-        : []),
+1044-      'Seguiu? [s/n]',
+1045-      'A entrada é exclusivamente manual.',
+1046-    ].join(' ');
+1047-  }
+1048-
+1049-
+1050-  private settlementMessage(
+1051-    signal:
+1052-      TriplicacaoProspectiveSignalRecord,
+1053-
+1054-    financial:
+1055-      PaperInstitutionalSettlementReport | null,
+1056-  ): string {
+1057-    return [
+1058-      'Recomendação prospectiva encerrada.',
+1059-      `Target: ${signal.targetColor}.`,
+1060-      `Resultado: ${signal.thirdColor}.`,
+1061-      `Settlement estatístico: ${signal.result}.`,
+1062-      `Operador: ${signal.operatorDecision}.`,
+1063-      ...(financial
+1064-        ? [
+1065-            `Settlement financeiro: ${financial.financialSettlement}.`,
+1066-            `Banca: R$ ${this.formatMoney(financial.bankrollAfter)}.`,
+1067-            `Pico: R$ ${this.formatMoney(financial.peakBankroll)}.`,
+1068-            `Drawdown: ${(financial.drawdownFraction * 100).toFixed(2)}%.`,
+1069-            `Recovery debt: R$ ${this.formatMoney(financial.recoveryLedger.pendingLossDebt)}.`,
+1070-          ]
+1071-        : []),
+1072-    ].join(' ');
+1073-  }
+1074-
+1075-
+1076-  private capitalStopMessage(
+1077-    financial:
+1078-      PaperInstitutionalStakeRecommendation,
+1079-  ): string {
+1080-    return [
+1081-      'CAPITAL PRESERVATION STOP.',
+1082-      `Motivo: ${financial.capital.stopReason}.`,
+1083-      `Banca atual: R$ ${this.formatMoney(financial.currentBankroll)}.`,
+1084-      `Pico: R$ ${this.formatMoney(financial.peakBankroll)}.`,
+1085-      'Novas recomendações e recovery estão bloqueados.',
+1086-    ].join(' ');
+1087-  }
+1088-
+1089-
+1090-  private pendingRecord():
+1091-    TriplicacaoProspectiveSignalRecord | null {
+1092-    if (
+1093-      this.pendingSignalId ===
+1094-      null
+1095-    ) {
+1096-      return null;
+1097-    }
+1098-
+1099-    return (
+1100-      this.recorder
+1101-        .listSession(
+1102-          this.sessionId,
+1103-        )
+1104-        .find(
+1105-          (record) =>
+1106-            record.signalId ===
+1107-            this.pendingSignalId,
+1108-        ) ??
+1109-      null
+1110-    );
+1111-  }
+1112-
+1113-
+
+======================================================
+SETTLEMENT FLOW
+======================================================
+783-      return this.buildResult({
+784-        event:
+785-          formation.trioDiscarded
+786-            ? 'TRIO_VOID'
+787-            : 'NO_RECOMMENDATION',
+788-
+789-        formation,
+790-
+791-        recommendation:
+792-          null,
+793-
+794-        settledSignal:
+795-          null,
+796-
+797-        financialRecommendation:
+798-          null,
+799-
+800-        financialSettlement:
+801-          null,
+802-
+803-        operatorMessage:
+804-          formation.trioDiscarded
+805-            ? 'Trio encerrado por zero sem recomendação prospectiva pendente.'
+806-            : 'Trio concluído sem recomendação prospectiva registrada.',
+807-      });
+808-    }
+809-
+810-    if (
+811-      formation.settlement ===
+812-      null
+813-    ) {
+814-      throw new Error(
+815-        'triplicacao_session_runtime_pending_signal_without_settlement',
+816-      );
+817-    }
+818-
+819-    const signalId =
+820-      this.pendingSignalId;
+821-
+822-    const settledSignal =
+823:      this.recorder.settle({
+824-        signalId,
+825-
+826-        formation,
+827-      });
+828-
+829-    /*
+830:     * Recorder.settle() guarantees these fields logically.
+831-     *
+832-     * We still validate them explicitly here so TypeScript and the
+833-     * financial boundary both receive a fully narrowed settlement.
+834-     * This avoids unsafe casts and prevents corrupt persistence from
+835-     * reaching bankroll accounting.
+836-     */
+837-    const statisticalResult =
+838-      settledSignal.result;
+839-
+840-    if (
+841-      statisticalResult ===
+842-      null
+843-    ) {
+844-      throw new Error(
+845-        'triplicacao_session_runtime_settled_result_missing',
+846-      );
+847-    }
+848-
+849-    const thirdColor =
+850-      settledSignal.thirdColor;
+851-
+852-    if (
+853-      thirdColor ===
+854-      null
+855-    ) {
+856-      throw new Error(
+857-        'triplicacao_session_runtime_settled_color_missing',
+858-      );
+859-    }
+860-
+861-    this.pendingSignalId =
+862-      null;
+863-
+864-    const financialSettlement =
+865-      this.financialController
+866:        ? this.financialController.settle({
+867-            operatorDecision:
+868-              settledSignal
+869-                .operatorDecision,
+870-
+871-            statisticalResult,
+872-
+873-            thirdColor,
+874-
+875-            suggestedStake:
+876-              settledSignal
+877-                .suggestedStake,
+878-
+879-            recoveryComponent:
+880-              settledSignal
+881-                .recoveryComponent,
+882-          })
+883-        : null;
+884-
+885-    return this.buildResult({
+886-      event:
+887-        statisticalResult ===
+888-        'VOID'
+889-          ? 'TRIO_VOID'
+890-          : 'RECOMMENDATION_SETTLED',
+891-
+892-      formation,
+893-
+894-      recommendation:
+895-        null,
+896-
+897-      settledSignal,
+898-
+899-      financialRecommendation:
+900-        null,
+901-
+902-      financialSettlement,
+903-
+904-      operatorMessage:
+905-        this.settlementMessage(
+906-          settledSignal,
+907-          financialSettlement,
+908-        ),
+909-    });
+910-  }
+911-
+912-
+913-  private buildResult(
+914-    input: {
+915-      readonly event:
+916-        TriplicacaoProspectiveSessionEvent;
+917-
+918-      readonly formation:
+919-        TriplicacaoProspectiveResult;
+920-
+921-      readonly recommendation:
+922-        TriplicacaoProspectiveSignalRecord | null;
+923-
+924-      readonly settledSignal:
+925-        TriplicacaoProspectiveSignalRecord | null;
+926-
+927-      readonly financialRecommendation:
+928-        PaperInstitutionalStakeRecommendation | null;
+929-
+930-      readonly financialSettlement:
+931-        PaperInstitutionalSettlementReport | null;
+932-
+933-      readonly operatorMessage:
+934-        string;
+935-    },
+936-  ): TriplicacaoProspectiveSessionResult {
+937-    const financial =
+938-      this.financialController
+939-        ?.snapshot() ??
+940-      null;
+941-
+942-    return Object.freeze({
+943-      event:
+944-        input.event,
+945-
+946-      sessionId:
+947-        this.sessionId,
+948-
+949-      spin:
+950-        input.formation.spin,
+951-
+952-      formation:
+953-        input.formation,
+954-
+955-      recommendation:
+956-        input.recommendation,
+957-
+958-      settledSignal:
+959-        input.settledSignal,
+960-
+961-      financialRecommendation:
+962-        input.financialRecommendation,
+963-
+964-      financialSettlement:
+965-        input.financialSettlement,
+966-
