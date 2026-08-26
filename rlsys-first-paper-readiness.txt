@@ -1,6 +1,6 @@
 RL.SYS — FIRST PAPER SESSION READINESS AUDIT
 ======================================================
-Generated: Tue Aug 25 23:23:38 -03 2026
+Generated: Wed Aug 26 08:11:29 -03 2026
 Repository: /data/data/com.termux/files/home/projects/rlsys-terminal-main
 
 
@@ -9,20 +9,10 @@ Repository: /data/data/com.termux/files/home/projects/rlsys-terminal-main
 ======================================================
 feature/decision-intelligence-next
 
- M src/application/runtime/PaperInstitutionalRecoveryController.ts
- M tests/application/runtime/PaperInstitutionalRecoveryController.test.js
-?? portfolio-risk-consumption-audit.txt
-?? rlsys-first-paper-readiness.txt
-?? rlsys-triplicacao-runtime-exact-boundary.txt
-?? scripts/audit_first_paper_readiness.sh
-?? scripts/audit_portfolio_risk_consumption.sh
-?? scripts/audit_triplicacao_portfolio_integration_boundary.sh
-?? scripts/audit_triplicacao_portfolio_runtime_injection_point.sh
-?? scripts/audit_triplicacao_runtime_exact_boundary.sh
-?? triplicacao-portfolio-integration-audit.txt
-?? triplicacao-portfolio-runtime-injection-point.txt
+ M rlsys-first-paper-readiness.txt
 
 LAST COMMITS:
+1247444 feat(paper): establish first supervised paper readiness baseline
 e788008 feat(risk): add sovereign prospective portfolio exposure authority
 23ce928 feat(shadow): integrate historical replay at canonical Sync boundary
 b9c81c0 refactor(paper): retire legacy manual warmup entrypoint
@@ -34,7 +24,6 @@ a4ec6c8 feat(shadow): add Fusion Heatmap and Triplicacao historical adapters
 b544642 feat(shadow): add bankroll-aware chronological historical replay
 6f2ec58 fix(finance): enforce canonical paper exposure and multi-target settlement
 25610b2 feat(paper): canonicalize Fusion Reduced and Heatmap Dynamic runtime
-0ed360c feat(paper): establish supervised Triplicacao runtime baseline
 
 ======================================================
 2. BUILD
