@@ -3,6 +3,14 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const readline = require('node:readline');
+const {
+  handleOperatorDisciplineCommand,
+} = require('./paper-runtime-operator-discipline-preload');
+
+const {
+  handlePaperRuntimeLedgerCommand,
+} = require('./paper-runtime-ledger-command-preload');
+
 
 const {
   PaperRuntimeOperationalGate,
@@ -123,6 +131,29 @@ const {
 const {
   PaperHistoricalShadowPresenter,
 } = require('../dist/application/runtime/PaperHistoricalShadowPresenter.js');
+
+
+
+function runStartupRecovery() {
+  try {
+    const {
+      runPaperRuntimeSnapshotRecovery,
+    } = require('./paper-runtime-snapshot-recovery');
+
+    return runPaperRuntimeSnapshotRecovery();
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : String(error);
+
+    console.error(
+      `RL.SYS paper runtime recovery bootstrap skipped: ${message}`,
+    );
+
+    return null;
+  }
+}
 
 
 function resolveSnapshotPath() {
@@ -1690,6 +1721,7 @@ function printPostReadinessInstructions(
 
 
 async function runInteractiveSession() {
+  runStartupRecovery();
   const loop =
     createRuntimeLoop();
 
@@ -1998,6 +2030,49 @@ async function runInteractiveSession() {
         rl.close();
         return;
       }
+
+      /*
+       * Institutional auxiliary command contract.
+       *
+       * Ordering is intentional:
+       *
+       * 1. History capture has already been evaluated above.
+       * 2. exit/quit has already been evaluated above.
+       * 3. Operator discipline has authority before ledger.
+       * 4. Ledger commands are consumed before setup/runtime CLI.
+       *
+       * This restores the certified command wiring without
+       * replacing the modern PAPER runtime architecture.
+       */
+      const discipline =
+        handleOperatorDisciplineCommand(
+          line,
+        );
+
+      if (
+        discipline.blocked
+      ) {
+        saveSnapshot(
+          loop,
+          false,
+        );
+
+        return;
+      }
+
+      if (
+        handlePaperRuntimeLedgerCommand(
+          line,
+        )
+      ) {
+        saveSnapshot(
+          loop,
+          false,
+        );
+
+        return;
+      }
+
 
       if (
         !setupIsQualified(
@@ -3247,6 +3322,7 @@ async function runInteractiveSession() {
       processing = false;
 
       if (
+        !readlineClosed &&
         rl.listenerCount(
           'line',
         ) > 0
@@ -3257,12 +3333,24 @@ async function runInteractiveSession() {
   }
 
 
+  let readlineClosed =
+    false;
+
+
+  let pendingOperations =
+    Promise.resolve();
+
+
+
   rl.on(
     'line',
     (line) => {
-      void handleLine(
-        line,
-      );
+      pendingOperations =
+        pendingOperations.then(
+          () => handleLine(
+            line,
+          ),
+        );
     },
   );
 
@@ -3284,7 +3372,12 @@ async function runInteractiveSession() {
 
   rl.on(
     'close',
-    () => {
+    async () => {
+      readlineClosed =
+        true;
+
+      await pendingOperations;
+
       console.log(
         'RL.SYS paper runtime session closed.',
       );
@@ -3298,14 +3391,26 @@ async function runInteractiveSession() {
 
 async function runScriptedSession() {
   /*
-   * Keep non-TTY invocation deterministic and fail-closed.
+   * Scripted stdin is used only for:
    *
-   * Full preflight confirmation is deliberately interactive because it
-   * represents explicit human approval.
+   * - automated regression tests
+   * - smoke validation
+   * - controlled PAPER simulation
+   *
+   * It does not bypass any institutional gate.
+   *
+   * The same runtime invariants remain active:
+   *
+   * - readiness
+   * - historical SHADOW
+   * - temporal boundary
+   * - human confirmation command
+   * - recommendation-only execution model
    */
-  console.log(
-    'Interactive terminal required for institutional PAPER confirmation.',
-  );
+  await runInteractiveSession({
+    scriptedInput:
+      true,
+  });
 }
 
 
@@ -3317,7 +3422,10 @@ async function main() {
     return;
   }
 
-  await runInteractiveSession();
+  await runInteractiveSession({
+    scriptedInput:
+      false,
+  });
 }
 
 
