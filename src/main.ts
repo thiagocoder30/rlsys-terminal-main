@@ -1,7 +1,8 @@
-import readline from 'readline/promises';
+import readline from 'node:readline/promises';
 
 import { RuntimeKernel } from './application/runtime/RuntimeKernel';
 import { RuntimeShutdownCoordinator } from './application/runtime/RuntimeShutdownCoordinator';
+import type { RuntimeShutdownReason } from './application/runtime/RuntimeShutdownCoordinator';
 import { JsonLinesReplayRepository } from './infrastructure/replay/JsonLinesReplayRepository';
 
 import { RuntimeStressSampler } from './application/stress/RuntimeStressSampler';
@@ -12,6 +13,11 @@ import { RuntimeStateTransitionGate } from './application/runtime/RuntimeStateTr
 import { RuntimeMemoryPressureMonitor } from './domain/runtime/RuntimeMemoryPressureMonitor';
 import { RuntimeStressHarness } from './domain/stress/RuntimeStressHarness';
 import { OperatorHudFormatter } from './domain/operator';
+
+
+const STATUS_COMMAND = 'status';
+const QUIT_COMMAND = 'quit';
+
 
 async function bootstrap() {
 
@@ -28,38 +34,124 @@ async function bootstrap() {
     new TrueEventLoopLagMonitor()
   );
 
+
   const shutdown = new RuntimeShutdownCoordinator(kernel);
 
-  const rl = readline.createInterface({
+
+  const terminal = readline.createInterface({
     input: process.stdin,
     output: process.stdout
   });
 
+
+  let shuttingDown = false;
+
+
+  const closeRuntime = (reason: RuntimeShutdownReason) => {
+
+    if (shuttingDown) {
+      return;
+    }
+
+    shuttingDown = true;
+
+    console.log(`Shutting down: ${reason}`);
+
+    try {
+      shutdown.shutdown(reason);
+    } catch (error) {
+      console.error('[SHUTDOWN_ERROR]', error);
+    }
+
+    terminal.close();
+
+  };
+
+
+  process.on('SIGINT', () => {
+    closeRuntime('SIGINT');
+  });
+
+
+  process.on('SIGTERM', () => {
+    closeRuntime('SIGTERM');
+  });
+
+
+  process.on('uncaughtException', error => {
+
+    console.error('[UNCAUGHT_EXCEPTION]', error);
+
+    closeRuntime('UNCAUGHT_EXCEPTION');
+
+  });
+
+
+  process.on('unhandledRejection', reason => {
+
+    console.error('[UNHANDLED_REJECTION]', reason);
+
+    closeRuntime('UNHANDLED_REJECTION');
+
+  });
+
+
+  terminal.once('close', () => {
+
+    if (!shuttingDown) {
+      closeRuntime('REPL_CLOSED');
+    }
+
+  });
+
+
   console.log('rlsys> CORE INITIALIZED');
 
-  while (true) {
-    const input = await rl.question('rlsys> ');
+
+  while (!shuttingDown) {
+
+    const input = await terminal.question('rlsys> ');
+
     const cmd = input.trim().toUpperCase();
 
-    if (cmd === 'STATUS' || cmd === 'S') {
-      console.log({ session: kernel.getSessionId?.() ?? 'unknown' });
+
+    if (
+      cmd === STATUS_COMMAND.toUpperCase() ||
+      cmd === 'S'
+    ) {
+
+      console.log({
+        session: kernel.getSessionId?.() ?? 'unknown'
+      });
+
       continue;
+
     }
 
-    if (cmd === 'QUIT' || cmd === 'EXIT') {
-      console.log('Shutting down...');
 
-      shutdown.shutdown('OPERATOR_QUIT');
+    if (
+      cmd === QUIT_COMMAND.toUpperCase() ||
+      cmd === 'EXIT'
+    ) {
 
-      rl.close();
-      process.exit(0);
+      closeRuntime('OPERATOR_QUIT');
+
+      break;
+
     }
+
 
     console.log(`Unknown command: ${cmd}`);
+
   }
+
 }
 
-bootstrap().catch(err => {
-  console.error('[FATAL]', err);
+
+bootstrap().catch(error => {
+
+  console.error('[FATAL]', error);
+
   process.exit(1);
+
 });
