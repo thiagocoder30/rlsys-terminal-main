@@ -1,8 +1,9 @@
 import { CliApplication } from './CliApplication.js';
 
 import { HelpCommand } from './commands/HelpCommand.js';
-import { StatusCommand } from './commands/StatusCommand.js';
 import { RuntimeCommand } from './commands/RuntimeCommand.js';
+import { SessionCommand } from './commands/SessionCommand.js';
+import { StatusCommand } from './commands/StatusCommand.js';
 
 
 export function createCliApplication(
@@ -20,6 +21,11 @@ export function createCliApplication(
 
   cli.register(
     new RuntimeCommand(),
+  );
+
+
+  cli.register(
+    new SessionCommand(),
   );
 
 
