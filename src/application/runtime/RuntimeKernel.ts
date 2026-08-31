@@ -14,17 +14,20 @@ import {
 } from '../../domain/journal/RuntimeSessionJournalContracts';
 import { RuntimeSessionIdentity } from '../../domain/session';
 
+
 export type RuntimeKernelCommandType =
   | 'ROUND'
   | 'STATUS'
   | 'QUIT'
   | 'INVALID';
 
+
 export interface RuntimeKernelCommand {
   readonly type: RuntimeKernelCommandType;
   readonly value: number | null;
   readonly raw: string;
 }
+
 
 export interface RuntimeKernelResult {
   readonly shouldContinue: boolean;
@@ -33,10 +36,20 @@ export interface RuntimeKernelResult {
   readonly reason: string;
 }
 
+
+export interface RuntimeKernelStatus {
+  readonly sessionId: string;
+  readonly startedAtEpochMs: number;
+  readonly lifecycleState: RuntimeLifecycleState;
+  readonly sequence: number;
+}
+
+
 const DEFAULT_SESSION_IDENTITY: RuntimeSessionIdentity = {
   sessionId: 'runtime-kernel',
   startedAtEpochMs: 0,
 };
+
 
 /**
  * Institutional text-only runtime kernel.
@@ -50,6 +63,7 @@ export class RuntimeKernel {
   private sequence = 0;
   private paperBalance = 1000;
   private drawdown = 0;
+
 
   public constructor(
     private readonly replayRepository: ReplayPersistenceRepository,
@@ -66,53 +80,125 @@ export class RuntimeKernel {
     this.eventLoopLagMonitor.start();
   }
 
+
   public shutdown(): void {
     this.eventLoopLagMonitor.stop();
   }
+
 
   public getSessionId(): string {
     return this.identity.sessionId;
   }
 
+
+  /**
+   * Pure runtime inspection.
+   *
+   * This method MUST NOT:
+   * - advance runtime sequence;
+   * - write replay events;
+   * - write journal events;
+   * - invoke transition gates;
+   * - mutate lifecycle state.
+   */
+  public getRuntimeStatus(): RuntimeKernelStatus {
+    return {
+      sessionId: this.identity.sessionId,
+      startedAtEpochMs: this.identity.startedAtEpochMs,
+      lifecycleState: this.lifecycleState,
+      sequence: this.sequence,
+    };
+  }
+
+
   public parse(raw: string): RuntimeKernelCommand {
     const normalized = raw.trim().toLowerCase();
 
     if (normalized === 'q' || normalized === 'quit' || normalized === 'exit') {
-      return { type: 'QUIT', value: null, raw };
+      return {
+        type: 'QUIT',
+        value: null,
+        raw,
+      };
     }
 
     if (normalized === 'status' || normalized === 's') {
-      return { type: 'STATUS', value: null, raw };
+      return {
+        type: 'STATUS',
+        value: null,
+        raw,
+      };
     }
 
-    const value = Number.parseInt(normalized, 10);
+    const value =
+      Number.parseInt(
+        normalized,
+        10,
+      );
 
-    if (Number.isInteger(value) && value >= 0 && value <= 36) {
-      return { type: 'ROUND', value, raw };
+    if (
+      Number.isInteger(value) &&
+      value >= 0 &&
+      value <= 36
+    ) {
+      return {
+        type: 'ROUND',
+        value,
+        raw,
+      };
     }
 
-    return { type: 'INVALID', value: null, raw };
+    return {
+      type: 'INVALID',
+      value: null,
+      raw,
+    };
   }
 
-  public async handle(raw: string): Promise<RuntimeKernelResult> {
-    const command = this.parse(raw);
+
+  public async handle(
+    raw: string,
+  ): Promise<RuntimeKernelResult> {
+
+    const command =
+      this.parse(raw);
+
     this.sequence += 1;
 
-    await this.appendJournal('COMMAND', {
-      command: command.raw,
-      commandType: command.type,
-      value: command.value,
-      sessionId: this.identity.sessionId,
-    }, command.type, 'COMMAND_RECEIVED', 'operator command received');
+
+    await this.appendJournal(
+      'COMMAND',
+      {
+        command: command.raw,
+        commandType: command.type,
+        value: command.value,
+        sessionId: this.identity.sessionId,
+      },
+      command.type,
+      'COMMAND_RECEIVED',
+      'operator command received',
+    );
+
 
     if (command.type === 'QUIT') {
-      this.lifecycleState = 'SHUTDOWN';
+
+      this.lifecycleState =
+        'SHUTDOWN';
+
       this.shutdown();
 
-      await this.appendJournal('SHUTDOWN', {
-        command: command.raw,
-        sessionId: this.identity.sessionId,
-      }, 'SHUTDOWN', 'OPERATOR_QUIT', 'operator requested shutdown');
+
+      await this.appendJournal(
+        'SHUTDOWN',
+        {
+          command: command.raw,
+          sessionId: this.identity.sessionId,
+        },
+        'SHUTDOWN',
+        'OPERATOR_QUIT',
+        'operator requested shutdown',
+      );
+
 
       return {
         shouldContinue: false,
@@ -120,140 +206,318 @@ export class RuntimeKernel {
         output: 'RL.SYS CORE shutdown completed.',
         reason: 'operator requested shutdown',
       };
+
     }
 
-    const memory = this.memoryMonitor.sample();
-    const lag = this.eventLoopLagMonitor.snapshot();
-    const schedulerLagMs = lag.sampleCount > 0 ? lag.maxLagMs : 0;
 
-    const stressSample = this.stressSampler.sample({
-      scenario: 'EVENT_LOOP_LAG',
-      iterations: Math.max(1, lag.sampleCount),
-      heapUsedBeforeBytes: memory.heapUsedBytes,
-      heapUsedAfterBytes: memory.heapUsedBytes,
-      maxLatencyMs: schedulerLagMs,
-      rejectedEvents: command.type === 'INVALID' ? 1 : 0,
-      blockedEvents: command.type === 'INVALID' ? 1 : 0,
-    });
+    const memory =
+      this.memoryMonitor.sample();
 
-    const stress = this.stressHarness.evaluate(
-      stressSample.sample === null ? [] : [stressSample.sample],
+    const lag =
+      this.eventLoopLagMonitor.snapshot();
+
+    const schedulerLagMs =
+      lag.sampleCount > 0
+        ? lag.maxLagMs
+        : 0;
+
+
+    const stressSample =
+      this.stressSampler.sample({
+        scenario: 'EVENT_LOOP_LAG',
+        iterations: Math.max(
+          1,
+          lag.sampleCount,
+        ),
+        heapUsedBeforeBytes:
+          memory.heapUsedBytes,
+        heapUsedAfterBytes:
+          memory.heapUsedBytes,
+        maxLatencyMs:
+          schedulerLagMs,
+        rejectedEvents:
+          command.type === 'INVALID'
+            ? 1
+            : 0,
+        blockedEvents:
+          command.type === 'INVALID'
+            ? 1
+            : 0,
+      });
+
+
+    const stress =
+      this.stressHarness.evaluate(
+        stressSample.sample === null
+          ? []
+          : [stressSample.sample],
+      );
+
+
+    const operationalVerdict =
+      this.resolveVerdict(
+        command.type,
+        memory.state,
+        stress.verdict,
+      );
+
+
+    const previousState =
+      this.lifecycleState;
+
+
+    const transition =
+      this.transitionGate.apply({
+        currentState:
+          this.lifecycleState,
+        operationalVerdict,
+        reason:
+          this.resolveReason(
+            command,
+          ),
+        timestampEpochMs:
+          Date.now(),
+      });
+
+
+    this.lifecycleState =
+      transition.nextState;
+
+
+    await this.appendJournal(
+      'STATE_TRANSITION',
+      {
+        previousState,
+        nextState:
+          this.lifecycleState,
+        accepted:
+          transition.accepted,
+        transitionReason:
+          transition.reason,
+        sessionId:
+          this.identity.sessionId,
+      },
+      operationalVerdict,
+      'STATE_TRANSITION',
+      transition.reason,
     );
 
-    const operationalVerdict = this.resolveVerdict(command.type, memory.state, stress.verdict);
-    const previousState = this.lifecycleState;
-
-    const transition = this.transitionGate.apply({
-      currentState: this.lifecycleState,
-      operationalVerdict,
-      reason: this.resolveReason(command),
-      timestampEpochMs: Date.now(),
-    });
-
-    this.lifecycleState = transition.nextState;
-
-    await this.appendJournal('STATE_TRANSITION', {
-      previousState,
-      nextState: this.lifecycleState,
-      accepted: transition.accepted,
-      transitionReason: transition.reason,
-      sessionId: this.identity.sessionId,
-    }, operationalVerdict, 'STATE_TRANSITION', transition.reason);
 
     await this.replayRepository.append({
-      eventId: `kernel:${this.identity.sessionId}:${this.sequence}:${this.lifecycleState}:${operationalVerdict}`,
-      sessionId: this.identity.sessionId,
-      sequence: this.sequence,
-      timestampEpochMs: Date.now(),
-      verdict: operationalVerdict,
-      trigger: command.type,
-      reason: transition.reason,
-      latencyMs: schedulerLagMs,
+      eventId:
+        `kernel:${this.identity.sessionId}:${this.sequence}:${this.lifecycleState}:${operationalVerdict}`,
+      sessionId:
+        this.identity.sessionId,
+      sequence:
+        this.sequence,
+      timestampEpochMs:
+        Date.now(),
+      verdict:
+        operationalVerdict,
+      trigger:
+        command.type,
+      reason:
+        transition.reason,
+      latencyMs:
+        schedulerLagMs,
     });
 
-    const composed = this.hudComposer.compose({
-      lifecycleState: this.lifecycleState,
-      verdict: operationalVerdict,
-      reason: transition.reason,
-      paperBalance: this.paperBalance,
-      drawdown: this.drawdown,
-      snapshotStatus: 'REVIEW',
-      freezeStatus: operationalVerdict === 'FREEZE' ? 'FREEZE_TRIGGERED' : 'OK',
-      lastTrigger: command.type,
-      lastReason: transition.reason,
-      memory: {
-        ...memory,
-        eventLoopLagMs: schedulerLagMs,
+
+    const composed =
+      this.hudComposer.compose({
+        lifecycleState:
+          this.lifecycleState,
+        verdict:
+          operationalVerdict,
+        reason:
+          transition.reason,
+        paperBalance:
+          this.paperBalance,
+        drawdown:
+          this.drawdown,
+        snapshotStatus:
+          'REVIEW',
+        freezeStatus:
+          operationalVerdict === 'FREEZE'
+            ? 'FREEZE_TRIGGERED'
+            : 'OK',
+        lastTrigger:
+          command.type,
+        lastReason:
+          transition.reason,
+        memory: {
+          ...memory,
+          eventLoopLagMs:
+            schedulerLagMs,
+        },
+        stress,
+      });
+
+
+    await this.appendJournal(
+      'HUD',
+      {
+        snapshot:
+          composed.snapshot,
+        stressVerdict:
+          composed.stressVerdict,
+        sessionId:
+          this.identity.sessionId,
       },
-      stress,
-    });
+      operationalVerdict,
+      'HUD_RENDERED',
+      composed.reason,
+    );
 
-    await this.appendJournal('HUD', {
-      snapshot: composed.snapshot,
-      stressVerdict: composed.stressVerdict,
-      sessionId: this.identity.sessionId,
-    }, operationalVerdict, 'HUD_RENDERED', composed.reason);
 
     return {
       shouldContinue: true,
-      lifecycleState: this.lifecycleState,
-      output: this.hudFormatter.render(composed.snapshot),
-      reason: transition.reason,
+      lifecycleState:
+        this.lifecycleState,
+      output:
+        this.hudFormatter.render(
+          composed.snapshot,
+        ),
+      reason:
+        transition.reason,
     };
   }
 
+
   private async appendJournal(
-    type: 'COMMAND' | 'HUD' | 'STATE_TRANSITION' | 'SHUTDOWN' | 'ERROR',
-    payload: Readonly<Record<string, unknown>>,
+    type:
+      | 'COMMAND'
+      | 'HUD'
+      | 'STATE_TRANSITION'
+      | 'SHUTDOWN'
+      | 'ERROR',
+    payload:
+      Readonly<Record<string, unknown>>,
     verdict: string,
     reason: string,
     lifecycleReason: string,
   ): Promise<void> {
-    if (this.journalRepository === null) {
+
+    if (
+      this.journalRepository === null
+    ) {
       return;
     }
 
+
     await this.journalRepository.append({
-      eventId: `journal:${this.identity.sessionId}:${this.sequence}:${type}:${reason}`,
-      sessionId: this.identity.sessionId,
-      sequence: this.sequence,
-      timestampEpochMs: Date.now(),
+      eventId:
+        `journal:${this.identity.sessionId}:${this.sequence}:${type}:${reason}`,
+      sessionId:
+        this.identity.sessionId,
+      sequence:
+        this.sequence,
+      timestampEpochMs:
+        Date.now(),
       type,
-      lifecycleState: this.lifecycleState,
+      lifecycleState:
+        this.lifecycleState,
       verdict,
-      reason: lifecycleReason,
+      reason:
+        lifecycleReason,
       payload,
     });
+
   }
 
+
   private resolveVerdict(
-    commandType: RuntimeKernelCommandType,
+    commandType:
+      RuntimeKernelCommandType,
     memoryState: string,
     stressVerdict: string,
-  ): 'NO_GO' | 'OBSERVE' | 'REVIEW' | 'FREEZE' | 'BLOCKED' {
-    if (commandType === 'INVALID') return 'BLOCKED';
-    if (memoryState === 'MEMORY_CRITICAL') return 'FREEZE';
-    if (stressVerdict === 'STRESS_FAILED') return 'FREEZE';
-    if (memoryState === 'MEMORY_REVIEW') return 'REVIEW';
-    if (stressVerdict === 'STRESS_REVIEW') return 'REVIEW';
-    if (commandType === 'STATUS') return 'OBSERVE';
+  ):
+    | 'NO_GO'
+    | 'OBSERVE'
+    | 'REVIEW'
+    | 'FREEZE'
+    | 'BLOCKED' {
+
+    if (
+      commandType === 'INVALID'
+    ) {
+      return 'BLOCKED';
+    }
+
+    if (
+      memoryState ===
+      'MEMORY_CRITICAL'
+    ) {
+      return 'FREEZE';
+    }
+
+    if (
+      stressVerdict ===
+      'STRESS_FAILED'
+    ) {
+      return 'FREEZE';
+    }
+
+    if (
+      memoryState ===
+      'MEMORY_REVIEW'
+    ) {
+      return 'REVIEW';
+    }
+
+    if (
+      stressVerdict ===
+      'STRESS_REVIEW'
+    ) {
+      return 'REVIEW';
+    }
+
+    if (
+      commandType === 'STATUS'
+    ) {
+      return 'OBSERVE';
+    }
+
 
     return 'NO_GO';
   }
 
-  private resolveReason(command: RuntimeKernelCommand): string {
-    if (command.type === 'ROUND') {
-      return `round ${command.value} accepted for paper observation; live operation remains gated`;
+
+  private resolveReason(
+    command:
+      RuntimeKernelCommand,
+  ): string {
+
+    if (
+      command.type === 'ROUND'
+    ) {
+      return (
+        `round ${command.value} accepted for paper observation; ` +
+        'live operation remains gated'
+      );
     }
 
-    if (command.type === 'STATUS') {
-      return 'operator requested runtime status';
+
+    if (
+      command.type === 'STATUS'
+    ) {
+      return (
+        'operator requested runtime status'
+      );
     }
 
-    if (command.type === 'INVALID') {
-      return 'invalid operator input blocked';
+
+    if (
+      command.type === 'INVALID'
+    ) {
+      return (
+        'invalid operator input blocked'
+      );
     }
 
-    return 'runtime command processed';
+
+    return (
+      'runtime command processed'
+    );
   }
 }

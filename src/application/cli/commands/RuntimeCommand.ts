@@ -1,27 +1,35 @@
-import type { CliCommand } from '../CliCommand.js';
+import type {
+  CliCommand,
+} from '../CliCommand.js';
+
 import type {
   CliCommandContext,
   CliCommandResult,
 } from '../CliCommandContext.js';
 
 
-interface RuntimeKernelPort {
-  handle(raw: string): Promise<{
-    readonly lifecycleState: string;
-    readonly output: string;
-    readonly reason: string;
-  }>;
-
-  getSessionId(): string;
+interface RuntimeStatusSnapshot {
+  readonly sessionId: string;
+  readonly startedAtEpochMs: number;
+  readonly lifecycleState: string;
+  readonly sequence: number;
 }
 
 
-export class RuntimeCommand implements CliCommand {
+interface RuntimeInspectionPort {
+  getRuntimeStatus(): RuntimeStatusSnapshot;
+}
 
-  public readonly name = 'runtime';
+
+export class RuntimeCommand
+implements CliCommand {
+
+  public readonly name =
+    'runtime';
+
 
   public readonly description =
-    'Runtime operational commands';
+    'Runtime operational inspection';
 
 
   public async execute(
@@ -30,50 +38,34 @@ export class RuntimeCommand implements CliCommand {
   ): Promise<CliCommandResult> {
 
     const kernel =
-      context.kernel as RuntimeKernelPort;
+      context.kernel as
+        RuntimeInspectionPort;
 
 
     const subcommand =
-      args[0]?.trim().toLowerCase() ?? 'status';
+      args[0]
+        ?.trim()
+        .toLowerCase()
+      ?? 'status';
 
 
-    if (subcommand === 'status') {
+    if (
+      subcommand === 'status'
+    ) {
 
-      const result =
-        await kernel.handle('status');
+      const status =
+        kernel.getRuntimeStatus();
 
 
       return {
         success: true,
         output: [
           'RL.SYS RUNTIME STATUS',
-          '====================',
-          `Session: ${kernel.getSessionId()}`,
-          `State: ${result.lifecycleState}`,
-          '',
-          result.output,
-          '',
-          `Reason: ${result.reason}`,
-        ].join('\n'),
-      };
-
-    }
-
-
-    if (subcommand === 'health') {
-
-      const result =
-        await kernel.handle('status');
-
-
-      return {
-        success: true,
-        output: [
-          'RL.SYS RUNTIME HEALTH',
-          '====================',
-          'Health check delegated to RuntimeKernel',
-          `State: ${result.lifecycleState}`,
-          `Session: ${kernel.getSessionId()}`,
+          '=====================',
+          `Session: ${status.sessionId}`,
+          `State: ${status.lifecycleState}`,
+          `Sequence: ${status.sequence}`,
+          'Inspection: READ_ONLY',
         ].join('\n'),
       };
 
